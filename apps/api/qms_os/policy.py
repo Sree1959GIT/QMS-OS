@@ -205,7 +205,7 @@ def resolve_mode(value: str | None) -> Mode:
 
 
 def default_policy_path() -> Path:
-    return Path(__file__).resolve().parents[2] / ".private" / "policy.json"
+    return Path(__file__).resolve().parents[3] / ".private" / "policy.json"
 
 
 @dataclass(frozen=True)

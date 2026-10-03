@@ -18,7 +18,7 @@ Each item says how it was verified.
 
 - **Git:** `main` at `b917d24…` matched `origin/main` and the working tree was clean (checked with Git when this
   file was written).
-- **Tests:** `python -m pytest -q -p no:cacheprovider`, run from `backend/`:
+- **Tests:** `python -m pytest -q -p no:cacheprovider`, run from `apps/api/`:
   - local Windows, Python 3.12.10: `105 passed, 1 warning` (the warning is the Starlette `httpx` test-client
     deprecation notice);
   - GitHub Actions, Ubuntu 24.04, Python 3.12.10: job `test` succeeded on pull request #1 (run 36837238711; its
@@ -27,11 +27,11 @@ Each item says how it was verified.
   - History: before the Checkpoint A repair the suite stood at `4 failed, 32 passed`.
 - **CI:** `.github/workflows/ci.yml` runs job `test` on pull requests to `main` and on pushes to `main`, with
   `permissions: contents: read`, `persist-credentials: false`, actions pinned to full commit SHAs, and dependency
-  versions held by `backend/constraints-ci.txt`. No secrets are used.
+  versions held by `apps/api/constraints-ci.txt`. No secrets are used.
 - **Protection of `main`** (GitHub public API): an active ruleset on the default branch blocks deletion and
   force-pushes, requires pull requests and linear history, and requires the status check `test`. Bypass settings
   are not visible through the public API.
-- **Implemented on `main` (synthetic/test data only):** `backend/` FastAPI + SQLAlchemy prototype — audit
+- **Implemented on `main` (synthetic/test data only):** `apps/api/` FastAPI + SQLAlchemy prototype — audit
   programme planning and auditor assignment, finding/corrective-action lifecycle, FMEA risk register, drafts-only
   notifications, append-only audit events, isolated knowledge module; 409 `held` contract for unresolved
   audit-validity conditions with a durable `transition.held` event. Runtime modes: `operational` (default) loads
@@ -52,7 +52,7 @@ Each item says how it was verified.
   created from the models).
 - Docker / Docker Compose: Docker was not found on the development machine at the last check.
 - Any UI; end-to-end or browser tests.
-- Python 3.11: allowed by `backend/pyproject.toml` but not tested in CI.
+- Python 3.11: allowed by `apps/api/pyproject.toml` but not tested in CI.
 - All live integrations (mail, Telegram, model providers/Ollama, Hermes, WeKnora, Hindsight).
 
 ## Local material outside the repository
@@ -74,13 +74,13 @@ Each item says how it was verified.
 
 ## Known mismatches (deferred)
 
-- Code references to documents that do not exist: `backend/qms_os/api/deps.py` cites
-  `docs/adr/0003-auth-dev-identity.md`; `backend/qms_os/knowledge/__init__.py` cites
+- Code references to documents that do not exist: `apps/api/qms_os/api/deps.py` cites
+  `docs/adr/0003-auth-dev-identity.md`; `apps/api/qms_os/knowledge/__init__.py` cites
   `docs/adr/0004-independent-knowledge-module.md` and `docs/05-knowledge-roadmap.md`.
-- The development-identity docstring in `backend/qms_os/api/deps.py` names a sign-on approach that differs from the
+- The development-identity docstring in `apps/api/qms_os/api/deps.py` names a sign-on approach that differs from the
   R-3 proposal; no authentication approach has been decided.
 - `docs/SPECIFICATION.md` refers to `docs/decisions.md`; the file is `docs/DECISIONS.md`.
-- The specification's repository layout differs from the current single `backend/` tree (R-1).
+- The specification's repository layout is partly adopted: the code lives in `apps/api/` (R-1, decided); other `apps/` and `packages/` folders do not exist yet.
 - The specification makes PostgreSQL the authority; the code defaults to SQLite and has no PostgreSQL support (R-2).
 - The specification asks pull-request CI for formatter, type, lint and integration checks and a secret scan; CI
   currently runs the unit tests only.
@@ -88,7 +88,7 @@ Each item says how it was verified.
 
 ## Open decisions
 
-- Unresolved engineering decisions: R-1, R-2, R-3, R-4 (`docs/DECISIONS.md`).
+- Unresolved engineering decisions: R-2, R-3, R-4 (`docs/DECISIONS.md`).
 - Unresolved organisational decisions: D-07, D-08, D-12, D-13, D-14, D-15, D-16.
 - Candidate values (D-01, D-02, D-04, D-05, D-06) need named owners before any becomes policy (R-4).
 - The organisation policy needs an ID, version and effective date from the policy owner, then Top Management

@@ -57,7 +57,7 @@ audit controls, and missing training or unresolved concurrence must be resolved,
 
 | ID | Topic | Proposal | Status |
 |---|---|---|---|
-| R-1 | Restructure to the spec's repo layout | as a separate reviewed step; timing undecided | Unresolved |
+| R-1 | Restructure to the spec's repo layout | Move `backend/` to `apps/api/`, self-contained with its own `pyproject.toml` and `tests/`. Create `packages/*` and other spec folders only when real code needs them. Differs from the spec's root-level `pyproject.toml` and `tests/` until a second package needs them | Decided (Admin, 2026-10-03) |
 | R-2 | Docker Desktop/WSL2 vs native PostgreSQL | install gate; Postgres/Compose unverified until available | Unresolved |
 | R-3 | MVP-1 authentication | local accounts + TOTP (OIDC later) | Unresolved |
 | R-4 | Named owners for candidate values | required before any candidate becomes policy | Unresolved |
@@ -66,7 +66,7 @@ audit controls, and missing training or unresolved concurrence must be resolved,
 | R-7 | Response contract | 403/404 unauthorised or hidden; 422 invalid submission; 409 `held` for unresolved conditions, including `policy_missing` / `policy_unapproved` / `policy_not_effective` | Decided (Admin, 2026-09-29) |
 | R-8 | Publication of organisation-specific values | public repo carries synthetic examples only (demo/test mode); organisation values stay local | Decided (Admin, 2026-09-29) |
 | R-11 | Organisation identity in the public repo | none: no organisation name, identifiers, people, contact details, document titles/numbers, internal paths, reference-repository identifiers or copied wording in tracked files, fixtures, seeds, UI/export text or prompts; fixtures are visibly fictional (guarded by `tests/test_fixture_hygiene.py`) | Decided (Admin, 2026-09-30) |
-| R-12 | Continuous integration | GitHub Actions job `test` on pull requests to and pushes to `main`: Python 3.12.10, read-only permissions, actions pinned to commit SHAs, dependency versions held by `backend/constraints-ci.txt` | Decided (Admin; merged in pull request #1, 2026-10-01 per GitHub) |
+| R-12 | Continuous integration | GitHub Actions job `test` on pull requests to and pushes to `main`: Python 3.12.10, read-only permissions, actions pinned to commit SHAs, dependency versions held by `apps/api/constraints-ci.txt` | Decided (Admin; merged in pull request #1, 2026-10-01 per GitHub) |
 | R-13 | Protection of `main` | ruleset on the default branch: no deletion or force-push; pull request required; linear history; required status check `test` | Decided (Admin; ruleset created 2026-10-01 and last updated 2026-10-03 per GitHub) |
 
 ## Scope statement
