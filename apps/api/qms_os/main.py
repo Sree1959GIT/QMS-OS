@@ -36,7 +36,7 @@ def create_app(engine=None, today: Callable[[], date] = date.today, mode: str | 
     app.include_router(routes.router)
     app.include_router(knowledge_routes.router)
 
-    dist = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+    dist = Path(__file__).resolve().parents[3] / "frontend" / "dist"
     if dist.is_dir():
         app.mount("/assets", StaticFiles(directory=dist / "assets"), name="assets")
 
