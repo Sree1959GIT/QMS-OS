@@ -45,7 +45,9 @@ Each item says how it was verified.
   rejected, reads always UTC) and the API serialises them with an explicit `+00:00`; guarded by
   `tests/test_timestamps.py`.
 - **Server startup:** `tests/test_startup_smoke.py` starts the app as a separate process in `demo` mode against a seeded temporary SQLite database and checks `/api/health`; it passed locally on Windows and in CI on Linux.
+
 ## Not verified
+
 - PostgreSQL: all tests use in-memory SQLite; there is no PostgreSQL driver and no migration tooling (the schema is
   created from the models).
 - Docker / Docker Compose: Docker was not found on the development machine at the last check.
