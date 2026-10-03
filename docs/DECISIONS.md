@@ -1,7 +1,8 @@
 # QMS OS — Decision record
 
-Status: **PROPOSED for Admin review (2026-09-29).** Not yet committed. `docs/SPECIFICATION.md` is the
-controlling product specification; `docs/plan-for-review.md` is a superseded historical proposal.
+Status: committed on `main`. Entries marked **Decided** were approved by the Admin; **Candidate** and
+**Unresolved** entries are not organisational policy. `docs/SPECIFICATION.md` is the controlling product
+specification.
 
 Status legend: **Decided** (Admin-approved) · **Candidate** (proposed value in use for synthetic
 development; not company policy) · **Unresolved** (needs a named human owner's decision).
@@ -13,7 +14,7 @@ development; not company policy) · **Unresolved** (needs a named human owner's 
 - Approval status of that material could **not** be verified (control sheets and amendment records blank).
   Everything derived from it is candidate guidance only.
 - Organisation policy values are **not published**. `operational` mode (the default) loads them from a local,
-  git-ignored `.private/policy.json`; a missing file leaves the system in `policy_missing` with policy-dependent
+  git-ignored policy file; a missing file leaves the system in `policy_missing` with policy-dependent
   work held, and a malformed file is a startup error. Synthetic example values load **only** in explicit `demo`
   or `test` mode and can never be submitted or approved as organisational policy.
 - Public files cite `VREF-nn` IDs. The ID → path register is local and unpublished until the Admin sets a
@@ -25,7 +26,7 @@ development; not company policy) · **Unresolved** (needs a named human owner's 
 |---|---|---|
 | 1 Platform safety invariants | Always enforced; not configurable | authentication and authorisation; no self-approval / separation of duties; defined lifecycle transitions only; auditor working papers hidden from auditees; outbound messages are drafts; append-only audit events; deterministic RPN arithmetic |
 | 2 Audit-validity conditions | Never waived by approval; unresolved conditions **hold** the transition (HTTP 409 + `transition.held` event) or reject an invalid submission (422) | programme completeness; auditor training recorded; auditor independent of audited department; concurrence recorded and agreed; objective evidence and audit criteria on nonconformities; closure evidence; verification by the assigned auditor |
-| 3 Candidate numeric values | Proposed values; currently still enforced as coded; advisory mode deferred | cycles/year, planning window, notice/report offsets, closure limit, amber window, per-auditor daily load, RPN threshold, review interval |
+| 3 Candidate numeric values | Policy parameters read from the active policy: labelled synthetic values in `demo`/`test` mode; organisation values only from an approved policy (R-9). Advisory mode deferred | cycles/year, planning window, notice/report offsets, closure limit, amber window, per-auditor daily load, RPN threshold, review interval |
 
 A future `approval_request` may record a documented exception or an approved policy revision only where
 the governing process allows it. It can never relax authentication, independence, evidence or mandatory
@@ -39,7 +40,7 @@ audit controls, and missing training or unresolved concurrence must be resolved,
 | D-02 | Planning window and audit block length | configurable policy values | Candidate — owner needed |
 | D-03 | Role name for quality representative | role code `MA` (quality management representative); the display title is the organisation's to configure | Candidate |
 | D-04 | Nonconformity closure limit and milestone offsets | configurable policy values | Candidate — owner needed |
-| D-05 | Auditor daily load | ≤ 1 audit per auditor per day | Candidate (QMS OS assumption) |
+| D-05 | Auditor daily load | configurable policy value | Candidate (QMS OS assumption) |
 | D-06 | NC status reporting cadence | periodic MA report; cadence to be confirmed | Candidate |
 | D-07 | FMEA rating-scale definitions and significance threshold | configurable; to be confirmed by the process owner | Unresolved |
 | D-08 | Authoritative version of the documented-information procedure | to be confirmed by the process owner | Unresolved |
@@ -48,15 +49,15 @@ audit controls, and missing training or unresolved concurrence must be resolved,
 | D-11 | Approval status of reference material | all candidate until a named owner approves | Decided (Admin, 2026-09-29) |
 | D-12 | **Resolution of auditee non-concurrence** | report held (409) until concurrence is recorded; no MA override; resolution process open for process-owner review | **Unresolved** |
 | D-13 | **Non-reciprocal auditor pairing** (A audits B ⇒ B not A in a year) | advisory only: reported as a warning and preferred by auto-assignment; never blocks. Auditor independence (own department) remains blocking | **Unresolved candidate — not approved organisational policy** |
+| D-14 | Record retention periods | no retention parameter, no deletion job; nothing deleted (enforced by `tests/test_no_retention.py`) | Unresolved — organisation to supply |
 | D-15 | **Risk-closure authority** | not decided: every closure request is held (409 `closure_authority_unresolved`) and recorded; no role may close a risk | **Unresolved — organisation to decide** |
 | D-16 | **Organisational project and project-manager assignment** | project model exists; only synthetic fixture assignments in demo/test. In operational mode, project-risk submission and gates are held (409 `project_ownership_not_implemented`); draft capture allowed | **Unresolved — needs an approved assignment workflow** |
-| D-14 | Record retention periods | no retention parameter, no deletion job; nothing deleted (enforced by `tests/test_no_retention.py`) | Unresolved — organisation to supply |
 
 ## Engineering and repository decisions
 
 | ID | Topic | Proposal | Status |
 |---|---|---|---|
-| R-1 | Restructure to the spec's repo layout | after the first commit, as a separate reviewed step | Unresolved |
+| R-1 | Restructure to the spec's repo layout | as a separate reviewed step; timing undecided | Unresolved |
 | R-2 | Docker Desktop/WSL2 vs native PostgreSQL | install gate; Postgres/Compose unverified until available | Unresolved |
 | R-3 | MVP-1 authentication | local accounts + TOTP (OIDC later) | Unresolved |
 | R-4 | Named owners for candidate values | required before any candidate becomes policy | Unresolved |
@@ -65,6 +66,12 @@ audit controls, and missing training or unresolved concurrence must be resolved,
 | R-7 | Response contract | 403/404 unauthorised or hidden; 422 invalid submission; 409 `held` for unresolved conditions, including `policy_missing` / `policy_unapproved` / `policy_not_effective` | Decided (Admin, 2026-09-29) |
 | R-8 | Publication of organisation-specific values | public repo carries synthetic examples only (demo/test mode); organisation values stay local | Decided (Admin, 2026-09-29) |
 | R-11 | Organisation identity in the public repo | none: no organisation name, identifiers, people, contact details, document titles/numbers, internal paths, reference-repository identifiers or copied wording in tracked files, fixtures, seeds, UI/export text or prompts; fixtures are visibly fictional (guarded by `tests/test_fixture_hygiene.py`) | Decided (Admin, 2026-09-30) |
+| R-12 | Continuous integration | GitHub Actions job `test` on pull requests to and pushes to `main`: Python 3.12.10, read-only permissions, actions pinned to commit SHAs, dependency versions held by `backend/constraints-ci.txt` | Decided (Admin; merged in pull request #1, 2026-10-01 per GitHub) |
+| R-13 | Protection of `main` | ruleset on the default branch: no deletion or force-push; pull request required; linear history; required status check `test` | Decided (Admin; ruleset created 2026-10-01 and last updated 2026-10-03 per GitHub) |
+
+## Scope statement
+
+No external decision-routing or classification integration is approved for implementation.
 
 ## Organisational requirements supplied by the Admin (2026-09-29)
 

@@ -4,63 +4,99 @@
 
 ## Snapshot to verify
 
-- Last human-provided context date: 29 September 2026.
 - Repository: this repository (`QMS-OS`); confirm the remote with `git remote -v`.
-- Expected specification: `docs/SPECIFICATION.md`, v3.0 dated 29 September 2026. Verify title, version and repository HEAD locally; do not assume this is still current.
-- Branch / HEAD SHA / working tree: see *Latest verified state* below; re-verify with Git at session start.
-- Stage: Session 0 — local prototype repaired and tested; **first commit not yet approved**.
-- Test results: see *Latest verified state* (local SQLite only).
-- Live connectors, staff accounts and model credentials: **not confirmed**. Do not claim they are configured.
+- Specification: `docs/SPECIFICATION.md`, v3.0 dated 29 September 2026. Verify title and version locally.
+- Baseline recorded here: `main` at `30a0c198f3b7f79476a4a03bd4927d49ae31d995` (pull request #1, merged
+  2026-10-01 according to GitHub). Re-verify branch, HEAD and working tree with Git at session start; this file
+  may be stale.
+- Stage: pre-MVP-0 baseline merged; MVP-0 not started (see `docs/ROADMAP.md`).
+- Mode: synthetic only. No live connectors, staff accounts or model credentials are configured in this repository,
+  and none has been verified; do not claim they are configured.
 
-## Latest verified state (PROPOSED update — awaiting Admin review, not committed)
+## Verified state
 
-- Timestamp: 2026-09-30 (UTC date).
-- Branch `main` tracking `origin/main`; local unpushed work under publication review —
-  verify with `git log origin/main..HEAD`.
-- Mode: **synthetic only** (visibly fictional fixture org: role-coded people, `(fixture)` departments,
-  reserved `.example` mail domain, invented holidays). No live connectors, providers, mail, Telegram or credentials.
-- Implemented (untracked, local): `backend/` FastAPI + SQLAlchemy prototype — audit programme planning and
-  auditor assignment, finding/corrective-action lifecycle, FMEA risk register, drafts-only notifications,
-  append-only audit events, isolated knowledge module; 409 `held` contract for unresolved audit-validity
-  conditions with a durable `transition.held` event. Runtime modes: `operational` (default) loads the
-  organisation policy from a git-ignored `.private/policy.json` and holds policy-dependent work until Top
-  Management approval (R-9); `demo`/`test` use labelled synthetic values only. Risk assessments follow R-10
-  (functional head or assigned project manager → MA co-approval → Top Management sign-off); risk closure is
-  held pending decision D-15; organisational project-manager assignment pending D-16. No record-retention
-  parameter or deletion job
-  (retention periods await the organisation — D-14; guarded by `tests/test_no_retention.py`).
-- Timestamps: every stored timestamp is timezone-aware UTC (`qms_os/timeutil.py` `UTCDateTime`: naive values
-  rejected, reads always UTC) and the API serialises them with an explicit `+00:00`, including risk sign-off and
-  policy approval; guarded by `tests/test_timestamps.py`.
-- Commands and results, run in the **actual local working tree** (imports verified from the repository's `backend/` directory):
-  `backend/.venv/Scripts/python.exe -m pytest -q -p no:cacheprovider` → `104 passed, 1 warning` (the warning is
-  the Starlette `httpx` testclient deprecation). History: before repair `4 failed, 32 passed`.
-- **Unverified — not run:** Docker / Docker Compose (Docker not installed); PostgreSQL (all tests use in-memory
-  SQLite); starting the API server; any UI; end-to-end/browser tests; all live integrations (mail, Telegram, model
-  providers/Ollama, Hermes, WeKnora, Hindsight, GitHub write operations). Mode is synthetic/test only.
-- Local policy material: `.private/policy.candidate.json` is git-ignored, deliberately not named `policy.json`
-  (never loaded), and has no policy_id, version, effective date or approval — those must come from the policy
-  owner and Top Management (R-9). Operational mode therefore reports `policy_missing`.
-- Development reference `VREF-00` inspected read-only via GitHub API. Its repository/branch/commit and
-  detailed paths are kept in a local, unpublished, git-ignored citation register; public files cite
-  `VREF-nn` IDs only.
-- Decisions: see `docs/DECISIONS.md` (proposed). Unresolved: non-reciprocity (D-13) and the
-  non-concurrence resolution process (D-12), among others.
-- Security/privacy: no secrets or personal data found in commit candidates. Private-reference paths and
-  reference-derived wording were redacted locally (Admin-approved) and replaced by `VREF-nn` IDs. Publication
-  hold (R-11): organisation identity, the reference repository's identifiers, realistic fixture people and
-  holidays, the organisation's document-type codes, role title and form/mail wording were removed or
-  generalised in tracked files. Earlier public commits on `origin/main` still contain the organisation name
-  (`docs/SPECIFICATION.md`) and the reference-repository identifiers; removing them from history needs a
-  separately authorised history rewrite (not done).
-- Backups: seven local backups with verified SHA-256 manifests (locations recorded outside the repository).
-- Required human decisions: review of the publication-redaction, policy-governance and identity-redaction (R-11)
-  changes, then amend and push decisions; whether to rewrite public history (see Security/privacy); R-1…R-4 and the unresolved D-items in
-  `docs/DECISIONS.md` (D-01…D-16).
-- Next three tasks: (1) Admin review of Patch 1 + Patch 2 and the R-11 identity redaction, then a separately
-  authorised amend and push; (2) create `docs/ROADMAP.md` (MVP-0…Production-2, keeping
-  AI Workflow Studio, Hermes/Telegram, WeKnora, Hindsight stages); (3) obtain decisions R-1…R-4 before
-  restructuring or MVP-0 infrastructure work.
+Each item says how it was verified.
+
+- **Git:** `main` at `30a0c198…` matched `origin/main` and the working tree was clean (checked with Git when this
+  file was written).
+- **Tests:** `python -m pytest -q -p no:cacheprovider`, run from `backend/`:
+  - local Windows, Python 3.12.10: `104 passed, 1 warning` (the warning is the Starlette `httpx` test-client
+    deprecation notice);
+  - GitHub Actions, Ubuntu 24.04, Python 3.12.10: job `test` succeeded on pull request #1 (run 36837238711; its
+    job log reports `104 passed, 1 warning`) and on the push of `30a0c198…` to `main` (run 36842625286).
+  - History: before the Checkpoint A repair the suite stood at `4 failed, 32 passed`.
+- **CI:** `.github/workflows/ci.yml` runs job `test` on pull requests to `main` and on pushes to `main`, with
+  `permissions: contents: read`, `persist-credentials: false`, actions pinned to full commit SHAs, and dependency
+  versions held by `backend/constraints-ci.txt`. No secrets are used.
+- **Protection of `main`** (GitHub public API): an active ruleset on the default branch blocks deletion and
+  force-pushes, requires pull requests and linear history, and requires the status check `test`. Bypass settings
+  are not visible through the public API.
+- **Implemented on `main` (synthetic/test data only):** `backend/` FastAPI + SQLAlchemy prototype — audit
+  programme planning and auditor assignment, finding/corrective-action lifecycle, FMEA risk register, drafts-only
+  notifications, append-only audit events, isolated knowledge module; 409 `held` contract for unresolved
+  audit-validity conditions with a durable `transition.held` event. Runtime modes: `operational` (default) loads
+  the organisation policy from a git-ignored local file and holds policy-dependent work until Top Management
+  approval (R-9); `demo`/`test` use labelled synthetic values only. Risk assessments follow R-10 (functional head
+  or assigned project manager → MA co-approval → Top Management sign-off); risk closure is held pending D-15;
+  organisational project-manager assignment pending D-16. No record-retention parameter or deletion job (D-14;
+  guarded by `tests/test_no_retention.py`). Fixtures are visibly fictional (guarded by
+  `tests/test_fixture_hygiene.py`).
+- **Timestamps:** every stored timestamp is timezone-aware UTC (`qms_os/timeutil.py` `UTCDateTime`: naive values
+  rejected, reads always UTC) and the API serialises them with an explicit `+00:00`; guarded by
+  `tests/test_timestamps.py`.
+
+## Not verified
+
+- PostgreSQL: all tests use in-memory SQLite; there is no PostgreSQL driver and no migration tooling (the schema is
+  created from the models).
+- Docker / Docker Compose: Docker was not found on the development machine at the last check.
+- Starting the API server as a process; any UI; end-to-end or browser tests.
+- Python 3.11: allowed by `backend/pyproject.toml` but not tested in CI.
+- All live integrations (mail, Telegram, model providers/Ollama, Hermes, WeKnora, Hindsight).
+
+## Local material outside the repository
+
+- A local candidate policy file exists outside version control. It is never loaded automatically and has no policy
+  ID, version, effective date or approval; those must come from the policy owner and Top Management (R-9).
+  Operational mode therefore reports `policy_missing`.
+- Development reference `VREF-00` was inspected read-only via the GitHub API. Its identity and detailed paths are
+  kept in a local, unpublished, git-ignored citation register; public files cite `VREF-nn` IDs only.
+- Local backups are kept outside the repository.
+
+## Publication and security
+
+- The public history was rewritten under Admin authorisation before this baseline (R-11). Commits that are no
+  longer on any branch may remain retrievable from GitHub by direct link until GitHub removes them.
+- Before this update the tracked tree was scanned for known organisation identifiers, secret patterns, private
+  paths and candidate policy values. Scan limits: pattern matching against known terms only; it cannot detect
+  identifiers it does not know, secrets in unrecognised formats, or copies held outside this repository.
+
+## Known mismatches (deferred)
+
+- Code references to documents that do not exist: `backend/qms_os/api/deps.py` cites
+  `docs/adr/0003-auth-dev-identity.md`; `backend/qms_os/knowledge/__init__.py` cites
+  `docs/adr/0004-independent-knowledge-module.md` and `docs/05-knowledge-roadmap.md`.
+- The development-identity docstring in `backend/qms_os/api/deps.py` names a sign-on approach that differs from the
+  R-3 proposal; no authentication approach has been decided.
+- `docs/SPECIFICATION.md` refers to `docs/decisions.md`; the file is `docs/DECISIONS.md`.
+- The specification's repository layout differs from the current single `backend/` tree (R-1).
+- The specification makes PostgreSQL the authority; the code defaults to SQLite and has no PostgreSQL support (R-2).
+- The specification asks pull-request CI for formatter, type, lint and integration checks and a secret scan; CI
+  currently runs the unit tests only.
+- `CLAUDE.md` refers to a stage-prompt document that is held by the Admin and is not in this repository.
+
+## Open decisions
+
+- Unresolved engineering decisions: R-1, R-2, R-3, R-4 (`docs/DECISIONS.md`).
+- Unresolved organisational decisions: D-07, D-08, D-12, D-13, D-14, D-15, D-16.
+- Candidate values (D-01, D-02, D-04, D-05, D-06) need named owners before any becomes policy (R-4).
+- The organisation policy needs an ID, version and effective date from the policy owner, then Top Management
+  approval (R-9).
+- No external decision-routing or classification integration is approved for implementation.
+
+## Next tasks
+
+See *Proposed MVP-0 order* in `docs/ROADMAP.md`. No dates or delivery commitments have been made.
 
 ## Binding design decisions
 
@@ -69,12 +105,6 @@
 - Local Windows/Docker/WSL2 first; GitHub code and synthetic CI; optional Vercel synthetic-data Admin UI previews only. Hermes agents receive scoped skills/memory and Admin-configured providers; Hindsight, WeKnora and vaults never approve controlled QMS state.
 - Telegram voice replies pair a full written answer with a short, separately composed spoken explanation; verbatim reading only on explicit request.
 - ISO 9001:2026 edition-specific mapping is human-validated against licensed text; no invented compliance or certification.
-
-## Session 0 next steps
-
-1. Confirm actual repository root, Git status, HEAD and `docs/SPECIFICATION.md` contents. Read root `CLAUDE.md`, this handoff and any existing `INTENT.md`/`DECISIONS.md`.
-2. Read-only inventory of the reference branch **only if GitHub access works**; record actual SHA, paths consulted, approval/ownership unknowns and any sensitive-content concerns. Do not modify it.
-3. Create architecture decisions, a short roadmap, upstream/version/license matrix, synthetic fixtures plan and initial application skeleton *after* reviewing the existing files; show the Admin ambiguities before substantial implementation.
 
 ## End-of-session update template
 
