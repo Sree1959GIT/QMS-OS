@@ -6,8 +6,7 @@
 
 - Repository: this repository (`QMS-OS`); confirm the remote with `git remote -v`.
 - Specification: `docs/SPECIFICATION.md`, v3.0 dated 29 September 2026. Verify title and version locally.
-- Baseline recorded here: `main` at `30a0c198f3b7f79476a4a03bd4927d49ae31d995` (pull request #1, merged
-  2026-10-01 according to GitHub). Re-verify branch, HEAD and working tree with Git at session start; this file
+- Baseline recorded here: `main` at `b917d24856bb09154ba0c7d4646a694259685e44` (pull request #3, merged 2026-10-03 according to GitHub). Re-verify branch, HEAD and working tree with Git at session start; this file
   may be stale.
 - Stage: pre-MVP-0 baseline merged; MVP-0 not started (see `docs/ROADMAP.md`).
 - Mode: synthetic only. No live connectors, staff accounts or model credentials are configured in this repository,
@@ -17,13 +16,14 @@
 
 Each item says how it was verified.
 
-- **Git:** `main` at `30a0c198…` matched `origin/main` and the working tree was clean (checked with Git when this
+- **Git:** `main` at `b917d24…` matched `origin/main` and the working tree was clean (checked with Git when this
   file was written).
 - **Tests:** `python -m pytest -q -p no:cacheprovider`, run from `backend/`:
-  - local Windows, Python 3.12.10: `104 passed, 1 warning` (the warning is the Starlette `httpx` test-client
+  - local Windows, Python 3.12.10: `105 passed, 1 warning` (the warning is the Starlette `httpx` test-client
     deprecation notice);
   - GitHub Actions, Ubuntu 24.04, Python 3.12.10: job `test` succeeded on pull request #1 (run 36837238711; its
     job log reports `104 passed, 1 warning`) and on the push of `30a0c198…` to `main` (run 36842625286).
+  - Later runs, same environment: job `test` succeeded on pull request #3 (run 37103856925) and on the push of `b917d24…` to `main` (run 37103996632). The per-test count for these runs was not read from the logs.
   - History: before the Checkpoint A repair the suite stood at `4 failed, 32 passed`.
 - **CI:** `.github/workflows/ci.yml` runs job `test` on pull requests to `main` and on pushes to `main`, with
   `permissions: contents: read`, `persist-credentials: false`, actions pinned to full commit SHAs, and dependency
@@ -44,13 +44,14 @@ Each item says how it was verified.
 - **Timestamps:** every stored timestamp is timezone-aware UTC (`qms_os/timeutil.py` `UTCDateTime`: naive values
   rejected, reads always UTC) and the API serialises them with an explicit `+00:00`; guarded by
   `tests/test_timestamps.py`.
+- **Server startup:** `tests/test_startup_smoke.py` starts the app as a separate process in `demo` mode against a seeded temporary SQLite database and checks `/api/health`; it passed locally on Windows and in CI on Linux.
 
 ## Not verified
 
 - PostgreSQL: all tests use in-memory SQLite; there is no PostgreSQL driver and no migration tooling (the schema is
   created from the models).
 - Docker / Docker Compose: Docker was not found on the development machine at the last check.
-- Starting the API server as a process; any UI; end-to-end or browser tests.
+- Any UI; end-to-end or browser tests.
 - Python 3.11: allowed by `backend/pyproject.toml` but not tested in CI.
 - All live integrations (mail, Telegram, model providers/Ollama, Hermes, WeKnora, Hindsight).
 
