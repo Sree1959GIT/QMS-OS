@@ -21,7 +21,6 @@ Each item says how it was verified.
 - **Tests:** `python -m pytest -q -p no:cacheprovider`, run from `backend/`:
   - local Windows, Python 3.12.10: `105 passed, 1 warning` (the warning is the Starlette `httpx` test-client
     deprecation notice);
-    
   - GitHub Actions, Ubuntu 24.04, Python 3.12.10: job `test` succeeded on pull request #1 (run 36837238711; its
     job log reports `104 passed, 1 warning`) and on the push of `30a0c198…` to `main` (run 36842625286).
   - Later runs, same environment: job `test` succeeded on pull request #3 (run 37103856925) and on the push of `b917d24…` to `main` (run 37103996632). The per-test count for these runs was not read from the logs.
@@ -47,7 +46,6 @@ Each item says how it was verified.
   `tests/test_timestamps.py`.
 - **Server startup:** `tests/test_startup_smoke.py` starts the app as a separate process in `demo` mode against a seeded temporary SQLite database and checks `/api/health`; it passed locally on Windows and in CI on Linux.
 ## Not verified
-
 - PostgreSQL: all tests use in-memory SQLite; there is no PostgreSQL driver and no migration tooling (the schema is
   created from the models).
 - Docker / Docker Compose: Docker was not found on the development machine at the last check.
