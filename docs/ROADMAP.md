@@ -28,15 +28,15 @@ no unverified feature claim.
 | Fixture startup as a running server process | Done | `tests/test_startup_smoke.py` (Windows locally; Linux in CI) |
 | Upstream, licence and version matrix | Not started | — |
 | Container or local runtime configuration | Not started | blocked by R-2 |
-| Model-provider contract (interface and a simulated provider only) | Not started | layout depends on R-1 |
+| Model-provider contract (interface and a simulated provider only) | Not started | layout settled by R-1 (`apps/api/`) |
 | Local-model benchmark plan | Not started | — |
 | Documentation reconciled with the repository | Done | pull request #2 |
 
 ### Proposed MVP-0 order (a proposal, not a commitment)
 
 1. Fixture-startup smoke test: done (`tests/test_startup_smoke.py`).
-2. Decisions R-1 (layout), R-2 (database runtime) and R-3 (authentication).
-3. Repository restructure, only if R-1 approves it.
+2. Decisions R-2 (database runtime) and R-3 (authentication); R-1 is decided.
+3. Repository restructure: done (`backend/` moved to `apps/api/`, R-1, pull request #5).
 4. PostgreSQL support and migrations, after R-2.
 5. Container or local runtime configuration, after R-2.
 6. Upstream, licence and version matrix.

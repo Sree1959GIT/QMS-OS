@@ -6,7 +6,7 @@
 
 - Repository: this repository (`QMS-OS`); confirm the remote with `git remote -v`.
 - Specification: `docs/SPECIFICATION.md`, v3.0 dated 29 September 2026. Verify title and version locally.
-- Baseline recorded here: `main` at `b917d24856bb09154ba0c7d4646a694259685e44` (pull request #3, merged 2026-10-03 according to GitHub). Re-verify branch, HEAD and working tree with Git at session start; this file
+- Baseline recorded here: `main` at `9a1c34466867603a97230ecd6b5cf77a3cd133ff` (pull request #5, merged 2026-10-03 according to GitHub). Re-verify branch, HEAD and working tree with Git at session start; this file
   may be stale.
 - Stage: pre-MVP-0 baseline merged; MVP-0 not started (see `docs/ROADMAP.md`).
 - Mode: synthetic only. No live connectors, staff accounts or model credentials are configured in this repository,
@@ -16,18 +16,19 @@
 
 Each item says how it was verified.
 
-- **Git:** `main` at `b917d24…` matched `origin/main` and the working tree was clean (checked with Git when this
+- **Git:** `main` at `9a1c344…` matched `origin/main` and the working tree was clean (checked with Git when this
   file was written).
 - **Tests:** `python -m pytest -q -p no:cacheprovider`, run from `apps/api/`:
   - local Windows, Python 3.12.10: `105 passed, 1 warning` (the warning is the Starlette `httpx` test-client
     deprecation notice);
   - GitHub Actions, Ubuntu 24.04, Python 3.12.10: job `test` succeeded on pull request #1 (run 36837238711; its
     job log reports `104 passed, 1 warning`) and on the push of `30a0c198…` to `main` (run 36842625286).
-  - Later runs, same environment: job `test` succeeded on pull request #3 (run 37103856925) and on the push of `b917d24…` to `main` (run 37103996632). The per-test count for these runs was not read from the logs.
+  - Latest runs, same environment: job `test` succeeded on pull request #5 (run 37135721617) and on the push of `9a1c344…` to `main` (run 37135996806). The per-test count for these runs was not read from the logs.
   - History: before the Checkpoint A repair the suite stood at `4 failed, 32 passed`.
 - **CI:** `.github/workflows/ci.yml` runs job `test` on pull requests to `main` and on pushes to `main`, with
   `permissions: contents: read`, `persist-credentials: false`, actions pinned to full commit SHAs, and dependency
   versions held by `apps/api/constraints-ci.txt`. No secrets are used.
+- **Layout:** application code lives in `apps/api/` (R-1; pull request #5). Verified by: `105 passed, 1 warning` run locally from `apps/api/`, and job `test` passing on pull request #5 and on the push to `main`.
 - **Protection of `main`** (GitHub public API): an active ruleset on the default branch blocks deletion and
   force-pushes, requires pull requests and linear history, and requires the status check `test`. Bypass settings
   are not visible through the public API.
