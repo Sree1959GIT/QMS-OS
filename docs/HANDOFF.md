@@ -29,6 +29,7 @@ Each item says how it was verified.
   `permissions: contents: read`, `persist-credentials: false`, actions pinned to full commit SHAs, and dependency
   versions held by `apps/api/constraints-ci.txt`. No secrets are used.
 - **Layout:** application code lives in `apps/api/` (R-1; pull request #5). Verified by: `105 passed, 1 warning` run locally from `apps/api/`, and job `test` passing on pull request #5 and on the push to `main`.
+- **Local runtime:** PostgreSQL 17 runs through `compose.yaml` (R-2) and the Python venv and caches live inside the project folder. Verified on a local Windows machine on 2026-10-05 by: `scripts\start-db.bat` reaching a healthy container, `select version()` returning PostgreSQL 17.11, `scripts\backup-db.bat` writing a non-empty dump, and `scripts\run-tests.bat` giving `105 passed, 1 warning`.
 - **Protection of `main`** (GitHub public API): an active ruleset on the default branch blocks deletion and
   force-pushes, requires pull requests and linear history, and requires the status check `test`. Bypass settings
   are not visible through the public API.
@@ -51,7 +52,7 @@ Each item says how it was verified.
 
 - PostgreSQL: all tests use in-memory SQLite; there is no PostgreSQL driver and no migration tooling (the schema is
   created from the models).
-- Docker / Docker Compose: Docker was not found on the development machine at the last check.
+- Docker Compose beyond the PostgreSQL service: no other service has been run. A PostgreSQL restore drill has not been run. The API has not been run against PostgreSQL.
 - Any UI; end-to-end or browser tests.
 - Python 3.11: allowed by `apps/api/pyproject.toml` but not tested in CI.
 - All live integrations (mail, Telegram, model providers/Ollama, Hermes, WeKnora, Hindsight).
