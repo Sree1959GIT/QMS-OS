@@ -27,7 +27,7 @@ no unverified feature claim.
 | Synthetic fixtures | Done | `tests/test_fixture_hygiene.py` |
 | Fixture startup as a running server process | Done | `tests/test_startup_smoke.py` (Windows locally; Linux in CI) |
 | Upstream, licence and version matrix | Not started | — |
-| Container or local runtime configuration | Not started | blocked by R-2 |
+| Container or local runtime configuration | Partly done | PostgreSQL service only (R-2; `compose.yaml`); other services after upstream checks |
 | Model-provider contract (interface and a simulated provider only) | Not started | layout settled by R-1 (`apps/api/`) |
 | Local-model benchmark plan | Not started | — |
 | Documentation reconciled with the repository | Done | pull request #2 |
@@ -35,10 +35,10 @@ no unverified feature claim.
 ### Proposed MVP-0 order (a proposal, not a commitment)
 
 1. Fixture-startup smoke test: done (`tests/test_startup_smoke.py`).
-2. Decisions R-2 (database runtime) and R-3 (authentication); R-1 is decided.
+2. Decision R-3 (authentication); R-1 and R-2 are decided.
 3. Repository restructure: done (`backend/` moved to `apps/api/`, R-1, pull request #5).
 4. PostgreSQL support and migrations, after R-2.
-5. Container or local runtime configuration, after R-2.
+5. Container or local runtime configuration: PostgreSQL service done (R-2); other services after their upstream checks.
 6. Upstream, licence and version matrix.
 7. Model-provider contract with a simulated provider.
 8. Local-model benchmark plan.

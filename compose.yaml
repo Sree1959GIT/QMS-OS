@@ -1,0 +1,21 @@
+# QMS OS - local PostgreSQL only (R-2 proposal). Synthetic/dev data only.
+services:
+  postgres:
+    image: postgres:${POSTGRES_TAG:-17}
+    container_name: qmsos-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-qmsos}
+      POSTGRES_USER: ${POSTGRES_USER:-qmsos}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run scripts/start-db.bat first}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - qmsos_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+volumes:
+  qmsos_pgdata:

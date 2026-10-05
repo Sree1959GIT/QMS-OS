@@ -58,7 +58,7 @@ audit controls, and missing training or unresolved concurrence must be resolved,
 | ID | Topic | Proposal | Status |
 |---|---|---|---|
 | R-1 | Restructure to the spec's repo layout | Move `backend/` to `apps/api/`, self-contained with its own `pyproject.toml` and `tests/`. Create `packages/*` and other spec folders only when real code needs them. Differs from the spec's root-level `pyproject.toml` and `tests/` until a second package needs them | Decided (Admin, 2026-10-03) |
-| R-2 | Docker Desktop/WSL2 vs native PostgreSQL | install gate; Postgres/Compose unverified until available | Unresolved |
+| R-2 | Docker Desktop/WSL2 vs native PostgreSQL | Docker Compose service `postgres` (image tag `postgres:17`, not pinned by digest), bound to `127.0.0.1:5432`, named volume, password generated into git-ignored `.env`. Verified 2026-10-05 on a local Windows machine: container healthy, `select version()` returned PostgreSQL 17.11, `scripts/backup-db.bat` wrote a non-empty dump. Not covered: restore drill, API on PostgreSQL, other services. | Decided (Admin, 2026-10-05) |
 | R-3 | MVP-1 authentication | local accounts + TOTP (OIDC later) | Unresolved |
 | R-4 | Named owners for candidate values | required before any candidate becomes policy | Unresolved |
 | R-5 | Disclosure of private-reference paths in the public repo | hold: VREF IDs only | Decided (Admin, 2026-09-29) — policy itself pending |

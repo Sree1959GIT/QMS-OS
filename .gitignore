@@ -24,3 +24,8 @@ Thumbs.db
 
 # Organisation-private local material (policy file, citation register) - never commit
 .private/
+.tmp/
+.env
+backups/
+.venv/
+.cache/
