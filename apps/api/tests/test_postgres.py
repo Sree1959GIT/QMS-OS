@@ -234,3 +234,31 @@ def test_reset_approval_racing_the_person_signing_in_leaves_a_consistent_state(e
     approval, sign_in = _together(2, act)
     assert approval == 200 and sign_in in (200, 401)          # either order is valid ...
     _assert_reset_state(h, action_id)                         # ... but never a live session after the reset
+
+
+# ---------- account_admin role changes (operator CLI): all admins' person rows locked in id order ----------
+
+def test_two_concurrent_revocations_never_leave_zero_account_admins(engine, monkeypatch):
+    """Each admin revokes the other at the same moment. A 0.3 s pause after counting the remaining admins keeps
+    both transactions between their count and their write at once: with the locks the second waits before it
+    counts and is refused; without them both would count the other admin and both succeed."""
+    from qms_os.auth import cli
+    count = AS._active_admins
+
+    def slow_count(s, *exclude):
+        result = count(s, *exclude)
+        time.sleep(0.3)
+        return result
+    monkeypatch.setattr(AS, "_active_admins", slow_count)
+    h = TA.Harness(engine)
+    first = h.bootstrap()
+    second = h.onboard(first, "md")
+    assert cli.run_grant(h.app.state.sessionmaker, second.email, read_line=lambda _: second.email,
+                         write=lambda _: None) == 0
+    emails = [first.email, second.email]
+    results = _together(2, lambda i: cli.run_revoke(h.app.state.sessionmaker, emails[i], write=lambda _: None))
+    assert sorted(results) == [0, 1]                                  # one revocation wins, the other is refused
+    with h.db() as s:
+        admins = s.scalars(select(User).where(User.platform_role == AS.ACCOUNT_ADMIN)).all()
+        revoked = s.scalars(select(AuditEvent).where(AuditEvent.action == "auth.account_admin.revoked")).all()
+    assert len(admins) == 1 and len(revoked) == 1
