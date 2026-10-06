@@ -35,7 +35,7 @@ no unverified feature claim.
 ### Proposed MVP-0 order (a proposal, not a commitment)
 
 1. Fixture-startup smoke test: done (`tests/test_startup_smoke.py`).
-2. Authentication (R-3, decided 2026-10-06): implemented on branch `feat/auth-r3` (local commit `5e5ada2`), not merged. Payload-bound approval and OIDC are later slices.
+2. Authentication (R-3, decided 2026-10-06): merged to `main` as `23329f3` (pull request #10, squash). Payload-bound approval and OIDC are later slices.
    - **Blocker before any real person is onboarded:** the one-time link code slice. A link is redeemable by whoever holds it, including the inviting or approving admin; the fix adds a short verification code set by the initiator and given to the person verbally, so redemption needs both (`docs/adr/0003-auth-dev-identity.md`, *Known limitation*). No account for a real person, and no shared or non-local deployment, until it is done.
 3. Repository restructure: done (`backend/` moved to `apps/api/`, R-1, pull request #5).
 4. PostgreSQL support and migrations (R-14): done (pull request #8); PostgreSQL runs are local only, not in CI.
