@@ -17,7 +17,7 @@ from ..services import reports as RP
 from ..services import risks as RS
 from ..services.common import Forbidden, NotFound, can_see_audit, can_see_finding, can_see_workpapers, get_or_404, \
     require
-from .deps import current_user, get_session, policy, today
+from .deps import current_user, get_session, policy, public, step_up_user, today
 
 router = APIRouter(prefix="/api")
 
@@ -30,14 +30,15 @@ def user_row(u: User) -> dict:
 
 
 @router.get("/health")
-def health(s: Session = Depends(get_session), t: date = Depends(today), p: PolicyContext = Depends(policy)):
+def health(_: None = Depends(public), s: Session = Depends(get_session), t: date = Depends(today),
+           p: PolicyContext = Depends(policy)):
     """Unauthenticated liveness: mode and policy state only (no policy content)."""
     return {"ok": True, "mode": p.mode.value, "policy_state": G.state(s, p, t)["state"]}
 
 
 @router.get("/users")
-def users(s: Session = Depends(get_session)):
-    """Development user switcher. Remove when SSO lands."""
+def users(s: Session = Depends(get_session), u: User = Depends(current_user)):
+    """Directory of people, for signed-in users."""
     return [user_row(u) for u in s.scalars(select(User).order_by(User.id))]
 
 
@@ -82,7 +83,7 @@ class PolicyApproveIn(BaseModel):
 
 @router.post("/policy/submissions/{submission_id}/approve")
 def approve_policy(submission_id: int, body: PolicyApproveIn, s: Session = Depends(get_session),
-                   u: User = Depends(current_user), p: PolicyContext = Depends(policy)):
+                   u: User = Depends(step_up_user), p: PolicyContext = Depends(policy)):
     return submission_row(G.approve(s, p, u, submission_id, fingerprint=body.fingerprint,
                                     confirm_version=body.confirm_version, note=body.note))
 
@@ -93,7 +94,7 @@ class RejectIn(BaseModel):
 
 @router.post("/policy/submissions/{submission_id}/reject")
 def reject_policy(submission_id: int, body: RejectIn, s: Session = Depends(get_session),
-                  u: User = Depends(current_user), p: PolicyContext = Depends(policy)):
+                  u: User = Depends(step_up_user), p: PolicyContext = Depends(policy)):
     return submission_row(G.reject(s, p, u, submission_id, body.reason))
 
 
@@ -140,7 +141,7 @@ def program_violations(program_id: int, s: Session = Depends(get_session), u: Us
 
 
 @router.post("/programs/{program_id}/approve")
-def approve_program(program_id: int, s: Session = Depends(get_session), u: User = Depends(current_user),
+def approve_program(program_id: int, s: Session = Depends(get_session), u: User = Depends(step_up_user),
                     t: date = Depends(today), p: PolicyContext = Depends(policy)):
     program, warnings = PS.approve_program(s, u, program_id, p, t)
     return program_row(program, u, warnings)
@@ -269,7 +270,7 @@ def action_plan(finding_id: int, body: ActionPlanIn, s: Session = Depends(get_se
 
 
 @router.post("/findings/{finding_id}/accept")
-def accept(finding_id: int, s: Session = Depends(get_session), u: User = Depends(current_user),
+def accept(finding_id: int, s: Session = Depends(get_session), u: User = Depends(step_up_user),
            t: date = Depends(today), p: PolicyContext = Depends(policy)):
     return RP.finding_row(FS.accept_action_plan(s, u, finding_id, p, t), t, RP.display_policy(s, p, t))
 
@@ -292,7 +293,7 @@ class VerifyIn(BaseModel):
 
 
 @router.post("/findings/{finding_id}/verify")
-def verify(finding_id: int, body: VerifyIn, s: Session = Depends(get_session), u: User = Depends(current_user),
+def verify(finding_id: int, body: VerifyIn, s: Session = Depends(get_session), u: User = Depends(step_up_user),
            t: date = Depends(today), p: PolicyContext = Depends(policy)):
     _visible(s, u, finding_id)
     return RP.finding_row(FS.verify(s, u, finding_id, body.effective, body.note, t), t, RP.display_policy(s, p, t))
@@ -315,7 +316,7 @@ def deescalate(finding_id: int, body: ReasonIn, s: Session = Depends(get_session
 
 
 @router.post("/findings/{finding_id}/acknowledge")
-def acknowledge(finding_id: int, body: Note, s: Session = Depends(get_session), u: User = Depends(current_user),
+def acknowledge(finding_id: int, body: Note, s: Session = Depends(get_session), u: User = Depends(step_up_user),
                 t: date = Depends(today), p: PolicyContext = Depends(policy)):
     return RP.finding_row(FS.acknowledge_afi(s, u, finding_id, body.note, t), t, RP.display_policy(s, p, t))
 
@@ -423,19 +424,19 @@ class GateIn(BaseModel):
 
 
 @router.post("/risks/{risk_id}/ma-review")
-def ma_review_risk(risk_id: int, body: GateIn, s: Session = Depends(get_session), u: User = Depends(current_user),
+def ma_review_risk(risk_id: int, body: GateIn, s: Session = Depends(get_session), u: User = Depends(step_up_user),
                    t: date = Depends(today), p: PolicyContext = Depends(policy)):
     return risk_row(RS.ma_review(s, u, risk_id, p, t, approve=body.approve, note=body.note))
 
 
 @router.post("/risks/{risk_id}/signoff")
-def signoff_risk(risk_id: int, body: GateIn, s: Session = Depends(get_session), u: User = Depends(current_user),
+def signoff_risk(risk_id: int, body: GateIn, s: Session = Depends(get_session), u: User = Depends(step_up_user),
                  t: date = Depends(today), p: PolicyContext = Depends(policy)):
     return risk_row(RS.tm_signoff(s, u, risk_id, p, t, approve=body.approve, note=body.note))
 
 
 @router.post("/risks/{risk_id}/close")
-def close_risk(risk_id: int, body: ReasonIn, s: Session = Depends(get_session), u: User = Depends(current_user)):
+def close_risk(risk_id: int, body: ReasonIn, s: Session = Depends(get_session), u: User = Depends(step_up_user)):
     return risk_row(RS.close(s, u, risk_id, body.reason))
 
 
@@ -469,7 +470,7 @@ class DecideIn(BaseModel):
 
 
 @router.post("/notifications/{notification_id}/decide")
-def decide(notification_id: int, body: DecideIn, s: Session = Depends(get_session), u: User = Depends(current_user)):
+def decide(notification_id: int, body: DecideIn, s: Session = Depends(get_session), u: User = Depends(step_up_user)):
     return notification_row(PS.decide_notification(s, u, notification_id, body.approve))
 
 

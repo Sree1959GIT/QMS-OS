@@ -35,7 +35,7 @@ no unverified feature claim.
 ### Proposed MVP-0 order (a proposal, not a commitment)
 
 1. Fixture-startup smoke test: done (`tests/test_startup_smoke.py`).
-2. Decision R-3 (authentication); R-1 and R-2 are decided.
+2. Authentication (R-3, decided 2026-10-06): implemented on branch `feat/auth-r3`, not merged. Payload-bound approval and OIDC are later slices.
 3. Repository restructure: done (`backend/` moved to `apps/api/`, R-1, pull request #5).
 4. PostgreSQL support and migrations (R-14): implemented on branch `feat/postgres-support`, not merged; local PostgreSQL runs only, not in CI.
 5. Container or local runtime configuration: PostgreSQL service done (R-2); other services after their upstream checks.
@@ -48,7 +48,7 @@ no unverified feature claim.
 
 | Stage | Specification scope (summary) | Specification exit criteria | Known dependencies |
 |---|---|---|---|
-| MVP-1 | Authentication and organisation Admin UI (departments, people, role and grant preview, selective agent enablement); PostgreSQL and object store; auditable, versioned workflow and template engine with human approvals; admin workflow proposal form | No self-approval; a proposed audit workflow fails completeness until the missing control is fixed | R-2, R-3 |
+| MVP-1 | Authentication (API only, on branch `feat/auth-r3`; no UI) and organisation Admin UI (departments, people, role and grant preview, selective agent enablement); PostgreSQL and object store; auditable, versioned workflow and template engine with human approvals; admin workflow proposal form | No self-approval; a proposed audit workflow fails completeness until the missing control is fixed | R-2, R-3 |
 | MVP-2 | Evidence ingestion with citations for mixed document fixtures; QMS evidence; initial skills and agent profiles; messaging text simulator | Exact cited answer; approved-revision filter; cross-role denial | approved data classes |
 | MVP-3 | Voice messaging; local speech recognition and synthesis; full written answer plus a separately composed brief spoken explanation; human correction and provenance | Spoken and typed numerical consistency; read-it mode; reboot recovery | provider approvals |
 | MVP-4 | Read-only fixture mail, then one authorised live provider; isolated agent-memory banks and knowledge sync; corrective-action and customer-complaint flow end to end; limited role pack | Duplicate mail or update replay is safe; cross-bank memory access denied; external messages stay drafts until human review | provider approvals; scope statement below |

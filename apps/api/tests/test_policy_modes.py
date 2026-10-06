@@ -115,10 +115,15 @@ def test_invalid_mode_refuses_startup(engine):
 # ---------- synthetic "approved" is not organisational approval ----------
 
 def test_demo_programme_is_labelled_synthetic_and_its_policy_is_unapprovable(engine, clock):
+    import os
+
     from fastapi.testclient import TestClient
-    c = TestClient(create_app(engine=engine, today=clock, mode="demo"))
-    ids = {u["email"].split("@")[0]: u["id"] for u in c.get("/api/users").json()}
-    h = lambda who: {"X-User-Id": str(ids[who])}  # noqa: E731
+
+    from conftest import session_headers, user_ids
+    app = create_app(engine=engine, today=clock, mode="demo", auth_key=os.urandom(32))
+    c, ids = TestClient(app), user_ids(engine)
+    sessions = {who: session_headers(app, ids[who]) for who in ("ma", "md")}   # demo mode uses real sign-in
+    h = lambda who: sessions[who]  # noqa: E731
     prog = c.post("/api/programs", json={"year": 2026}, headers=h("ma")).json()
     ok = c.post(f"/api/programs/{prog['id']}/approve", headers=h("ma")).json()
     assert ok["status"] == "APPROVED" and ok["policy_basis"] == "synthetic-demo" and ok["label"].startswith("SYNTHETIC")

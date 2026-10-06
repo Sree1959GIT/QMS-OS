@@ -10,6 +10,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 import pg_support as PG
+from qms_os.auth.keys import KEY_ENV
+from qms_os.auth.testing import TestIdentityProvider
 from qms_os.db import create_all, make_engine, make_sessionmaker
 from qms_os.fixtures import load
 from qms_os.main import create_app
@@ -74,25 +76,59 @@ def fresh(engine):
     return _open
 
 
+def write_test_key(path):
+    """A throw-away key file for tests. ``generate_key_file`` refuses folders inside a Git work tree, and pytest's
+    temporary folders are inside the repository on a workstation (scripts/env.bat points TEMP at .tmp)."""
+    import base64
+    from pathlib import Path
+    p = Path(path)
+    p.write_text(base64.b64encode(os.urandom(32)).decode() + "\n", encoding="ascii")
+    return p
+
+
+def user_ids(engine) -> dict[str, int]:
+    """Fixture people by e-mail local part, read from the database (the API needs a sign-in for this)."""
+    from sqlalchemy import select
+
+    from qms_os.models import User
+    with make_sessionmaker(engine)() as s:
+        return {u.email.split("@")[0]: u.id for u in s.scalars(select(User))}
+
+
+def session_headers(app, user_id: int) -> dict[str, str]:
+    """A real signed-in session (cookie + CSRF header) for a fixture person, issued by the auth service as a
+    successful password + TOTP sign-in would; the sign-in itself is covered by tests/test_auth.py."""
+    from qms_os.auth import service as AS
+    from qms_os.models import User, UserCredential
+    from qms_os.timeutil import utcnow
+    with app.state.sessionmaker() as s:
+        if s.get(UserCredential, user_id) is None:
+            s.add(UserCredential(user_id=user_id, status="active", totp_enrolled_at=utcnow()))
+        issued = AS.issue_session(s, app.state.auth, s.get(User, user_id), "password_totp", mfa=True)
+        s.commit()
+    return {"Cookie": f"qms_session={issued.token}", "X-QMS-CSRF": issued.csrf}
+
+
 @pytest.fixture
 def api(engine, clock):
-    app = create_app(engine=engine, today=clock, mode="test")  # synthetic example policy only
+    # synthetic example policy only; the test-only identity provider is accepted in test mode only
+    app = create_app(engine=engine, today=clock, mode="test", identity_provider=TestIdentityProvider())
     client = TestClient(app)
-    ids = {u["email"].split("@")[0]: u["id"] for u in client.get("/api/users").json()}
+    ids = user_ids(engine)
 
     class Api:
         users = ids
 
         def as_(self, who: str | int):
             uid = ids[who] if isinstance(who, str) else who
-            return _As(client, uid)
+            return _As(client, {TestIdentityProvider.header: str(uid)})
 
     return Api()
 
 
 class _As:
-    def __init__(self, client: TestClient, uid: int):
-        self.c, self.h = client, {"X-User-Id": str(uid)}
+    def __init__(self, client: TestClient, headers: dict[str, str]):
+        self.c, self.h = client, headers
 
     def get(self, url, **kw):
         return self.c.get(url, headers=self.h, **kw)
@@ -125,9 +161,12 @@ def op(tmp_path, clock):
         load(s)
         s.commit()
 
+    key_file = write_test_key(tmp_path / "auth.key")
+
     class Op:
         engine = eng
         path = tmp_path / "policy.json"
+        sessions: dict[int, dict[str, str]] = {}
 
         def write(self, doc=None, **top):
             self.path.write_text(json.dumps(doc if doc is not None else org_policy_doc(**top)), encoding="utf-8")
@@ -135,14 +174,19 @@ def op(tmp_path, clock):
 
         def start(self, policy_file=None, env=None):
             app = create_app(engine=eng, today=clock, mode="operational",
-                             policy_file=policy_file if policy_file is not None else self.path, env=env or {})
-            client = TestClient(app)
-            self.client = client
-            self.users = {u["email"].split("@")[0]: u["id"] for u in client.get("/api/users").json()}
+                             policy_file=policy_file if policy_file is not None else self.path,
+                             env={KEY_ENV: str(key_file)} | (env or {}))
+            self.app, self.client = app, TestClient(app)
+            self.users = user_ids(eng)
             return self
 
         def as_(self, who):
-            return _As(self.client, self.users[who] if isinstance(who, str) else who)
+            # operational mode refuses the test identity provider: these are real sessions (one per person; they
+            # stay valid across a simulated restart because they live in the same database)
+            uid = self.users[who] if isinstance(who, str) else who
+            if uid not in self.sessions:
+                self.sessions[uid] = session_headers(self.app, uid)
+            return _As(self.client, self.sessions[uid])
 
         def session(self):
             return make_sessionmaker(eng)()

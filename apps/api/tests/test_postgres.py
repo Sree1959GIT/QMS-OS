@@ -3,6 +3,9 @@
 Skipped unless QMS_TEST_POSTGRES_URL names a local database ending in ``_test`` (see pg_support.py). They drop and
 rebuild that database's schema with ``alembic upgrade head`` and use only the synthetic fixture.
 """
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -17,6 +20,7 @@ if URL is None:
 from alembic import command  # noqa: E402
 from alembic.autogenerate import compare_metadata  # noqa: E402
 from alembic.runtime.migration import MigrationContext  # noqa: E402
+from argon2 import PasswordHasher  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy import create_engine, text  # noqa: E402
 from sqlalchemy.exc import StatementError  # noqa: E402
@@ -26,7 +30,11 @@ from qms_os.db import (Base, DatabaseSchemaError, make_engine, make_sessionmaker
 from qms_os.fixtures import load  # noqa: E402
 from qms_os.knowledge.store import KnowledgeBase  # noqa: E402
 from qms_os.main import create_app  # noqa: E402
-from qms_os.models import AuditEvent  # noqa: E402
+from qms_os.auth import service as AS  # noqa: E402
+from qms_os.models import AccountAction, AuditEvent, AuthSession, User, UserCredential  # noqa: E402
+from sqlalchemy import select  # noqa: E402
+
+import test_auth as TA  # noqa: E402  (sign-in harness; its tests are not collected here)
 
 # Representative existing flows, collected again here so they run on PostgreSQL through the `engine` fixture below.
 from test_api_risk_reports import test_owner_assesses_ma_co_approves_top_management_signs_off  # noqa: E402,F401
@@ -119,3 +127,110 @@ def test_timestamps_stay_utc_when_the_session_time_zone_is_not_utc(pg):
         assert at == datetime(2026, 1, 1, 0, 0, tzinfo=timezone.utc) and at.utcoffset() == timedelta(0)
     finally:
         eng.dispose()
+
+
+# ---------- concurrent sign-in (R-3): the credential row is locked with SELECT ... FOR UPDATE ----------
+
+def _together(n, fn):
+    """Run fn(0..n-1) in n threads released at the same moment."""
+    barrier = threading.Barrier(n)
+
+    def run(i):
+        barrier.wait()
+        return fn(i)
+    with ThreadPoolExecutor(n) as pool:
+        return list(pool.map(run, range(n)))
+
+
+def test_same_totp_code_in_parallel_signs_in_exactly_once(engine):
+    h = TA.Harness(engine)
+    qa = h.onboard(h.bootstrap(), "qa_head")
+    h.now.tick()
+    code, clients = qa.code(), [h.client() for _ in range(2)]
+    results = _together(2, lambda i: clients[i].post("/api/auth/login", json={
+        "email": qa.email, "password": qa.password, "code": code}).status_code)
+    assert sorted(results) == [200, 401]
+
+
+@pytest.mark.parametrize("n, counted, locked", [(4, 4, False), (8, 5, True)])
+def test_parallel_wrong_passwords_are_each_counted(engine, n, counted, locked):
+    """N simultaneous wrong passwords add exactly N (no lost updates); from the fifth the account is locked and
+    later attempts are refused without counting."""
+    h = TA.Harness(engine)
+    qa = h.onboard(h.bootstrap(), "qa_head")
+    clients = [h.client() for _ in range(n)]
+    results = _together(n, lambda i: clients[i].post("/api/auth/login", json={
+        "email": qa.email, "password": "wrong " + qa.password, "code": "000000"}).status_code)
+    assert results == [401] * n
+    with h.db() as s:
+        cred = s.get(UserCredential, h.uid("qa_head"))
+        assert cred.failed_attempts == counted and (cred.locked_until is not None) is locked
+
+
+# ---------- concurrent credential reset (R-3): person, credential and action rows are locked in a fixed order ----------
+
+def _reset_requested(h, slow_target_password=False):
+    """Three account admins (initiator plus two possible approvers), a target with an account, a pending reset.
+    ``slow_target_password`` hashes the target's password with costly Argon2 parameters (verification ~0.3 s), so a
+    sign-in spends that long inside its transaction after reading the credential."""
+    first = h.bootstrap()
+    approvers = [h.onboard(first, "md"), h.onboard(first, "ma")]
+    with h.db() as s:
+        for local in ("md", "ma"):
+            s.get(User, h.uid(local)).platform_role = AS.ACCOUNT_ADMIN
+        s.commit()
+    if slow_target_password:
+        h.ctx.hasher = PasswordHasher(time_cost=12, memory_cost=65536, parallelism=1)
+    target = h.onboard(first, "qa_head")
+    h.ctx.hasher = TA.FAST
+    action = first.post(f"/api/admin/accounts/{h.uid('qa_head')}/reset", {"identity_proof": "seen in person"}).json()
+    assert action["status"] == "pending_approval", action
+    for a in approvers:
+        assert a.login().status_code == 200                  # fresh step-up for the approval
+    return approvers, target, action["id"]
+
+
+def _assert_reset_state(h, action_id):
+    uid = h.uid("qa_head")
+    with h.db() as s:
+        cred = s.get(UserCredential, uid)
+        assert (cred.status, cred.password_hash, cred.totp_secret_enc, cred.totp_enrolled_at) == ("invited", None, None,
+                                                                                                    None)
+        live = s.scalars(select(AuthSession).where(AuthSession.user_id == uid, AuthSession.revoked_at.is_(None))).all()
+        assert live == []                                     # no session survives the reset
+        approved = s.scalars(select(AuditEvent).where(AuditEvent.action == "auth.reset.approved")).all()
+        assert len(approved) == 1
+        action = s.get(AccountAction, action_id)
+        assert action.status == "link_issued" and action.approved_by_id is not None
+        return action.approved_by_id
+
+
+def test_two_concurrent_approvals_of_one_reset_approve_exactly_once(engine):
+    h = TA.Harness(engine)
+    approvers, _, action_id = _reset_requested(h)
+    results = _together(2, lambda i: approvers[i].post(f"/api/admin/account-actions/{action_id}/approve"))
+    assert sorted(r.status_code for r in results) == [200, 422]
+    winner = next(r.json() for r in results if r.status_code == 200)
+    assert _assert_reset_state(h, action_id) == winner["approved_by_id"]
+    setup = h.client().post("/api/auth/setup", json={"token": winner["link_token"], "password": TA.GOOD})
+    assert setup.status_code == 200                           # the single issued link is the one that works
+
+
+def test_reset_approval_racing_the_person_signing_in_leaves_a_consistent_state(engine):
+    """The approval starts while the sign-in is verifying the (slow) password. Locked: the approval waits for the
+    sign-in and then revokes its session. Unlocked, the approval would commit mid-sign-in and the sign-in would still
+    issue a session for a reset account."""
+    h = TA.Harness(engine)
+    approvers, target, action_id = _reset_requested(h, slow_target_password=True)
+    h.now.tick()
+    code = target.code()
+
+    def act(i):
+        if i == 0:
+            time.sleep(0.15)                                  # let the sign-in read the credential first
+            return approvers[0].post(f"/api/admin/account-actions/{action_id}/approve").status_code
+        return target.c.post("/api/auth/login", json={"email": target.email, "password": target.password,
+                                                       "code": code}).status_code
+    approval, sign_in = _together(2, act)
+    assert approval == 200 and sign_in in (200, 401)          # either order is valid ...
+    _assert_reset_state(h, action_id)                         # ... but never a live session after the reset

@@ -6,10 +6,10 @@
 
 - Repository: this repository (`QMS-OS`); confirm the remote with `git remote -v`.
 - Specification: `docs/SPECIFICATION.md`, v3.0 dated 29 September 2026. Verify title and version locally.
-- Baseline recorded here: `main` at `8863669debe37419b40e9b059d69678b6176def9` ("Add PostgreSQL support with Alembic
-  baseline (R-14) (#8)"), matching `origin/main` on 2026-10-06. Work in progress: branch `fix/run-tests-exit-code`
-  (uncommitted when this file was written). Re-verify branch, HEAD and working tree with Git at session start; this
-  file may be stale.
+- Baseline recorded here: `main` at `997e55b5d6bca146174293830e5fbaaade3c9272` ("Return pytest exit code from
+  run-tests.bat; refresh handoff (#9)"), matching `origin/main` on 2026-10-06. Work in progress: branch `feat/auth-r3`
+  (R-3; uncommitted when this file was written). Re-verify branch, HEAD and working tree with Git at session start;
+  this file may be stale.
 - Stage: pre-MVP-0 baseline merged; MVP-0 not started (see `docs/ROADMAP.md`).
 - Mode: synthetic only. No live connectors, staff accounts or model credentials are configured in this repository,
   and none has been verified; do not claim they are configured.
@@ -18,8 +18,10 @@
 
 Each item says how it was verified.
 
-- **Git:** on 2026-10-06 `main` was at `8863669…`, equal to `origin/main` after `git fetch`, and the working tree was
-  clean (checked with Git). The CI result for pull request #8 was not read (no GitHub CLI on this machine).
+- **Git:** on 2026-10-06 `main` was at `997e55b…`, equal to `origin/main` after `git fetch`, and the working tree was
+  clean (checked with Git). Pull request #9 (`fix/run-tests-exit-code`) was merged (squash) to `main` as `997e55b`;
+  its CI job `test` succeeded on the pull request (run 37432905647) and on the push to `main` (run 37433046381)
+  (read from the public GitHub API on 2026-10-06).
 - **Windows Smart App Control:** on 2026-10-06 it blocked SQLAlchemy's unsigned `_row_cy` extension (Code
   Integrity events 3033/3077 at 12:08 local), so `scripts\run-tests.bat` could not load the tests. Later the same day
   its state read `0` (off) and all extensions loaded; the SQLAlchemy files were unchanged. Unsigned compiled
@@ -31,8 +33,9 @@ Each item says how it was verified.
     warning is the Starlette `httpx` test-client deprecation notice);
   - `main` at `8863669…`, local Windows (`scripts\run-tests.bat`, Python 3.12.7) on 2026-10-06:
     `112 passed, 1 skipped, 1 warning`; PostgreSQL results: see *PostgreSQL (R-14)* below;
-  - `scripts\run-tests.bat` returned exit code 0 even when pytest failed (seen on 2026-10-06); fixed on branch
-    `fix/run-tests-exit-code`, which passes pytest's exit code through as `scripts\run-pg-tests.bat` does;
+  - `main` at `997e55b…` on 2026-10-06: `112 passed, 1 skipped, 1 warning`, exit code 0. `scripts\run-tests.bat` now
+    returns pytest's exit code (pull request #9); before that it returned 0 even when pytest failed;
+  - branch `feat/auth-r3`, local, 2026-10-06: see *Authentication (R-3)* below;
   - GitHub Actions, Ubuntu 24.04, Python 3.12.10: job `test` succeeded on pull request #1 (run 36837238711; its
     job log reports `104 passed, 1 warning`) and on the push of `30a0c198…` to `main` (run 36842625286).
   - Latest runs, same environment: job `test` succeeded on pull request #5 (run 37135721617) and on the push of `9a1c344…` to `main` (run 37135996806). The per-test count for these runs was not read from the logs.
@@ -73,6 +76,25 @@ Each item says how it was verified.
   - the same suite with `alembic` and `psycopg` made unimportable (a CI simulation): `112 passed, 1 skipped`.
   No string-length or row-order failures appeared. The test-database URL is read from the git-ignored
   `.private/pg-test-url.txt` inside `scripts\run-pg-tests.bat` only and was not displayed.
+- **Authentication (R-3; branch `feat/auth-r3`, local only, not merged, no CI run yet):** local accounts with
+  Argon2id passwords and TOTP, server-side sessions with CSRF, lockout, recovery codes, CLI first-Admin bootstrap,
+  dual-control credential resets, `account_admin` platform role, access level on every route, `401` with a
+  non-leaking reason, `actor_kind`/`channel` on audit events; `X-User-Id` removed, `/api/users` needs sign-in. See
+  `docs/adr/0003-auth-dev-identity.md`. Migration `0b13751a07cc` (additive). Commands run on 2026-10-06, Windows,
+  Python 3.12.7:
+  - `scripts\run-tests.bat`: `155 passed, 1 skipped, 1 warning`, exit 0 (112 earlier + 38 `test_auth.py` + 4
+    `test_auth_routes.py` + 1 additive-migration check);
+  - `scripts\run-pg-tests.bat`: `17 passed, 155 deselected, 1 warning`, including four concurrency tests (same TOTP
+    code twice in parallel: exactly one success; N parallel wrong passwords: counted exactly, locked at 5; two
+    concurrent approvals of one reset: exactly one; reset approval racing the person's sign-in: no live session and a
+    fully cleared credential); `scripts\run-pg-tests.bat full`: `172 passed, 1 warning`, exit 0; `alembic check`:
+    `No new upgrade operations detected.`; `alembic current`: `0b13751a07cc (head)`.
+  - Review fixes (2026-10-06): 422 responses no longer echo submitted values; credential row locked with
+    `SELECT … FOR UPDATE` (with the person and account-action rows, in a fixed order) for every check or change of
+    account state, plus conditional UPDATEs; the recovery-code session ends after TOTP re-enrolment;
+    `generate-key` refuses paths inside a Git work tree and `.gitignore` excludes `*.key`/`*.pem`. The concurrency
+    tests were shown to fail against the pre-fix code (scratch mutation run). Open: whoever holds a one-time link can
+    redeem it (ADR 0003, *Known limitation*).
 
 ## Not verified
 
@@ -81,6 +103,10 @@ Each item says how it was verified.
   append-only enforcement (trigger or revoked privileges on `audit_events`) does not exist; append-only is enforced
   by application code and `tests/test_no_retention.py`. TLS to a non-local database is not configured.
 - Docker Compose beyond the PostgreSQL service: no other service has been run. A PostgreSQL restore drill has not been run.
+- Authentication (R-3) in CI, and its new compiled dependencies on Linux; payload-bound approval (later slice); OIDC
+  sign-in; a breached-password lookup; granting `account_admin` through the API (operator sets it in the database);
+  demo-mode accounts for the fixture people; the CLI bootstrap run against a real terminal and PostgreSQL (tested
+  with stubbed input on SQLite only).
 - Any UI; end-to-end or browser tests.
 - Python 3.11: allowed by `apps/api/pyproject.toml` but not tested in CI.
 - All live integrations (mail, Telegram, model providers/Ollama, Hermes, WeKnora, Hindsight).
@@ -104,12 +130,9 @@ Each item says how it was verified.
 
 ## Known mismatches (deferred)
 
-- Code references to documents that do not exist: `apps/api/qms_os/api/deps.py` cites
-  `docs/adr/0003-auth-dev-identity.md`; `apps/api/qms_os/knowledge/__init__.py` cites
-  `docs/adr/0004-independent-knowledge-module.md` and `docs/05-knowledge-roadmap.md`.
-- The development-identity docstring in `apps/api/qms_os/api/deps.py` names a sign-on approach that differs from the
-  R-3 design (local accounts + TOTP, OIDC later). The Admin approved that design with changes on 2026-10-06; it is
-  not yet recorded in `docs/DECISIONS.md` or implemented.
+- Code references to documents that do not exist: `apps/api/qms_os/knowledge/__init__.py` cites
+  `docs/adr/0004-independent-knowledge-module.md` and `docs/05-knowledge-roadmap.md`. (`docs/adr/0003` now exists on
+  branch `feat/auth-r3`, and the development-identity docstring it replaced is gone.)
 - `docs/SPECIFICATION.md` refers to `docs/decisions.md`; the file is `docs/DECISIONS.md`.
 - The specification's repository layout is partly adopted: the code lives in `apps/api/` (R-1, decided); other `apps/` and `packages/` folders do not exist yet.
 - The specification makes PostgreSQL the authority; the code still defaults to SQLite. PostgreSQL support (R-14) is on
@@ -120,8 +143,12 @@ Each item says how it was verified.
 
 ## Open decisions
 
-- Unresolved engineering decisions: R-3, R-4 (`docs/DECISIONS.md`). R-2 and R-14 are decided. The R-3 design was
-  approved with changes on 2026-10-06 and will be recorded with its implementation slice (ADR 0003).
+- Unresolved engineering decisions: R-4 (`docs/DECISIONS.md`). R-2, R-3 (2026-10-06; branch `feat/auth-r3`) and R-14
+  are decided; R-7 gained `401`.
+- Not yet decided for authentication: named owners for the session and lockout candidate values (R-4); how the
+  `account_admin` role is granted (dual control); a breached-password lookup; the payload-bound approval slice.
+- Not yet decided for the workstation: whether `scripts\env.bat` should move its caches and temp files from
+  `.cache\`/`.tmp\` to `D:\QMS-OS-TEMP`.
 - Not yet decided: a PostgreSQL job in CI; database-level append-only enforcement; production use of the psycopg
   binary wheel versus a local build (`docs/UPSTREAMS.md`).
 - Unresolved organisational decisions: D-07, D-08, D-12, D-13, D-14, D-15, D-16.
@@ -144,15 +171,14 @@ See *Proposed MVP-0 order* in `docs/ROADMAP.md`. No dates or delivery commitment
 
 ## Last session (2026-10-06)
 
-- R-14 (PostgreSQL support) is on `main` via pull request #8.
-- R-3: identity inspected (47 of 49 routes use the `X-User-Id` development identity; `/api/users` is unauthenticated)
-  and a design proposed; the Admin approved it with changes. No R-3 code yet.
-- Branch `fix/run-tests-exit-code` from `8863669…`: `scripts\run-tests.bat` now returns pytest's exit code; this
-  file updated. Uncommitted at the time of writing. Synthetic mode. No development reference inspected. No remote
-  changes.
-- Next: (1) Admin reviews this diff and authorises a local commit (R-6), then push/pull request only on separate
-  authorisation; (2) start the R-3 slice only once `scripts\run-tests.bat` passes; (3) record R-3 in ADR 0003 and
-  `docs/DECISIONS.md` (R-3, R-7 `401`) with that slice.
+- Pull request #9 (run-tests exit code) merged as `997e55b`, CI passed.
+- Branch `feat/auth-r3` from `997e55b…`: R-3 implemented (see *Verified state*); ADR 0003, DECISIONS (R-3, R-7),
+  UPSTREAMS, LOCAL-RUNTIME and ROADMAP updated. Uncommitted at the time of writing. Synthetic mode. No development
+  reference inspected. No remote changes. External reads: PyPI package metadata, the SecLists password list and
+  licence at a pinned commit, and the public GitHub API for pull request #9.
+- Next: (1) Admin reviews the diff and authorises a local commit (R-6), then push/pull request only on separate
+  authorisation; (2) watch the first CI run with the new compiled dependencies; (3) decide how `account_admin` is
+  granted and plan the payload-bound approval slice.
 
 ## End-of-session update template
 

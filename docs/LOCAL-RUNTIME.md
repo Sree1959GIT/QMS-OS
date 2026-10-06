@@ -17,6 +17,11 @@ PostgreSQL for the API (opt-in; synthetic data only)
 - `python -m qms_os.seed` supports SQLite only.
 - Tests: create the database once with `docker exec qmsos-postgres createdb -U qmsos qmsos_test`, put its URL on one line in the git-ignored `.private\pg-test-url.txt` (local host, database name ending in `_test`), then run `scripts\run-pg-tests.bat` (PostgreSQL tests), `scripts\run-pg-tests.bat full` (whole suite) or `scripts\run-pg-tests.bat alembic ARGS`. These runs drop and rebuild the test database's schema. The URL is never echoed.
 
+Sign-in (R-3; `docs/adr/0003-auth-dev-identity.md`)
+- Operational and demo modes need an authentication key file and refuse to start without it. Create it once, outside the repository, with `python -m qms_os.auth generate-key --out <path outside Git>` (it never overwrites a file and refuses any folder inside a Git work tree, including git-ignored ones), and set `QMS_AUTH_KEY_FILE` to that path. Back the key file up separately from database backups: without it every person must set up their authenticator again.
+- Create the first account admin on the host: with `QMS_AUTH_KEY_FILE` and `QMS_DATABASE_URL` set, run `python -m qms_os.auth bootstrap-admin --email <address> --name <name>`. It asks for the password (no default exists), shows an authenticator set-up link, asks for a code, and prints recovery codes once. It refuses once an active account admin exists.
+- Further people are invited by an account admin (`POST /api/admin/accounts/{user_id}/invite`); they set their own password and authenticator through the one-time link. There is no user interface yet.
+
 Keeping files in the project folder
 - `scripts\env.bat` redirects TEMP, TMP, the pip cache and `__pycache__` into `.tmp\` and `.cache\` inside the repo.
 - Docker Desktop keeps its disk image, including the Postgres volume, in the user profile by default. Move it under Settings > Resources > Advanced > Disk image location.

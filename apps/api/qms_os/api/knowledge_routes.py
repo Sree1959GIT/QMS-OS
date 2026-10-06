@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from ..knowledge import KnowledgeError, KnowledgeService
 from ..models import User
 from ..rules.findings import Role
-from .deps import current_user, get_session
+from .deps import current_user, get_session, step_up_user
 
 router = APIRouter(prefix="/api/knowledge")
 
@@ -81,7 +81,7 @@ class DecisionIn(BaseModel):
 
 
 @router.post("/items/{item_id}/decide")
-def decide(item_id: int, body: DecisionIn, s: Session = Depends(get_session), u: User = Depends(current_user)):
+def decide(item_id: int, body: DecisionIn, s: Session = Depends(get_session), u: User = Depends(step_up_user)):
     if Role(u.role) is not Role.MA:
         raise HTTPException(403, "requires role MA")
     svc = _svc(s)
