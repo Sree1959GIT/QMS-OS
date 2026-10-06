@@ -8,8 +8,8 @@
 - Specification: `docs/SPECIFICATION.md`, v3.0 dated 29 September 2026. Verify title and version locally.
 - Baseline recorded here: `main` at `997e55b5d6bca146174293830e5fbaaade3c9272` ("Return pytest exit code from
   run-tests.bat; refresh handoff (#9)"), matching `origin/main` on 2026-10-06. Work in progress: branch `feat/auth-r3`
-  (R-3; uncommitted when this file was written). Re-verify branch, HEAD and working tree with Git at session start;
-  this file may be stale.
+  (R-3), local commit `5e5ada2c9fb3679ebcc11981c369f88169095df0`, not pushed. Re-verify branch, HEAD and working
+  tree with Git at session start; this file may be stale.
 - Stage: pre-MVP-0 baseline merged; MVP-0 not started (see `docs/ROADMAP.md`).
 - Mode: synthetic only. No live connectors, staff accounts or model credentials are configured in this repository,
   and none has been verified; do not claim they are configured.
@@ -76,7 +76,8 @@ Each item says how it was verified.
   - the same suite with `alembic` and `psycopg` made unimportable (a CI simulation): `112 passed, 1 skipped`.
   No string-length or row-order failures appeared. The test-database URL is read from the git-ignored
   `.private/pg-test-url.txt` inside `scripts\run-pg-tests.bat` only and was not displayed.
-- **Authentication (R-3; branch `feat/auth-r3`, local only, not merged, no CI run yet):** local accounts with
+- **Authentication (R-3; branch `feat/auth-r3`, local commit `5e5ada2`, not pushed, not merged, no CI run yet):**
+  local accounts with
   Argon2id passwords and TOTP, server-side sessions with CSRF, lockout, recovery codes, CLI first-Admin bootstrap,
   dual-control credential resets, `account_admin` platform role, access level on every route, `401` with a
   non-leaking reason, `actor_kind`/`channel` on audit events; `X-User-Id` removed, `/api/users` needs sign-in. See
@@ -173,12 +174,15 @@ See *Proposed MVP-0 order* in `docs/ROADMAP.md`. No dates or delivery commitment
 
 - Pull request #9 (run-tests exit code) merged as `997e55b`, CI passed.
 - Branch `feat/auth-r3` from `997e55b…`: R-3 implemented (see *Verified state*); ADR 0003, DECISIONS (R-3, R-7),
-  UPSTREAMS, LOCAL-RUNTIME and ROADMAP updated. Uncommitted at the time of writing. Synthetic mode. No development
-  reference inspected. No remote changes. External reads: PyPI package metadata, the SecLists password list and
-  licence at a pinned commit, and the public GitHub API for pull request #9.
-- Next: (1) Admin reviews the diff and authorises a local commit (R-6), then push/pull request only on separate
-  authorisation; (2) watch the first CI run with the new compiled dependencies; (3) decide how `account_admin` is
-  granted and plan the payload-bound approval slice.
+  UPSTREAMS, LOCAL-RUNTIME and ROADMAP updated. Committed locally (Admin-approved, R-6) as
+  `5e5ada2c9fb3679ebcc11981c369f88169095df0` "Add local-account authentication with TOTP (R-3)"; after the commit
+  `scripts\run-tests.bat` gave `155 passed, 1 skipped, 1 warning` (exit 0) and `scripts\run-pg-tests.bat full` gave
+  `172 passed, 1 warning` (exit 0). This handoff/roadmap update is a separate follow-up commit. Not pushed. Synthetic
+  mode. No development reference inspected. No remote changes. External reads: PyPI package metadata, the SecLists
+  password list and licence at a pinned commit, and the public GitHub API for pull request #9.
+- Next: (1) push `feat/auth-r3` and open a pull request only on separate authorisation, then watch the first CI run
+  with the new compiled dependencies; (2) the one-time link code slice, a blocker before any real person is
+  onboarded (`docs/ROADMAP.md`); (3) decide how `account_admin` is granted and plan the payload-bound approval slice.
 
 ## End-of-session update template
 
