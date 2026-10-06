@@ -6,10 +6,10 @@
 
 - Repository: this repository (`QMS-OS`); confirm the remote with `git remote -v`.
 - Specification: `docs/SPECIFICATION.md`, v3.0 dated 29 September 2026. Verify title and version locally.
-- Baseline recorded here: `main` at `82d5897e07a28675ab0c92d5dd0f1649ba9cd79d` ("Record R-3 merge (PR #10) and
-  next-slice order in handoff (#11)"), matching `origin/main` on 2026-10-06. Work in progress: branch
-  `feat/env-temp-root` (uncommitted when this file was written). Re-verify branch, HEAD and working tree with Git at
-  session start; this file may be stale.
+- Baseline recorded here: `main` at `58bfd130fd7c8583e9bb8ac11a93e06ce98aabcb` ("Add optional QMS_TEMP_ROOT to
+  env.bat; stop scripts if env.bat fails (#12)"), matching `origin/main` on 2026-10-06. Work in progress: branch
+  `chore/gitattributes-bat` (this update). Re-verify branch, HEAD and working tree with Git at session start; this
+  file may be stale.
 - Stage: pre-MVP-0 baseline merged; MVP-0 not started (see `docs/ROADMAP.md`).
 - Mode: synthetic only. No live connectors, staff accounts or model credentials are configured in this repository,
   and none has been verified; do not claim they are configured.
@@ -18,8 +18,11 @@
 
 Each item says how it was verified.
 
-- **Git:** on 2026-10-06 `main` was at `82d5897…`, equal to `origin/main` after `git fetch`, and the working tree
-  was clean (checked with Git). Pull request #11 (`docs/handoff-r3-merged`, handoff only) was merged to `main` as
+- **Git:** on 2026-10-06 `main` was at `58bfd13…`, equal to `origin/main` after `git fetch`, and the working tree
+  was clean (checked with Git). Pull request #12 (`feat/env-temp-root`, head `870a042`) was merged to `main` as
+  `58bfd13`; CI job `test` succeeded on the pull request (run 37465702805) and on `main` (run 37465852131); the
+  branch `feat/env-temp-root` has been deleted (absent locally and on GitHub). Pull request #11
+  (`docs/handoff-r3-merged`, handoff only) was merged to `main` as
   `82d5897`; CI job `test` succeeded on `main` (run 37462907004). Pull request #10 (`feat/auth-r3`, head `74a4460`)
   was merged (squash) to `main` as `23329f3`; its CI job `test` succeeded on the pull request (run 37449326911, job
   112221750807) and on the push to `main` (run 37449476896, job 112222249819). Earlier: pull request #9 merged as
@@ -203,7 +206,9 @@ See *Proposed MVP-0 order* in `docs/ROADMAP.md`. No dates or delivery commitment
   `pip cache dir` reported `D:\QMS-OS-TEMP\cache\pip`; unset, it gave `155 passed, 1 skipped` (exit 0) with temp
   files in the repo's `.tmp` and none under `D:\QMS-OS-TEMP`; `scripts\run-pg-tests.bat` gave `17 passed, 155
   deselected` (exit 0); no pip, pycache or pytest file was written under `C:\Users` (other applications' own files
-  in the Windows temp folder were not from these runs). Uncommitted at the time of writing. Synthetic mode.
+  in the Windows temp folder were not from these runs). Merged as `58bfd13` (pull request #12); the branch has been
+  deleted. Synthetic mode.
+- `.gitattributes` (`*.bat text eol=crlf`): batch scripts stay LF in the repository and are checked out CRLF on every machine, whatever its `core.autocrlf` (`git add --renormalize .` changed no file).
 - Next: (2) a CLI command to grant or remove `account_admin` (see *Proposed order of the next slices*).
 
 ## End-of-session update template
