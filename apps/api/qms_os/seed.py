@@ -11,7 +11,7 @@ from __future__ import annotations
 import argparse
 from datetime import date
 
-from .db import Base, create_all, make_engine, make_sessionmaker
+from .db import Base, create_all, default_url, is_sqlite, make_engine, make_sessionmaker
 from .fixtures import load
 from .knowledge.store import KnowledgeBase
 from .policy import PolicyConfigError, load_context
@@ -25,6 +25,9 @@ def main() -> None:
     ctx = load_context()
     if not ctx.synthetic:
         raise PolicyConfigError("the seed creates a synthetic organisation; set QMS_MODE=demo to use it")
+    if not is_sqlite(default_url()):
+        # it rebuilds the schema from the models; a PostgreSQL schema comes only from Alembic migrations
+        raise SystemExit("the seed supports SQLite databases only; unset QMS_DATABASE_URL or use a sqlite URL")
     engine = make_engine()
     Base.metadata.drop_all(engine)
     KnowledgeBase.metadata.drop_all(engine)

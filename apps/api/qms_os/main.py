@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from .api import knowledge_routes, routes
-from .db import create_all, make_engine, make_sessionmaker
+from .db import make_engine, make_sessionmaker, prepare_schema
 from .policy import load_context
 from .services.common import Held, ServiceError
 
@@ -21,7 +21,7 @@ def create_app(engine=None, today: Callable[[], date] = date.today, mode: str | 
     file or an invalid mode is a startup error (PolicyConfigError), never a silent fallback."""
     policy_ctx = load_context(mode, policy_file, env)
     engine = engine or make_engine()
-    create_all(engine)
+    prepare_schema(engine)
     app = FastAPI(title="QMS OS", version="0.1.0")
     app.state.engine = engine
     app.state.sessionmaker = make_sessionmaker(engine)
