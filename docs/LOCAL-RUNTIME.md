@@ -1,6 +1,6 @@
 # Local runtime (R-2)
 
-Scope: a PostgreSQL container plus a project-local Python venv for the `apps/api` prototype. Synthetic data only. This does not run WeKnora, Hermes, Hindsight or any model runtime. The API still uses SQLite and has no PostgreSQL driver or migrations.
+Scope: a PostgreSQL container plus a project-local Python venv for the `apps/api` prototype. Synthetic data only. This does not run WeKnora, Hermes, Hindsight or any model runtime. The API uses SQLite by default; PostgreSQL is opt-in (see *PostgreSQL for the API* below).
 
 Prerequisites: Docker Desktop running (WSL2 backend), `docker compose`, and Python 3.12 available as `py -3.12`.
 
@@ -11,6 +11,12 @@ Steps (from the repo root)
 4. `scripts\where.bat` prints where the venv, temp files and caches live.
 5. `scripts\stop-db.bat` stops it, `scripts\backup-db.bat` writes a dump to `backups\`, and `scripts\reset-db.bat` deletes all local data after a typed confirmation.
 
+PostgreSQL for the API (opt-in; synthetic data only)
+- Install the driver and migration tool: `cmd /c "call scripts\env.bat && cd apps\api && ..\..\.venv\Scripts\python.exe -m pip install -c constraints-ci.txt -e .[dev,postgres]"`.
+- The schema on PostgreSQL comes only from migrations: from `apps\api`, with `QMS_DATABASE_URL` set, run `alembic upgrade head`. The API refuses to start if the database is not at the latest revision. `downgrade` is refused; restore from a backup instead.
+- `python -m qms_os.seed` supports SQLite only.
+- Tests: create the database once with `docker exec qmsos-postgres createdb -U qmsos qmsos_test`, put its URL on one line in the git-ignored `.private\pg-test-url.txt` (local host, database name ending in `_test`), then run `scripts\run-pg-tests.bat` (PostgreSQL tests), `scripts\run-pg-tests.bat full` (whole suite) or `scripts\run-pg-tests.bat alembic ARGS`. These runs drop and rebuild the test database's schema. The URL is never echoed.
+
 Keeping files in the project folder
 - `scripts\env.bat` redirects TEMP, TMP, the pip cache and `__pycache__` into `.tmp\` and `.cache\` inside the repo.
 - Docker Desktop keeps its disk image, including the Postgres volume, in the user profile by default. Move it under Settings > Resources > Advanced > Disk image location.
@@ -19,5 +25,6 @@ Keeping files in the project folder
 
 Not verified
 - A restore from a backup.
+- The API server process running against PostgreSQL (tests use the in-process test client only).
 - The `[dev]` extra name; `setup-venv.bat` falls back to installing pytest and httpx.
 - The Postgres image is pinned by major-version tag, not by digest.

@@ -1,4 +1,6 @@
-"""Tests run only against the synthetic fixture (qms_os/fixtures.py) in an in-memory database."""
+"""Tests run only against the synthetic fixture (qms_os/fixtures.py) in an in-memory SQLite database, or, when
+the opt-in QMS_TEST_FULL_SUITE_ON_POSTGRES=1 is set with QMS_TEST_POSTGRES_URL, in the PostgreSQL test database
+(see pg_support.py)."""
 from __future__ import annotations
 
 import os
@@ -7,6 +9,7 @@ from datetime import date
 import pytest
 from fastapi.testclient import TestClient
 
+import pg_support as PG
 from qms_os.db import create_all, make_engine, make_sessionmaker
 from qms_os.fixtures import load
 from qms_os.main import create_app
@@ -31,14 +34,33 @@ def clock():
     return Clock(date(2026, 1, 2))
 
 
-@pytest.fixture
-def engine():
+@pytest.fixture(autouse=True, scope="session")
+def _postgres_full_suite_schema():
+    """Opt-in full-suite rerun on PostgreSQL: build the test database's schema once by migration."""
+    if PG.full_suite():
+        eng = make_engine(PG.checked_url())
+        PG.rebuild_schema(eng)
+        eng.dispose()
+
+
+def _empty_engine():
+    if PG.full_suite():
+        eng = make_engine(PG.checked_url())
+        PG.empty_tables(eng)
+        return eng
     eng = make_engine("sqlite://")
     create_all(eng)
+    return eng
+
+
+@pytest.fixture
+def engine():
+    eng = _empty_engine()
     with make_sessionmaker(eng)() as s:
         load(s)
         s.commit()
-    return eng
+    yield eng
+    eng.dispose()
 
 
 @pytest.fixture
@@ -98,8 +120,7 @@ def op(tmp_path, clock):
     restart with a changed policy file (same database)."""
     import json
 
-    eng = make_engine("sqlite://")
-    create_all(eng)
+    eng = _empty_engine()
     with make_sessionmaker(eng)() as s:
         load(s)
         s.commit()
@@ -147,4 +168,5 @@ def op(tmp_path, clock):
             assert r.status_code == 200, r.text
             return r.json()
 
-    return Op()
+    yield Op()
+    eng.dispose()

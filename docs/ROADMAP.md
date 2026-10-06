@@ -26,7 +26,7 @@ no unverified feature claim.
 | Git scaffold, CI and protected `main` | Done | R-12, R-13 |
 | Synthetic fixtures | Done | `tests/test_fixture_hygiene.py` |
 | Fixture startup as a running server process | Done | `tests/test_startup_smoke.py` (Windows locally; Linux in CI) |
-| Upstream, licence and version matrix | Not started | — |
+| Upstream, licence and version matrix | Started (branch `feat/postgres-support`, not merged) | `docs/UPSTREAMS.md`: PostgreSQL driver and migration packages only |
 | Container or local runtime configuration | Partly done | PostgreSQL service only (R-2; `compose.yaml`); other services after upstream checks |
 | Model-provider contract (interface and a simulated provider only) | Not started | layout settled by R-1 (`apps/api/`) |
 | Local-model benchmark plan | Not started | — |
@@ -37,12 +37,12 @@ no unverified feature claim.
 1. Fixture-startup smoke test: done (`tests/test_startup_smoke.py`).
 2. Decision R-3 (authentication); R-1 and R-2 are decided.
 3. Repository restructure: done (`backend/` moved to `apps/api/`, R-1, pull request #5).
-4. PostgreSQL support and migrations, after R-2.
+4. PostgreSQL support and migrations (R-14): implemented on branch `feat/postgres-support`, not merged; local PostgreSQL runs only, not in CI.
 5. Container or local runtime configuration: PostgreSQL service done (R-2); other services after their upstream checks.
 6. Upstream, licence and version matrix.
 7. Model-provider contract with a simulated provider.
 8. Local-model benchmark plan.
-9. CI hardening: lint and format, type checks, secret scan, Python 3.11.
+9. CI hardening: lint and format, type checks, secret scan, Python 3.11, PostgreSQL integration job.
 
 ## Later stages (specification scope; all not started)
 
