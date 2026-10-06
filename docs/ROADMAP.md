@@ -36,6 +36,8 @@ no unverified feature claim.
 
 1. Fixture-startup smoke test: done (`tests/test_startup_smoke.py`).
 2. Authentication (R-3, decided 2026-10-06): merged to `main` as `23329f3` (pull request #10, squash). Payload-bound approval and OIDC are later slices.
+   - `account_admin` is granted and revoked only with the operator CLI (`grant-account-admin` / `revoke-account-admin`). If no active account admin remains, `grant-account-admin` for a person with an active account is the recovery path (`bootstrap-admin` if nobody has an active account).
+   - **Before any shared deployment:** operator audit events record the OS user name and host or a required `--reason`, and disabling the last active account admin is refused (same lock order: all account admins' person rows in id order, then the credential).
    - **Blocker before any real person is onboarded:** the one-time link code slice. A link is redeemable by whoever holds it, including the inviting or approving admin; the fix adds a short verification code set by the initiator and given to the person verbally, so redemption needs both (`docs/adr/0003-auth-dev-identity.md`, *Known limitation*). No account for a real person, and no shared or non-local deployment, until it is done.
 3. Repository restructure: done (`backend/` moved to `apps/api/`, R-1, pull request #5).
 4. PostgreSQL support and migrations (R-14): done (pull request #8); PostgreSQL runs are local only, not in CI.

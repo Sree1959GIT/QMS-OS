@@ -483,6 +483,52 @@ def unlock(s: Session, ctx: AuthContext, admin: User, target_id: int, channel: s
     return cred
 
 
+# ---------- account_admin platform role: granted and revoked only by the operator, through the CLI ----------
+# There is no API route. A QMS role never confers this role; it is set only here and by bootstrap_admin.
+
+def _role_change_target(s: Session, email: str) -> tuple[User, UserCredential]:
+    """The person with this e-mail address, with their person and credential rows locked (standard order)."""
+    found = find_user(s, email)
+    if found is None:
+        raise RuleViolation("no person has that e-mail address")
+    user = locked_person(s, found.id)
+    cred = locked_credential(s, user.id)
+    if cred is None or cred.status != "active":
+        state = "no account" if cred is None else f"an account that is {cred.status}"
+        raise RuleViolation(f"{user.email} has {state}; only a person with an active account can hold or lose the "
+                            "account_admin role here")
+    return user, cred
+
+
+def _role_event(s: Session, user: User, action: str, old: str, new: str) -> None:
+    event(s, action, user.id, actor_id=None, actor_kind="operator", channel="cli", target_user_id=user.id,
+          old_platform_role=old, new_platform_role=new)
+
+
+def grant_account_admin(s: Session, email: str) -> User:
+    user, _ = _role_change_target(s, email)
+    if user.platform_role == ACCOUNT_ADMIN:
+        raise RuleViolation(f"{user.email} is already an account admin")
+    old, user.platform_role = user.platform_role, ACCOUNT_ADMIN
+    _role_event(s, user, "auth.account_admin.granted", old, ACCOUNT_ADMIN)
+    return user
+
+
+def revoke_account_admin(s: Session, email: str) -> User:
+    """Refused if it would leave no active account admin. Every current account admin's person row is locked first
+    (in id order, before any credential), so two concurrent revocations cannot both count the other admin."""
+    for admin_id in s.scalars(select(User.id).where(User.platform_role == ACCOUNT_ADMIN).order_by(User.id)).all():
+        locked_person(s, admin_id)
+    user, _ = _role_change_target(s, email)
+    if user.platform_role != ACCOUNT_ADMIN:
+        raise RuleViolation(f"{user.email} is not an account admin")
+    if not _active_admins(s, user.id):
+        raise RuleViolation(f"refusing to revoke: {user.email} is the only active account admin")
+    old, user.platform_role = user.platform_role, "none"
+    _role_event(s, user, "auth.account_admin.revoked", old, "none")
+    return user
+
+
 def account_rows(s: Session) -> list[dict]:
     creds = {c.user_id: c for c in s.scalars(select(UserCredential))}
     rows = []

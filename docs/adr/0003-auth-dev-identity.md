@@ -33,9 +33,9 @@ OIDC identity later records issuer and subject. Accounts are never linked by e-m
 | First Admin | `python -m qms_os.auth bootstrap-admin --email … --name …` on the host: runs only while no active account admin exists, asks for the password interactively (never from arguments or the environment), requires a confirming TOTP code, prints recovery codes once. There is no default password anywhere. |
 | New accounts | An account admin invites an existing person record; the one-time link (24 hours) is handed over in person; the person sets their own password and enrols TOTP through it. |
 | Credential resets | Initiated by one account admin, who records the in-person identity check, and **approved by a second account admin** (neither the initiator nor the person). With no second account admin the request is held (`409`, rule `second_admin_required`, durable `transition.held` event). Approval clears the old password, TOTP and recovery codes and revokes sessions; the person sets a new password and enrols TOTP through a one-time link. |
-| Account admin | `users.platform_role = account_admin`, separate from QMS roles: it grants no QMS approval right, and a QMS role grants no account administration. The bootstrapped admin's QMS role is `VIEWER`. |
+| Account admin | `users.platform_role = account_admin`, separate from QMS roles: it grants no QMS approval right, and a QMS role grants no account administration. The bootstrapped admin's QMS role is `VIEWER`. After the first Admin (`bootstrap-admin`), the role is granted and revoked **only by the operator on the host**: `python -m qms_os.auth grant-account-admin <email>` (the operator types the e-mail address again to confirm) and `revoke-account-admin <email>`. There is no API route. The person must have an active account; revoking is refused if it would leave no active account admin. Each change writes `auth.account_admin.granted` / `.revoked` with actor kind `operator`, channel `cli`, the target and the old and new role. A revocation locks every account admin's person row (in id order) before the credential, so two concurrent revocations cannot remove the last admin (tested on PostgreSQL). A static test checks that only these commands and the bootstrap set `platform_role`. |
 | Access levels | Every route declares exactly one level: **public** (health, sign-in, one-time-link endpoints), **human**, or **human+step-up** (approve, reject, accept, verify, acknowledge, MA review, sign-off, close, decide, and all `/api/admin/*`). `tests/test_auth_routes.py` enumerates the routes. |
-| Principals | Only humans authenticate in this slice. `actor_kind` (human, agent, telegram, system) and `channel` (web, cli, telegram, test) are recorded on audit events; a non-human principal on a human route gets `403`. Agents and Telegram principals will get their own credentials later and never a password, TOTP or session. |
+| Principals | Only humans authenticate in this slice. `actor_kind` (human, agent, telegram, system, operator — the person at the host running a CLI command) and `channel` (web, cli, telegram, test) are recorded on audit events; a non-human principal on a human route gets `403`. Agents and Telegram principals will get their own credentials later and never a password, TOTP or session. |
 | Audit | Every authentication action writes an `auth.*` event (sign-in success and failure, logout, session expiry, lockout start and clear, step-up, password change, set-up, TOTP enrolment and re-enrolment, recovery-code use and regeneration, invitation, reset request and approval, enable/disable, first-Admin bootstrap). Events never contain a password, code, secret or token. |
 | Response contract | R-7 gains `401` with a non-leaking `reason`: `not_authenticated`, `session_expired`, `step_up_required`, `totp_reenrollment_required`, `invalid_credentials`, `invalid_link`. |
 | Tests | A test-only identity provider (`X-Test-User-Id`) can be passed to `create_app` **only in test mode**; operational and demo refuse it at startup and ignore the header (`tests/test_auth.py`). |
@@ -70,8 +70,16 @@ or when a second account admin exists — whichever comes first.
 - Payload-bound approval (above).
 - OIDC sign-in (the `auth_identities` seam exists; Authlib would be added then).
 - A breached-password lookup: it needs an external service (k-anonymity range query) and an approved data flow.
-- Granting or removing the `account_admin` role through the API (needs its own dual-control design); today the first
-  Admin comes from the CLI and a second must be granted in the database by the operator.
+- Granting or removing the `account_admin` role through the API (would need its own dual-control design); today it is
+  done only with the operator CLI (see *Account admin* above). The CLI records no individual operator identity:
+  whoever can run commands on the host against the database is trusted, and the event says only `operator`.
+- **Recovery path:** if no active account admin remains (for example the last one was disabled or locked out), the
+  operator restores one with `grant-account-admin <email>` for any person who still has an active account; if nobody
+  has one, `bootstrap-admin` runs again, because it is allowed exactly while no active account admin exists.
+- **Before any shared deployment:** (a) operator audit events must record who acted — the OS user name and host, or a
+  required `--reason` — not only `operator`; (b) disabling the last active account admin through the API must be
+  refused, with the same lock order (all account admins' person rows in id order, then the credential). Today an
+  account admin can still disable the only other active admin.
 - Agent and Telegram credentials; rate limiting beyond per-account lockout; IP or user-agent records (none stored).
 - Demo-mode accounts: demo uses real sign-in, so the fixture people have no accounts until invited.
 - A user interface for any of this.

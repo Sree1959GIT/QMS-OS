@@ -6,10 +6,10 @@
 
 - Repository: this repository (`QMS-OS`); confirm the remote with `git remote -v`.
 - Specification: `docs/SPECIFICATION.md`, v3.0 dated 29 September 2026. Verify title and version locally.
-- Baseline recorded here: `main` at `58bfd130fd7c8583e9bb8ac11a93e06ce98aabcb` ("Add optional QMS_TEMP_ROOT to
-  env.bat; stop scripts if env.bat fails (#12)"), matching `origin/main` on 2026-10-06. Work in progress: branch
-  `chore/gitattributes-bat` (this update). Re-verify branch, HEAD and working tree with Git at session start; this
-  file may be stale.
+- Baseline recorded here: `main` at `9b79841792b582d24599a86ee5758de5bcf24e27` ("Keep Windows batch scripts CRLF
+  with .gitattributes (#13)"), matching `origin/main` on 2026-10-06. Work in progress: branch
+  `feat/account-admin-cli` (uncommitted when this file was written). Re-verify branch, HEAD and working tree with Git
+  at session start; this file may be stale.
 - Stage: pre-MVP-0 baseline merged; MVP-0 not started (see `docs/ROADMAP.md`).
 - Mode: synthetic only. No live connectors, staff accounts or model credentials are configured in this repository,
   and none has been verified; do not claim they are configured.
@@ -18,9 +18,11 @@
 
 Each item says how it was verified.
 
-- **Git:** on 2026-10-06 `main` was at `58bfd13…`, equal to `origin/main` after `git fetch`, and the working tree
-  was clean (checked with Git). Pull request #12 (`feat/env-temp-root`, head `870a042`) was merged to `main` as
-  `58bfd13`; CI job `test` succeeded on the pull request (run 37465702805) and on `main` (run 37465852131); the
+- **Git:** on 2026-10-06 `main` was at `9b79841…`, equal to `origin/main` after `git fetch`, and the working tree
+  was clean (checked with Git). Pull request #13 (`chore/gitattributes-bat`, head `1ef0c7e`) was merged to `main` as
+  `9b79841`; CI job `test` succeeded on the pull request (run 37478760925) and on `main` (run 37478911185); the
+  branch has been deleted (absent locally and on GitHub). Pull request #12 (`feat/env-temp-root`, head `870a042`)
+  was merged to `main` as `58bfd13`; CI job `test` succeeded on the pull request (run 37465702805) and on `main` (run 37465852131); the
   branch `feat/env-temp-root` has been deleted (absent locally and on GitHub). Pull request #11
   (`docs/handoff-r3-merged`, handoff only) was merged to `main` as
   `82d5897`; CI job `test` succeeded on `main` (run 37462907004). Pull request #10 (`feat/auth-r3`, head `74a4460`)
@@ -117,9 +119,9 @@ Each item says how it was verified.
 - Docker Compose beyond the PostgreSQL service: no other service has been run. A PostgreSQL restore drill has not been run.
 - Authentication (R-3): the PostgreSQL concurrency tests outside this workstation (CI has no PostgreSQL job); the
   CI install log for the compiled dependencies (not readable without a token; the install and test steps passed);
-  payload-bound approval (later slice); OIDC sign-in; a breached-password lookup; granting `account_admin` through
-  the API (operator sets it in the database); demo-mode accounts for the fixture people; the CLI bootstrap run
-  against a real terminal and PostgreSQL (tested with stubbed input on SQLite only).
+  payload-bound approval (later slice); OIDC sign-in; a breached-password lookup; demo-mode accounts for the fixture
+  people; the CLI commands (`bootstrap-admin`, `grant-account-admin`, `revoke-account-admin`) run in a real terminal
+  (tested with stubbed input; the revoke race on PostgreSQL, the rest on SQLite).
 - Any UI; end-to-end or browser tests.
 - Python 3.11: allowed by `apps/api/pyproject.toml` but not tested in CI.
 - All live integrations (mail, Telegram, model providers/Ollama, Hermes, WeKnora, Hindsight).
@@ -158,18 +160,19 @@ Each item says how it was verified.
 
 - Unresolved engineering decisions: R-4 (`docs/DECISIONS.md`). R-2, R-3 (2026-10-06; on `main` via pull request #10)
   and R-14 are decided; R-7 gained `401`.
-- Not yet decided for authentication: named owners for the session and lockout candidate values (R-4); how the
-  `account_admin` role is granted (dual control); a breached-password lookup; the payload-bound approval slice.
+- Not yet decided for authentication: named owners for the session and lockout candidate values (R-4); a
+  breached-password lookup; the payload-bound approval slice. The `account_admin` role is granted and revoked only
+  with the operator CLI (ADR 0003; branch `feat/account-admin-cli`).
 - `scripts\env.bat` temp and cache location — **decided (Admin, 2026-10-06):** keep the in-repo defaults (`.cache\`,
   `.tmp\`, both git-ignored) with an optional `QMS_TEMP_ROOT` override that moves TEMP/TMP (and pytest's temporary
   folders) to `<root>\tmp` and the pip cache and pycache to `<root>\cache`; a C: or relative root, or a folder that
-  cannot be created, stops the scripts with exit code 1 (no fallback to C:). Implemented on branch
-  `feat/env-temp-root`; see `docs/LOCAL-RUNTIME.md`.
-- Proposed order of the next slices (a proposal, not a commitment): (1) the `env.bat` `QMS_TEMP_ROOT` override (on
-  branch `feat/env-temp-root`); (2) a CLI command to grant or remove `account_admin`; (3) CI: a secret scan and a
-  PostgreSQL job (the PostgreSQL and concurrency tests run only locally today); (4) the one-time link code — **a
-  blocker before any real person is onboarded** (`docs/ROADMAP.md`; ADR 0003, *Known limitation*); (5)
-  payload-bound approval.
+  cannot be created, stops the scripts with exit code 1 (no fallback to C:). On `main` since pull request #12; see
+  `docs/LOCAL-RUNTIME.md`.
+- Proposed order of the next slices (a proposal, not a commitment): (1) the `env.bat` `QMS_TEMP_ROOT` override
+  (done, pull request #12); (2) a CLI command to grant or remove `account_admin` (on branch
+  `feat/account-admin-cli`); (3) CI: a secret scan and a PostgreSQL job (the PostgreSQL and concurrency tests run
+  only locally today); (4) the one-time link code — **a blocker before any real person is onboarded**
+  (`docs/ROADMAP.md`; ADR 0003, *Known limitation*); (5) payload-bound approval.
 - Not yet decided: a PostgreSQL job in CI; database-level append-only enforcement; production use of the psycopg
   binary wheel versus a local build (`docs/UPSTREAMS.md`).
 - Unresolved organisational decisions: D-07, D-08, D-12, D-13, D-14, D-15, D-16.
@@ -209,7 +212,15 @@ See *Proposed MVP-0 order* in `docs/ROADMAP.md`. No dates or delivery commitment
   in the Windows temp folder were not from these runs). Merged as `58bfd13` (pull request #12); the branch has been
   deleted. Synthetic mode.
 - `.gitattributes` (`*.bat text eol=crlf`): batch scripts stay LF in the repository and are checked out CRLF on every machine, whatever its `core.autocrlf` (`git add --renormalize .` changed no file).
-- Next: (2) a CLI command to grant or remove `account_admin` (see *Proposed order of the next slices*).
+- Pull request #13 (`.gitattributes`) merged as `9b79841`, CI passed.
+- Branch `feat/account-admin-cli` from `9b79841…`: operator CLI `grant-account-admin` / `revoke-account-admin`
+  (`qms_os/auth/cli.py`, `service.py`); active account required, last active admin protected, typed e-mail
+  confirmation for a grant, audit events with actor kind `operator` and channel `cli`; no API route. New tests:
+  `tests/test_account_admin_cli.py` (12, SQLite) and one PostgreSQL test (two concurrent revocations leave exactly
+  one admin; shown to fail 3 of 3 times against code without the row locks, scratch mutation run). On 2026-10-06:
+  `scripts\run-tests.bat` `167 passed, 1 skipped, 1 warning` (exit 0); `scripts\run-pg-tests.bat full` `185 passed,
+  1 warning` (exit 0). Uncommitted at the time of writing. Synthetic mode.
+- Next: (3) CI: a secret scan and a PostgreSQL job (see *Proposed order of the next slices*).
 
 ## End-of-session update template
 
