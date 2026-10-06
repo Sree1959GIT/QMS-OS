@@ -1,6 +1,6 @@
 @echo off
 setlocal
-call "%~dp0env.bat"
+call "%~dp0env.bat" || exit /b 1
 cd /d "%QMSOS_HOME%"
 py -3.12 --version >nul 2>&1 || (echo Python 3.12 not found. Install 3.12.x, then retry. & exit /b 1)
 if not exist ".venv\Scripts\python.exe" py -3.12 -m venv ".venv" || exit /b 1

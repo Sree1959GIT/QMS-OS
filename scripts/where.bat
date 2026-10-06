@@ -1,5 +1,5 @@
 @echo off
-call "%~dp0env.bat"
+call "%~dp0env.bat" || exit /b 1
 echo Project : %QMSOS_HOME%
 echo Temp    : %TEMP%
 echo PipCache: %PIP_CACHE_DIR%

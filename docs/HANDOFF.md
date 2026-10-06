@@ -6,9 +6,10 @@
 
 - Repository: this repository (`QMS-OS`); confirm the remote with `git remote -v`.
 - Specification: `docs/SPECIFICATION.md`, v3.0 dated 29 September 2026. Verify title and version locally.
-- Baseline recorded here: `main` at `23329f3c41890ab7d18b28bfdd91b61b68f7dbf2` ("Add local-account authentication
-  with TOTP (R-3) (#10)"), matching `origin/main` on 2026-10-06. Work in progress: branch `docs/handoff-r3-merged`
-  (this handoff update). Re-verify branch, HEAD and working tree with Git at session start; this file may be stale.
+- Baseline recorded here: `main` at `82d5897e07a28675ab0c92d5dd0f1649ba9cd79d` ("Record R-3 merge (PR #10) and
+  next-slice order in handoff (#11)"), matching `origin/main` on 2026-10-06. Work in progress: branch
+  `feat/env-temp-root` (uncommitted when this file was written). Re-verify branch, HEAD and working tree with Git at
+  session start; this file may be stale.
 - Stage: pre-MVP-0 baseline merged; MVP-0 not started (see `docs/ROADMAP.md`).
 - Mode: synthetic only. No live connectors, staff accounts or model credentials are configured in this repository,
   and none has been verified; do not claim they are configured.
@@ -17,11 +18,12 @@
 
 Each item says how it was verified.
 
-- **Git:** on 2026-10-06 `main` was at `23329f3…`, equal to `origin/main` after `git fetch`, and the working tree
-  was clean (checked with Git). Pull request #10 (`feat/auth-r3`, head `74a4460`) was merged (squash) to `main` as
-  `23329f3`; its CI job `test` succeeded on the pull request (run 37449326911, job 112221750807) and on the push to
-  `main` (run 37449476896, job 112222249819). Earlier: pull request #9 merged as `997e55b`, CI passed (runs
-  37432905647, 37433046381). All read from the public GitHub API on 2026-10-06.
+- **Git:** on 2026-10-06 `main` was at `82d5897…`, equal to `origin/main` after `git fetch`, and the working tree
+  was clean (checked with Git). Pull request #11 (`docs/handoff-r3-merged`, handoff only) was merged to `main` as
+  `82d5897`; CI job `test` succeeded on `main` (run 37462907004). Pull request #10 (`feat/auth-r3`, head `74a4460`)
+  was merged (squash) to `main` as `23329f3`; its CI job `test` succeeded on the pull request (run 37449326911, job
+  112221750807) and on the push to `main` (run 37449476896, job 112222249819). Earlier: pull request #9 merged as
+  `997e55b`, CI passed (runs 37432905647, 37433046381). All read from the public GitHub API on 2026-10-06.
 - **First Linux install of the R-3 dependencies: verified (by step results).** Both runs above, on `ubuntu-24.04`
   with Python 3.12.10, passed step "Install" (`pip install -e ".[dev]" -c constraints-ci.txt`, which must install
   argon2-cffi 25.1.0, argon2-cffi-bindings 26.1.0, cffi 2.1.1 and cryptography 50.0.2 as pinned, or fail) and step
@@ -155,13 +157,16 @@ Each item says how it was verified.
   and R-14 are decided; R-7 gained `401`.
 - Not yet decided for authentication: named owners for the session and lockout candidate values (R-4); how the
   `account_admin` role is granted (dual control); a breached-password lookup; the payload-bound approval slice.
-- `scripts\env.bat` temp and cache location — **proposal, awaiting Admin decision:** keep the in-repo defaults
-  (`.cache\`, `.tmp\`, both git-ignored) and add an optional `QMS_TEMP_ROOT` override that, when set, moves TEMP/TMP,
-  the pip cache and pycache under that folder (for example `D:\QMS-OS-TEMP`).
-- Proposed order of the next slices (a proposal, not a commitment): (1) the `env.bat` `QMS_TEMP_ROOT` override;
-  (2) a CLI command to grant or remove `account_admin`; (3) CI: a secret scan and a PostgreSQL job (the
-  PostgreSQL and concurrency tests run only locally today); (4) the one-time link code — **a blocker before any real
-  person is onboarded** (`docs/ROADMAP.md`; ADR 0003, *Known limitation*); (5) payload-bound approval.
+- `scripts\env.bat` temp and cache location — **decided (Admin, 2026-10-06):** keep the in-repo defaults (`.cache\`,
+  `.tmp\`, both git-ignored) with an optional `QMS_TEMP_ROOT` override that moves TEMP/TMP (and pytest's temporary
+  folders) to `<root>\tmp` and the pip cache and pycache to `<root>\cache`; a C: or relative root, or a folder that
+  cannot be created, stops the scripts with exit code 1 (no fallback to C:). Implemented on branch
+  `feat/env-temp-root`; see `docs/LOCAL-RUNTIME.md`.
+- Proposed order of the next slices (a proposal, not a commitment): (1) the `env.bat` `QMS_TEMP_ROOT` override (on
+  branch `feat/env-temp-root`); (2) a CLI command to grant or remove `account_admin`; (3) CI: a secret scan and a
+  PostgreSQL job (the PostgreSQL and concurrency tests run only locally today); (4) the one-time link code — **a
+  blocker before any real person is onboarded** (`docs/ROADMAP.md`; ADR 0003, *Known limitation*); (5)
+  payload-bound approval.
 - Not yet decided: a PostgreSQL job in CI; database-level append-only enforcement; production use of the psycopg
   binary wheel versus a local build (`docs/UPSTREAMS.md`).
 - Unresolved organisational decisions: D-07, D-08, D-12, D-13, D-14, D-15, D-16.
@@ -189,10 +194,17 @@ See *Proposed MVP-0 order* in `docs/ROADMAP.md`. No dates or delivery commitment
   `test` passed on the pull request and on `main`, on Linux, including the first install of its compiled
   dependencies. Before the merge, locally: `scripts\run-tests.bat` `155 passed, 1 skipped`, `scripts\run-pg-tests.bat
   full` `172 passed`; after the merge, `scripts\run-tests.bat` on `23329f3` `155 passed, 1 skipped`, exit 0.
-- Branch `docs/handoff-r3-merged` from `23329f3…`: this handoff update only. Synthetic mode. No development reference
-  inspected. External reads: the public GitHub API for pull requests #9 and #10 and their CI jobs.
-- Next: see *Proposed order of the next slices* under *Open decisions*; first, the Admin's decision on the `env.bat`
-  `QMS_TEMP_ROOT` proposal.
+- Pull request #11 (handoff after the R-3 merge) merged as `82d5897`, CI passed.
+- Branch `feat/env-temp-root` from `82d5897…`: `scripts\env.bat` gains the optional `QMS_TEMP_ROOT` override and
+  stops on a bad root; `run-tests.bat`, `run-pg-tests.bat`, `setup-venv.bat` and `where.bat` now stop if `env.bat`
+  fails. Verified on 2026-10-06 (Windows): `QMS_TEMP_ROOT=C:\QMS-OS-TEMP`, `c:\temp` and a relative path each exit 1
+  before pytest starts; with `QMS_TEMP_ROOT=D:\QMS-OS-TEMP`, `scripts\run-tests.bat` gave `155 passed, 1 skipped`
+  (exit 0), wrote 59 temp and 881 pycache files under `D:\QMS-OS-TEMP` and none in the repo's `.tmp`/`.cache`, and
+  `pip cache dir` reported `D:\QMS-OS-TEMP\cache\pip`; unset, it gave `155 passed, 1 skipped` (exit 0) with temp
+  files in the repo's `.tmp` and none under `D:\QMS-OS-TEMP`; `scripts\run-pg-tests.bat` gave `17 passed, 155
+  deselected` (exit 0); no pip, pycache or pytest file was written under `C:\Users` (other applications' own files
+  in the Windows temp folder were not from these runs). Uncommitted at the time of writing. Synthetic mode.
+- Next: (2) a CLI command to grant or remove `account_admin` (see *Proposed order of the next slices*).
 
 ## End-of-session update template
 
