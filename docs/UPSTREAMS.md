@@ -86,3 +86,18 @@ the licence text is shipped beside it as `common-passwords.LICENSE.txt`. Checked
 - `scripts\run-pg-tests.bat` (marker `postgres`): `17 passed, 155 deselected, 1 warning`.
 - `scripts\run-pg-tests.bat full` (whole suite on PostgreSQL): `172 passed, 1 warning`.
 - `scripts\run-pg-tests.bat alembic check`: `No new upgrade operations detected.` (head `0b13751a07cc`).
+
+## CI tools and images (`.github/workflows/ci.yml`; added 2026-10-06, not yet verified in CI)
+
+| Component | Version / pin | Licence | Used for |
+|---|---|---|---|
+| gitleaks | 8.30.1, Linux x64 release archive verified by SHA-256 `551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb` (from the release's checksums file; tag `v8.30.1` = commit `83d9cd684c87d95d656c1458ef04895a7f1cbd8e`) | MIT | Job `secret-scan`: default rules plus `.gitleaks.toml` |
+| postgres (Docker Official Image) | `postgres:17.11@sha256:d74eeac9a635390a49bc21bd49fccd973de707e2a53a76ac49b552b8712ec46f` (PostgreSQL 17.11, Debian `17.11-1.pgdg13+2`; the image used locally) | PostgreSQL Licence | Job `postgres`: throw-away service container |
+| actions/checkout, actions/setup-python | pinned by commit SHA (`v7.0.1`, `v7.0.0`), unchanged from job `test` | MIT | All jobs |
+
+- gitleaks runs on the CI runner against the checked-out repository only; it downloads nothing at scan time and
+  `--redact` keeps any matched value out of the log. No token or secret is passed to it.
+- Checked locally on 2026-10-06 with the Windows build of the same version (checksum-verified): the whole history
+  (17 commits) gives no findings with the default rules and with `.gitleaks.toml`; a fake AWS-style key is detected
+  in an ordinary file and ignored only at the vendored list's path. The workflow file passed `actionlint` 1.7.12
+  (MIT; local check only, not part of CI).

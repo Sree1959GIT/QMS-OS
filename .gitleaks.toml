@@ -1,0 +1,16 @@
+# gitleaks configuration (CI job "secret-scan"). The default rules all stay on; this only adds a minimal allowlist.
+# Add an entry only after a real finding has been triaged as non-secret, with a comment saying why.
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Vendored public password list"
+# apps/api/qms_os/auth/data/common-passwords.txt is SecLists' 10k-most-common list (MIT, pinned commit; see
+# docs/UPSTREAMS.md). Every line is a publicly known weak password kept only so the password policy can reject it;
+# none is a credential of this project. Some entries look like keys or tokens to pattern rules.
+paths = ['''^apps/api/qms_os/auth/data/common-passwords\.txt$''']
+
+# No allowlist entries for test values: a scan of the whole history on 2026-10-06 with the default rules found no
+# leaks, so none is needed. Test values are synthetic and short (for example "s3cret-value" in
+# tests/test_database_config.py), which the default rules do not match.
