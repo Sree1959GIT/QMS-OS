@@ -9,6 +9,10 @@ dependencies = [
     "sqlalchemy>=2.0.36",
     "pydantic>=2.9",
     "pydantic-settings>=2.5",
+    # authentication (R-3)
+    "argon2-cffi>=25.1",
+    "pyotp>=2.9",
+    "cryptography>=44",
 ]
 
 [project.optional-dependencies]
@@ -22,6 +26,9 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["qms_os*"]
+
+[tool.setuptools.package-data]
+"qms_os.auth" = ["data/*.txt"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

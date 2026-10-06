@@ -31,6 +31,8 @@ class User(Base):
     role: Mapped[str] = mapped_column(String(16))             # rules.findings.Role
     department_id: Mapped[int | None] = mapped_column(ForeignKey("departments.id"))
     trained_auditor: Mapped[bool] = mapped_column(Boolean, default=False)
+    # account administration, deliberately separate from the QMS role: "account_admin" grants no QMS approval right
+    platform_role: Mapped[str] = mapped_column(String(16), default="none", server_default="none")
     department: Mapped[Department | None] = relationship(foreign_keys=[department_id])
 
 
@@ -283,3 +285,85 @@ class AuditEvent(Base):
     entity: Mapped[str] = mapped_column(String(32))
     entity_id: Mapped[int | None] = mapped_column(Integer)
     detail: Mapped[dict] = mapped_column(JSON, default=dict)
+    # who acted (human | agent | telegram | system) and through which channel (web | cli | telegram | test);
+    # NULL on events recorded before R-3
+    actor_kind: Mapped[str | None] = mapped_column(String(16))
+    channel: Mapped[str | None] = mapped_column(String(16))
+
+
+# ---------- authentication (docs/adr/0003-auth-dev-identity.md, R-3) ----------
+# Rows are never deleted (D-14): sessions are revoked, recovery codes and one-time links are marked used.
+
+class UserCredential(Base):
+    """Secrets of a human account, kept out of the users table so they never reach a user row in the API."""
+    __tablename__ = "user_credentials"
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    status: Mapped[str] = mapped_column(String(16), default="invited")      # invited | active | disabled
+    password_hash: Mapped[str | None] = mapped_column(Text)                  # Argon2id, encoded
+    password_changed_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    totp_secret_enc: Mapped[str | None] = mapped_column(Text)                # AES-GCM, key file outside Git
+    totp_enrolled_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    totp_last_step: Mapped[int | None] = mapped_column(Integer)              # single use: last accepted step
+    totp_pending_enc: Mapped[str | None] = mapped_column(Text)               # new secret until its first code is confirmed
+    must_reenroll_totp: Mapped[bool] = mapped_column(Boolean, default=False)
+    failed_attempts: Mapped[int] = mapped_column(Integer, default=0)
+    locked_until: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=now)
+
+
+class AuthIdentity(Base):
+    """How a person signs in. A local account has provider and subject NULL; an OIDC identity later records
+    (issuer, subject). Accounts are never linked by e-mail address."""
+    __tablename__ = "auth_identities"
+    __table_args__ = (UniqueConstraint("provider", "subject"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    kind: Mapped[str] = mapped_column(String(16))                            # local | oidc
+    provider: Mapped[str | None] = mapped_column(String(200))
+    subject: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=now)
+
+
+class AuthSession(Base):
+    __tablename__ = "auth_sessions"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)         # SHA-256 of the cookie token
+    csrf_hash: Mapped[str] = mapped_column(String(64))
+    method: Mapped[str] = mapped_column(String(24))                          # password_totp | recovery_code
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=now)
+    last_seen_at: Mapped[datetime] = mapped_column(UTCDateTime, default=now)
+    idle_expires_at: Mapped[datetime] = mapped_column(UTCDateTime)
+    absolute_expires_at: Mapped[datetime] = mapped_column(UTCDateTime)
+    mfa_at: Mapped[datetime | None] = mapped_column(UTCDateTime)             # last TOTP; never set by a recovery code
+    revoked_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    revoked_reason: Mapped[str] = mapped_column(String(32), default="")
+
+
+class RecoveryCode(Base):
+    """120-bit single-use codes, stored as SHA-256 (approved alternative to Argon2id: at least 112 bits)."""
+    __tablename__ = "recovery_codes"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    code_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=now)
+    used_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    superseded_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+
+
+class AccountAction(Base):
+    """An invitation or a credential reset, with its one-time link. A reset is initiated by one account admin and
+    approved by a different one; the person then sets their own password and enrols TOTP through the link."""
+    __tablename__ = "account_actions"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    kind: Mapped[str] = mapped_column(String(16))                            # invite | reset
+    target_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    status: Mapped[str] = mapped_column(String(16))                          # pending_approval | link_issued | completed | superseded
+    initiated_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    initiated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=now)
+    identity_proof: Mapped[str] = mapped_column(Text, default="")            # in-person identity check, as recorded
+    approved_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    approved_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    link_hash: Mapped[str | None] = mapped_column(String(64), unique=True)
+    link_expires_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    completed_at: Mapped[datetime | None] = mapped_column(UTCDateTime)

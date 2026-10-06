@@ -17,6 +17,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+from qms_os.auth.keys import KEY_ENV
 from qms_os.demo_policy import DEMO_POLICY
 
 BACKEND = Path(__file__).resolve().parents[1]
@@ -30,11 +31,12 @@ def _free_port() -> int:
         return s.getsockname()[1]
 
 
-def _child_env(db_url: str) -> dict[str, str]:
+def _child_env(db_url: str, key_file: Path) -> dict[str, str]:
     env = dict(os.environ)
-    for key in ("QMS_POLICY_FILE", "QMS_MODE", "QMS_DATABASE_URL"):
+    for key in ("QMS_POLICY_FILE", "QMS_MODE", "QMS_DATABASE_URL", KEY_ENV):
         env.pop(key, None)
-    env.update({"QMS_MODE": "demo", "QMS_DATABASE_URL": db_url, "PYTHONDONTWRITEBYTECODE": "1"})
+    env.update({"QMS_MODE": "demo", "QMS_DATABASE_URL": db_url, KEY_ENV: str(key_file),
+                "PYTHONDONTWRITEBYTECODE": "1"})
     return env
 
 
@@ -52,7 +54,8 @@ def _read(path: Path) -> str:
 
 def test_server_process_starts_in_demo_mode_and_reports_health(tmp_path):
     db_url = f"sqlite:///{(tmp_path / 'smoke.db').as_posix()}"
-    env = _child_env(db_url)
+    from conftest import write_test_key
+    env = _child_env(db_url, write_test_key(tmp_path / "auth.key"))   # demo mode needs an authentication key
 
     seed = subprocess.run([sys.executable, "-m", "qms_os.seed"], cwd=BACKEND, env=env,
                           capture_output=True, text=True, timeout=SEED_TIMEOUT_S)

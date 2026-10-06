@@ -29,3 +29,7 @@ Thumbs.db
 backups/
 .venv/
 .cache/
+
+# Key material (authentication key files, certificates) - never commit; keep outside the repository
+*.key
+*.pem

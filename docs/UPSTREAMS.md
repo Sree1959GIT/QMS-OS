@@ -49,3 +49,40 @@ this extra.
 - `scripts\run-pg-tests.bat full` (whole suite on PostgreSQL): `124 passed, 1 warning`.
 - `scripts\run-pg-tests.bat alembic check`: `No new upgrade operations detected.`
 - `scripts\run-tests.bat` (SQLite, as in CI): `112 passed, 1 skipped, 1 warning`.
+
+## Authentication (`apps/api`, core dependencies; R-3)
+
+Checked 2026-10-06 on Windows 11, Python 3.12.7. Installed from PyPI wheels; exact versions are pinned in
+`apps/api/constraints-ci.txt`. These are core dependencies, so CI installs them; the first CI run with them is pending.
+
+| Package | Version | Licence (package metadata) | Compiled code | Used for |
+|---|---|---|---|---|
+| argon2-cffi | 25.1.0 | MIT | no | Argon2id password hashing (`PasswordHasher`, library defaults) |
+| argon2-cffi-bindings | 26.1.0 | MIT | yes (bundles the Argon2 reference C library, CC0-1.0 OR Apache-2.0) | argon2-cffi's native core |
+| cffi | 2.1.1 | MIT-0 | yes | Needed by argon2-cffi-bindings and cryptography |
+| pycparser | 3.0 | BSD-3-Clause | no | Needed by cffi |
+| pyotp | 2.10.0 | MIT | no | TOTP codes and set-up links (RFC 6238; checked against the RFC test vectors) |
+| cryptography | 50.0.2 | Apache-2.0 OR BSD-3-Clause | yes (bundles OpenSSL 3) | AES-GCM encryption of TOTP secrets |
+
+**Vendored data: common-password list.** `apps/api/qms_os/auth/data/common-passwords.txt` is SecLists
+`Passwords/Common-Credentials/10k-most-common.txt` (10,000 entries), unmodified below a source header, from
+https://github.com/danielmiessler/SecLists at commit `913b327317496d062bcc7cace524aaad8a693be2`, file SHA-256
+`68782d6a4a19a4768d5f15dd66bd534e7a33055cc755411e33f16d18c50fdcce`. MIT License, Copyright (c) 2018 Daniel Miessler;
+the licence text is shipped beside it as `common-passwords.LICENSE.txt`. Checked 2026-10-06.
+
+**Privacy and security behaviour**
+- None of these packages makes network calls. Password checks, including the common-password list, run locally; no
+  breached-password service is queried.
+- pyotp produces `otpauth://` set-up links containing the secret; QMS OS returns them once to the person enrolling and
+  stores the secret only AES-GCM-encrypted.
+- The AES-GCM key is a local file named by `QMS_AUTH_KEY_FILE`, outside Git. Back it up separately from database
+  backups; without it every person must re-enrol TOTP.
+- argon2-cffi-bindings, cffi and cryptography ship unsigned compiled modules on Windows. Smart App Control can block
+  such modules (it blocked a SQLAlchemy module on 2026-10-06 while it was on).
+- cryptography's bundled OpenSSL receives security fixes only through new cryptography releases.
+
+**Tests passing (2026-10-06, local only)**
+- `scripts\run-tests.bat` (SQLite, as in CI): `155 passed, 1 skipped, 1 warning`.
+- `scripts\run-pg-tests.bat` (marker `postgres`): `17 passed, 155 deselected, 1 warning`.
+- `scripts\run-pg-tests.bat full` (whole suite on PostgreSQL): `172 passed, 1 warning`.
+- `scripts\run-pg-tests.bat alembic check`: `No new upgrade operations detected.` (head `0b13751a07cc`).

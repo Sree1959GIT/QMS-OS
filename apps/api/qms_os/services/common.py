@@ -12,6 +12,9 @@ from ..rules.findings import Role, Status
 class ServiceError(Exception):
     status_code = 400
 
+    def body(self) -> dict:
+        return {"detail": str(self)}
+
 
 class Forbidden(ServiceError):
     status_code = 403
@@ -23,6 +26,29 @@ class NotFound(ServiceError):
 
 class RuleViolation(ServiceError):
     status_code = 422
+
+
+class AuthFailure(ServiceError):
+    """401 (docs/DECISIONS.md R-7). The reason never reveals whether an account exists, which factor was wrong, or
+    whether the account is locked or disabled: all of those are ``invalid_credentials``. The API commits what the
+    failure recorded (attempt counters, lockout, audit event) before responding."""
+    status_code = 401
+    MESSAGES = {
+        "not_authenticated": "authentication required",
+        "session_expired": "the session has expired; sign in again",
+        "step_up_required": "confirm with a current authenticator code to continue",
+        "totp_reenrollment_required": "set up a new authenticator before continuing",
+        "invalid_credentials": "the sign-in details were not accepted",
+        "invalid_link": "the link is not valid or has expired",
+    }
+
+    def __init__(self, reason: str):
+        assert reason in self.MESSAGES, reason
+        super().__init__(self.MESSAGES[reason])
+        self.reason = reason
+
+    def body(self) -> dict:
+        return {"detail": str(self), "reason": self.reason}
 
 
 class Held(ServiceError):
@@ -44,8 +70,11 @@ class Held(ServiceError):
 
 
 def log(s: Session, actor: User | None, action: str, entity: str, entity_id: int | None, **detail) -> None:
+    """Actor kind and channel come from the authenticated principal of the request (``Session.info``)."""
     s.add(AuditEvent(actor_id=actor.id if actor else None, action=action, entity=entity,
-                     entity_id=entity_id, detail={k: _jsonable(v) for k, v in detail.items()}))
+                     entity_id=entity_id, detail={k: _jsonable(v) for k, v in detail.items()},
+                     actor_kind=s.info.get("actor_kind", "human" if actor else "system"),
+                     channel=s.info.get("channel")))
 
 
 def _jsonable(v):
