@@ -24,6 +24,11 @@ Sign-in (R-3; `docs/adr/0003-auth-dev-identity.md`)
 
 Keeping files in the project folder
 - `scripts\env.bat` redirects TEMP, TMP, the pip cache and `__pycache__` into `.tmp\` and `.cache\` inside the repo.
+  To keep them outside the repo instead, set `QMS_TEMP_ROOT` to an absolute folder on a drive other than C: (for
+  example `set QMS_TEMP_ROOT=D:\QMS-OS-TEMP`): TEMP/TMP and pytest's temporary folders then go to `<root>\tmp`, and
+  the pip cache and pycache to `<root>\cache`; the folders are created if missing. A C: or relative path, or a folder
+  that cannot be created, stops the script with an error, and every script that calls `env.bat` stops too — there is
+  never a fallback to the user profile.
 - Docker Desktop keeps its disk image, including the Postgres volume, in the user profile by default. Move it under Settings > Resources > Advanced > Disk image location.
 - Not redirected: the Python installer, the `py` launcher, and Docker Desktop's own app data.
 - Do not place the repo in OneDrive or another synced folder.

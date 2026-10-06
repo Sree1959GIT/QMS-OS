@@ -6,7 +6,7 @@ rem   run-pg-tests.bat full           the whole suite on the PostgreSQL test dat
 rem   run-pg-tests.bat alembic ARGS   Alembic against the test database, e.g. alembic revision --autogenerate -m "baseline"
 rem --tb=short: pytest's long tracebacks print function arguments, which could include the URL.
 setlocal DisableDelayedExpansion
-call "%~dp0env.bat"
+call "%~dp0env.bat" || exit /b 1
 set "URLFILE=%QMSOS_HOME%\.private\pg-test-url.txt"
 if not exist "%URLFILE%" (echo Missing .private\pg-test-url.txt & exit /b 1)
 set "QMS_TEST_POSTGRES_URL="
