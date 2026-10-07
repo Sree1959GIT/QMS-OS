@@ -12,7 +12,7 @@
 
 ## Current baseline
 
-A synthetic-data backend prototype on `main` at `eb3c583`: `179 passed, 1 skipped` on SQLite and `200 passed` on
+A synthetic-data backend prototype on `main` at `31966a2`: `179 passed, 1 skipped` on SQLite and `200 passed` on
 PostgreSQL (local runs, 2026-10-07); CI on GitHub Actions (jobs `test`, `postgres`, `secret-scan`) and a protected
 `main` branch. See *Verified state* and *Not verified* in `docs/HANDOFF.md`.
 
@@ -46,7 +46,9 @@ no unverified feature claim.
 6. Upstream, licence and version matrix.
 7. Model-provider contract with a simulated provider.
 8. Local-model benchmark plan.
-9. CI hardening: lint and format, type checks, secret scan, Python 3.11, PostgreSQL integration job. Secret scan (gitleaks) and PostgreSQL job: done, merged as `0f66d47` (pull request #15), both passed in CI on the pull request (run 37565023452) and on `main` (run 37566508358); not yet required status checks (only `test` is). Lint and format, type checks and Python 3.11 not started.
+9. CI hardening: lint and format, type checks, secret scan, Python 3.11, PostgreSQL integration job. Secret scan (gitleaks) and PostgreSQL job: done, merged as `0f66d47` (pull request #15), both passed in CI on the pull request (run 37565023452) and on `main` (run 37566508358); not yet required status checks (only `test` is). Lint (ruff), type checks (mypy on `qms_os` with a per-module
+   baseline) and a Python 3.11 test job (`test-py311`): in progress on branch `ci/lint-types`, not yet run in CI. No
+   formatter is enforced (Admin decision, 2026-10-07).
 
 ### Remaining before the MVP-0 exit (as of `eb3c583`, 2026-10-07)
 
@@ -58,7 +60,7 @@ Six slices remain. Statuses: in progress = some work is on `main`; not started =
 | 2 | Upstream, licence and version matrix (item 6) | In progress (`docs/UPSTREAMS.md`, partial) | — |
 | 3 | Model-provider contract with a simulated provider (item 7) | Not started | — |
 | 4 | Local-model benchmark plan (item 8) | Not started | 3 and 2 — **inferred, not stated in the specification**: the plan measures models through the provider contract, and the local models need licence entries for code and weights |
-| 5 | CI hardening, the rest (item 9): lint and format, type checks, Python 3.11; whether `postgres` and `secret-scan` become required checks | In progress (secret scan and PostgreSQL job done) | — |
+| 5 | CI hardening, the rest (item 9): lint and format, type checks, Python 3.11; whether `postgres` and `secret-scan` become required checks | In progress (secret scan and PostgreSQL job done; lint, types and Python 3.11 on branch `ci/lint-types`) | — |
 | 6 | "No unverified feature claim" review of the documentation (the exit criterion) | Not started | 1–5 |
 
 Not MVP-0 exit items, but recorded blockers for later steps: before any shared deployment, operator identity (OS user name and host, or `--reason`) in operator audit events and refusing to disable the last active account admin (not started); before any real person is onboarded, at least two account admins (an operational condition); payload-bound approval (later slice, not started).

@@ -19,7 +19,7 @@ import argparse
 import getpass
 import os
 import sys
-from typing import Callable
+from collections.abc import Callable
 
 from ..db import make_engine, make_sessionmaker, prepare_schema
 from ..services.common import AuthFailure, RuleViolation

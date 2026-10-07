@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import date
-from typing import Iterator
 
 from fastapi import Depends, Request
 from sqlalchemy.orm import Session

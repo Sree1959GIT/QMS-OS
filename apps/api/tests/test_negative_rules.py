@@ -9,7 +9,7 @@ from datetime import date, timedelta
 import pytest
 from sqlalchemy import select
 
-from qms_os.models import Audit, AuditCycle, AuditEvent, AuditProgram, Department, User
+from qms_os.models import Audit, AuditEvent, AuditProgram, Department, User
 
 
 def _draft(api, year=2026):
@@ -170,7 +170,8 @@ def test_10_verification_only_by_assigned_auditor(api, clock):
     auditee.post(f"/api/findings/{nc['id']}/closure", {"evidence_ref": "DMS://x"})
     verify = {"effective": True, "note": "ok"}
     assert auditee.post(f"/api/findings/{nc['id']}/verify", verify).status_code == 403
-    outsider = next(uid for k, uid in api.users.items() if k in ("eng_auditor", "qa_auditor") and uid != a["auditor_id"])
+    outsider = next(uid for k, uid in api.users.items()
+                    if k in ("eng_auditor", "qa_auditor") and uid != a["auditor_id"])
     assert api.as_(outsider).post(f"/api/findings/{nc['id']}/verify", verify).status_code in (403, 404)
     assert api.as_("ma").post(f"/api/findings/{nc['id']}/verify", verify).status_code == 403
 
@@ -209,7 +210,8 @@ def test_13_every_hold_writes_a_durable_transition_held_event(api, clock, fresh)
     assert _held_events(fresh) == []
     prog = _draft(api)
     a = _audits(prog)[0]
-    _held(api.as_("ma").post(f"/api/audits/{a['id']}/assign", {"auditor_id": api.users["untrained_auditor"]}), "auditor_training")
+    _held(api.as_("ma").post(f"/api/audits/{a['id']}/assign", {"auditor_id": api.users["untrained_auditor"]}),
+          "auditor_training")
     with fresh() as s:
         s.get(Audit, a["id"]).auditor_id = None
         s.commit()

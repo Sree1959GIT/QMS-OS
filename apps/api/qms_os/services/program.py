@@ -6,7 +6,7 @@ effective organisation policy in operational mode, or the synthetic example in d
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -17,8 +17,18 @@ from ..rules import assignment as A
 from ..rules import calendar as C
 from ..rules.findings import Role
 from . import policy_gate as G
-from .common import (Forbidden, Held, RuleViolation, dept_head, draft_notification, get_or_404, holidays, log,
-                     ma_emails, require)
+from .common import (
+    Forbidden,
+    Held,
+    RuleViolation,
+    dept_head,
+    draft_notification,
+    get_or_404,
+    holidays,
+    log,
+    ma_emails,
+    require,
+)
 
 SYNTHETIC_LABEL = "SYNTHETIC — not an organisational programme"
 
@@ -47,7 +57,8 @@ def create_program(s: Session, actor: User, year: int, ctx: PolicyContext, today
     existing = s.scalar(select(AuditProgram).where(AuditProgram.year == year))
     if existing is not None:
         if existing.status != "DRAFT":
-            raise RuleViolation(f"the {year} programme is already {existing.status}; reschedule individual audits instead")
+            raise RuleViolation(
+                f"the {year} programme is already {existing.status}; reschedule individual audits instead")
         s.delete(existing)
         s.flush()
     depts = list(s.scalars(select(Department).order_by(Department.id)))
@@ -177,7 +188,7 @@ def approve_program(s: Session, actor: User, program_id: int, ctx: PolicyContext
         raise RuleViolation("programme has violations: " + "; ".join(v["message"] for v in bad))
     program.status = "APPROVED"
     program.approved_by_id = actor.id
-    program.approved_at = datetime.now(timezone.utc)
+    program.approved_at = datetime.now(UTC)
     program.policy_submission_id = basis.submission_id
     lines = []
     for c in program.cycles:
@@ -265,7 +276,7 @@ def decide_notification(s: Session, actor: User, notification_id: int, approve: 
         raise RuleViolation("notification already decided")
     n.status = "APPROVED" if approve else "DISCARDED"
     n.decided_by_id = actor.id
-    n.decided_at = datetime.now(timezone.utc)
+    n.decided_at = datetime.now(UTC)
     log(s, actor, f"notification.{n.status.lower()}", "notification", n.id, kind=n.kind)
     return n
 

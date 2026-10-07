@@ -1,14 +1,14 @@
 """Timestamps are unambiguous UTC end to end: storage rejects naive values, reads are aware UTC, and every
 timestamp the API serialises carries an explicit +00:00 offset (SQLite itself stores no offset)."""
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
+from sqlalchemy import DateTime
 from sqlalchemy.exc import StatementError
 
 from qms_os.db import Base
 from qms_os.knowledge.store import KnowledgeBase
 from qms_os.models import AuditEvent
-from sqlalchemy import DateTime
 
 
 def _utc(value: str) -> datetime:
@@ -32,7 +32,8 @@ def test_every_timestamp_column_uses_the_utc_type():
 
 def test_naive_datetime_is_rejected_at_write(fresh):
     with fresh() as s:
-        s.add(AuditEvent(action="t", entity="x", at=datetime(2026, 1, 1, 12, 0)))
+        # noqa reason: a naive datetime on purpose - this test proves the write is rejected
+        s.add(AuditEvent(action="t", entity="x", at=datetime(2026, 1, 1, 12, 0)))  # noqa: DTZ001
         with pytest.raises(StatementError, match="naive datetime rejected"):
             s.flush()
 
@@ -46,7 +47,7 @@ def test_non_utc_value_is_stored_and_read_back_as_utc(fresh):
         eid = e.id
     with fresh() as s:
         at = s.get(AuditEvent, eid).at
-        assert at == datetime(2026, 1, 1, 0, 0, tzinfo=timezone.utc) and at.utcoffset() == timedelta(0)
+        assert at == datetime(2026, 1, 1, 0, 0, tzinfo=UTC) and at.utcoffset() == timedelta(0)
 
 
 def test_api_timestamps_are_timezone_aware_utc(api):
@@ -65,7 +66,7 @@ def test_api_timestamps_are_timezone_aware_utc(api):
     re = api.as_("pur_head").post(f"/api/risks/{r['id']}/reassess",
                                {"severity": 2, "occurrence": 2, "detection": 3}).json()
     signed = _utc(re["last_approved"]["signed_off_at"])
-    assert abs(datetime.now(timezone.utc) - signed) < timedelta(minutes=5)
+    assert abs(datetime.now(UTC) - signed) < timedelta(minutes=5)
     assert all(_utc(x["at"]) for x in api.as_("md").get(f"/api/risks/{r['id']}/records").json())
     # knowledge module (separate metadata, same contract)
     src = api.as_("ma").post("/api/knowledge/sources", {"name": "S"}).json()

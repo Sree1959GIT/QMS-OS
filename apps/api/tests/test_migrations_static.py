@@ -22,7 +22,8 @@ def _migrations():
 
 def _assigned(tree, name):
     for node in tree.body:
-        targets = node.targets if isinstance(node, ast.Assign) else [node.target] if isinstance(node, ast.AnnAssign) else []
+        targets = (node.targets if isinstance(node, ast.Assign)
+                   else [node.target] if isinstance(node, ast.AnnAssign) else [])
         if any(isinstance(t, ast.Name) and t.id == name for t in targets):
             return ast.literal_eval(node.value)
     raise AssertionError(f"{name} not assigned")

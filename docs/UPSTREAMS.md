@@ -104,3 +104,25 @@ on `main` at `0f66d47` (run 37566508358), read from the public GitHub API (job l
   (17 commits) gives no findings with the default rules and with `.gitleaks.toml`; a fake AWS-style key is detected
   in an ordinary file and ignored only at the vendored list's path. The workflow file passed `actionlint` 1.7.12
   (MIT; local check only, not part of CI).
+
+## Lint and type-check tools (`apps/api`, optional extra `lint`; added 2026-10-07)
+
+Checked 2026-10-07 on Windows 11, Python 3.12.7, from PyPI wheels; exact versions are pinned in
+`apps/api/constraints-ci.txt`. Development tools only: not imported by `qms_os` and not installed by the test jobs.
+Used by `scripts\run-lint.bat` and the CI jobs `lint` (ruff only) and `types` (mypy). Not yet run in CI.
+
+| Package | Version | Licence (package metadata) | Compiled code | Used for |
+|---|---|---|---|---|
+| ruff | 0.16.10 | MIT | yes (one Rust executable) | Lint (`ruff check`; rules listed in `pyproject.toml`) |
+| mypy | 2.4.0 | MIT | yes (mypyc-compiled modules) | Type checks on `qms_os` |
+| mypy-extensions | 1.1.0 | MIT | no | Needed by mypy |
+| pathspec | 1.1.1 | MPL-2.0 | no | Needed by mypy (file matching) |
+| librt | 0.16.0 | MIT | yes | Needed by mypy (runtime of its compiled modules) |
+| ast-serialize | 0.12.1 | MIT | yes | Needed by mypy |
+
+- None of these tools makes network calls; they read the source files and write caches only (`scripts\run-lint.bat`
+  puts them under the `env.bat` cache folder; CI under the runner's temp folder).
+- pathspec's MPL-2.0 is file-level copyleft: it applies to pathspec's own files, which are used unmodified and are
+  not distributed with QMS OS.
+- ruff, mypy, librt and ast-serialize ship unsigned compiled code on Windows; Smart App Control can block it if it is
+  turned on again (see *Authentication* above).

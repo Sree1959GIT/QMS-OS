@@ -4,7 +4,7 @@ Development references: VREF-04, VREF-06, VREF-08, VREF-09, VREF-18 (candidate g
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -14,8 +14,20 @@ from ..policy import PolicyContext
 from ..rules import findings as F
 from ..rules.findings import Action, Category, Role, Status
 from . import policy_gate as G
-from .common import (Forbidden, Held, RuleViolation, dept_head, draft_notification, get_or_404, is_auditee_of, log,
-                     ma_emails, require, require_assigned_auditor, require_auditee)
+from .common import (
+    Forbidden,
+    Held,
+    RuleViolation,
+    dept_head,
+    draft_notification,
+    get_or_404,
+    is_auditee_of,
+    log,
+    ma_emails,
+    require,
+    require_assigned_auditor,
+    require_auditee,
+)
 
 
 def _transition(s: Session, actor: User, f: Finding, action: Action, role: Role, **detail) -> None:
@@ -108,7 +120,8 @@ def issue_report(s: Session, actor: User, audit_id: int, today: date, ctx: Polic
         f"(Major NC {counts[Category.MAJOR_NC]}, Minor NC {counts[Category.MINOR_NC]}, AFI {counts[Category.AFI]}, "
         f"Compliance {counts[Category.COMPLIANCE]}).\n\n" + ("\n".join(lines) or "No findings.") +
         f"\n\nAction plans are due by {audit.action_plan_due.isoformat()}; closure no later than "
-        f"{F.closure_limit(today, policy).isoformat()}.\n\n(Draft prepared by QMS OS for MA review.)", "audit", audit.id)
+        f"{F.closure_limit(today, policy).isoformat()}.\n\n(Draft prepared by QMS OS for MA review.)",
+        "audit", audit.id)
     log(s, actor, "audit.report_issued", "audit", audit.id, findings=len(fs))
     return audit
 
@@ -132,7 +145,7 @@ def submit_action_plan(s: Session, actor: User, finding_id: int, ctx: PolicyCont
     ca.containment, ca.root_cause, ca.correction = containment, root_cause, correction
     ca.corrective_action, ca.owner_name, ca.planned_closure = corrective_action, owner_name, planned_closure
     ca.related_risks, ca.submitted_by_id = related_risks, actor.id
-    ca.submitted_at, ca.accepted_by_id, ca.accepted_at = datetime.now(timezone.utc), None, None
+    ca.submitted_at, ca.accepted_by_id, ca.accepted_at = datetime.now(UTC), None, None
     s.add(ca)
     s.flush()
     log(s, actor, "finding.action_plan_submitted", "finding", f.id, planned_closure=planned_closure)
@@ -151,7 +164,7 @@ def accept_action_plan(s: Session, actor: User, finding_id: int, ctx: PolicyCont
     except ValueError as e:
         raise RuleViolation(str(e)) from e
     _transition(s, actor, f, Action.ACCEPT_ACTION_PLAN, Role.MA)
-    f.action.accepted_by_id, f.action.accepted_at = actor.id, datetime.now(timezone.utc)
+    f.action.accepted_by_id, f.action.accepted_at = actor.id, datetime.now(UTC)
     return f
 
 
@@ -174,7 +187,7 @@ def verify(s: Session, actor: User, finding_id: int, effective: bool, note: str,
         raise RuleViolation("a verification note is required")
     _transition(s, actor, f, Action.VERIFY if effective else Action.REJECT_VERIFICATION, Role.AUDITOR,
                 note=note)
-    f.action.verified_by_id, f.action.verified_at = actor.id, datetime.now(timezone.utc)
+    f.action.verified_by_id, f.action.verified_at = actor.id, datetime.now(UTC)
     f.action.verification_note = note
     if effective:
         f.closed_on = today

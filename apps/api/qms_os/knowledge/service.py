@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import StrEnum
 
 from sqlalchemy import or_, select
@@ -60,7 +60,7 @@ class KnowledgeService:
             raise KnowledgeError("approver must differ from the person who captured the item")
         item.status = ApprovalStatus.APPROVED
         item.approved_by = approver
-        item.approved_at = datetime.now(timezone.utc)
+        item.approved_at = datetime.now(UTC)
         if item.supersedes_id:
             prev = self.s.get(KnowledgeItem, item.supersedes_id)
             if prev is not None and prev.status == ApprovalStatus.APPROVED:
@@ -73,7 +73,7 @@ class KnowledgeService:
             raise KnowledgeError("only candidate items can be rejected")
         item.status = ApprovalStatus.REJECTED
         item.approved_by = approver
-        item.approved_at = datetime.now(timezone.utc)
+        item.approved_at = datetime.now(UTC)
         return item
 
     def search(self, text: str = "", include_unapproved: bool = False) -> list[KnowledgeItem]:

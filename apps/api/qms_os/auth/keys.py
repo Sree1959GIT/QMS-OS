@@ -28,7 +28,8 @@ class SecretBox:
 
     def seal(self, user_id: int, secret: str) -> str:
         nonce = os.urandom(12)
-        return _PREFIX + base64.b64encode(nonce + self._aead.encrypt(nonce, secret.encode(), self._aad(user_id))).decode()
+        return _PREFIX + base64.b64encode(
+            nonce + self._aead.encrypt(nonce, secret.encode(), self._aad(user_id))).decode()
 
     def open(self, user_id: int, sealed: str) -> str:
         if not sealed.startswith(_PREFIX):

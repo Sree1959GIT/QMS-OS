@@ -8,9 +8,9 @@ import ast
 from pathlib import Path
 
 import pytest
+import test_auth as TA
 from sqlalchemy import select
 
-import test_auth as TA
 from qms_os.auth import cli
 from qms_os.auth import service as AS
 from qms_os.models import AuditEvent, User

@@ -15,8 +15,15 @@ from ..services import policy_gate as G
 from ..services import program as PS
 from ..services import reports as RP
 from ..services import risks as RS
-from ..services.common import Forbidden, NotFound, can_see_audit, can_see_finding, can_see_workpapers, get_or_404, \
-    require
+from ..services.common import (
+    Forbidden,
+    NotFound,
+    can_see_audit,
+    can_see_finding,
+    can_see_workpapers,
+    get_or_404,
+    require,
+)
 from .deps import current_user, get_session, policy, public, step_up_user, today
 
 router = APIRouter(prefix="/api")
@@ -247,7 +254,8 @@ class ConcurrenceIn(BaseModel):
 def concurrence(finding_id: int, body: ConcurrenceIn, s: Session = Depends(get_session),
                 u: User = Depends(current_user), t: date = Depends(today), p: PolicyContext = Depends(policy)):
     _visible(s, u, finding_id)
-    return RP.finding_row(FS.record_concurrence(s, u, finding_id, body.concurred, body.note), t, RP.display_policy(s, p, t))
+    return RP.finding_row(FS.record_concurrence(s, u, finding_id, body.concurred, body.note), t,
+                          RP.display_policy(s, p, t))
 
 
 class ActionPlanIn(BaseModel):
@@ -284,7 +292,8 @@ class ClosureIn(BaseModel):
 def closure(finding_id: int, body: ClosureIn, s: Session = Depends(get_session), u: User = Depends(current_user),
             t: date = Depends(today), p: PolicyContext = Depends(policy)):
     _visible(s, u, finding_id)
-    return RP.finding_row(FS.submit_closure(s, u, finding_id, body.evidence_ref, body.note), t, RP.display_policy(s, p, t))
+    return RP.finding_row(FS.submit_closure(s, u, finding_id, body.evidence_ref, body.note), t,
+                          RP.display_policy(s, p, t))
 
 
 class VerifyIn(BaseModel):

@@ -1,5 +1,6 @@
 """Calendar rules. Expectations are derived from the (synthetic example) policy, never hard-coded."""
 from datetime import date, timedelta
+from itertools import pairwise
 
 import pytest
 
@@ -49,7 +50,7 @@ def test_plan_cycles_default_blocks_cover_all_departments():
         assert len(c.days) == P.v("audit_block_days") and all(C.is_working_day(d, HOL) for d in c.days)
         assert set(c.schedule.values()) <= set(c.days)
         assert start <= c.days[0] and c.days[-1] <= end
-    for earlier, later in zip(cycles, cycles[1:]):
+    for earlier, later in pairwise(cycles):
         assert later.days[0] > earlier.days[-1]
 
 

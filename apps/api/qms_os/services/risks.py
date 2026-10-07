@@ -23,7 +23,7 @@ reassessment". Closure authority is unresolved (D-15): closing is held.
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
@@ -221,7 +221,7 @@ def tm_signoff(s: Session, actor: User, risk_id: int, ctx: PolicyContext, today:
         risk.status, risk.signed_off_by_id = "ACTIVE", actor.id
         risk.effective_classification = risk.proposed_classification
         risk.review_due = R.next_review(today, ctx.policy)
-        risk.last_approved_version, risk.last_approved_at = risk.assessment_version, datetime.now(timezone.utc)
+        risk.last_approved_version, risk.last_approved_at = risk.assessment_version, datetime.now(UTC)
         risk.last_approved_by_id, risk.last_approved_policy_fingerprint = actor.id, risk.policy_fingerprint
         risk.last_approved_classification = risk.proposed_classification
         risk.last_approved_ratings = {"severity": risk.severity, "occurrence": risk.occurrence,

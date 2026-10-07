@@ -10,9 +10,9 @@ import re
 from datetime import timedelta
 
 import pytest
+import test_auth as TA
 from sqlalchemy import select
 
-import test_auth as TA
 from qms_os.auth import cli
 from qms_os.auth import service as AS
 from qms_os.models import AccountAction, AuditEvent

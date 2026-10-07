@@ -6,10 +6,9 @@
 
 - Repository: this repository (`QMS-OS`); confirm the remote with `git remote -v`.
 - Specification: `docs/SPECIFICATION.md`, v3.0 dated 29 September 2026. Verify title and version locally.
-- Baseline recorded here: `main` at `eb3c5839513d2a2882c6fa7b7d41e86bfda9a234` ("Require a verification code with
-  every one-time link; two-admin invitations (#18)"), matching `origin/main` on 2026-10-07. Work in progress: branch
-  `docs/refresh-status` (this status refresh). Re-verify branch, HEAD and working tree with Git at session start;
-  this file may be stale.
+- Baseline recorded here: `main` at `31966a2` ("Refresh status after the link-code merge; add MVP-0 remaining-slices
+  table (#19)"). Work in progress: branch `ci/lint-types` (CI hardening, the rest: lint, type checks, Python 3.11).
+  Re-verify branch, HEAD and working tree with Git at session start; this file may be stale.
 - Stage: MVP-0 in progress. Of the eight items in the ROADMAP's MVP-0 table, four are done (Git scaffold, CI and
   protected `main`; synthetic fixtures; fixture startup as a server process; documentation reconciled), two are in
   progress (upstream, licence and version matrix; container or local runtime configuration) and two are not started
@@ -55,7 +54,8 @@ Each item says how it was verified.
   Integrity events 3033/3077 at 12:08 local), so `scripts\run-tests.bat` could not load the tests. Later the same day
   its state read `0` (off) and all extensions loaded; the SQLAlchemy files were unchanged. Unsigned compiled
   dependencies can be blocked again if it is re-enabled.
-- **Python versions:** the project `.venv` runs Python **3.12.7**; CI runs 3.12.10. Earlier local results recorded
+- **Python versions:** the project `.venv` runs Python **3.12.7**; CI runs 3.12.10 (plus 3.11.17 in job
+  `test-py311` on branch `ci/lint-types`, not yet run). Earlier local results recorded
   as 3.12.10 predate the project venv. The two have not been reconciled.
 - **Tests:** `python -m pytest -q -p no:cacheprovider`, run from `apps/api/`:
   - `main`, local Windows (`scripts\run-tests.bat`, Python 3.12.7) on 2026-10-05: `105 passed, 1 warning` (the
@@ -152,7 +152,9 @@ Each item says how it was verified.
   people; the CLI commands (`bootstrap-admin`, `grant-account-admin`, `revoke-account-admin`) run in a real terminal
   (tested with stubbed input; the revoke race on PostgreSQL, the rest on SQLite).
 - Any UI; end-to-end or browser tests.
-- Python 3.11: allowed by `apps/api/pyproject.toml` but not tested in CI.
+- Python 3.11: allowed by `apps/api/pyproject.toml`; CI job `test-py311` (Python 3.11.17, SQLite suite) exists on
+  branch `ci/lint-types` but has not run yet, and no local 3.11 interpreter is installed. Not verified until that
+  job is green and its log shows 3.11.17.
 - All live integrations (mail, Telegram, model providers/Ollama, Hermes, WeKnora, Hindsight).
 
 ## Local material outside the repository
@@ -181,8 +183,10 @@ Each item says how it was verified.
 - The specification's repository layout is partly adopted: the code lives in `apps/api/` (R-1, decided); other `apps/` and `packages/` folders do not exist yet.
 - The specification makes PostgreSQL the authority; the code still defaults to SQLite. PostgreSQL support (R-14) is on
   `main` and is tested locally and in CI (job `postgres`).
-- The specification asks pull-request CI for formatter, type, lint and integration checks and a secret scan; CI runs
-  the tests on SQLite and PostgreSQL and a secret scan, but no formatter, lint or type checks yet.
+- The specification asks pull-request CI for formatter, type, lint and integration checks and a secret scan. On
+  `main`, CI runs the tests on SQLite and PostgreSQL and a secret scan. Branch `ci/lint-types` adds lint (ruff) and
+  type checks (mypy on `qms_os`, with a per-module baseline of existing errors); no formatter is enforced (Admin
+  decision, 2026-10-07: `ruff format` would rewrite about 4,400 lines).
 - `CLAUDE.md` refers to a stage-prompt document that is held by the Admin and is not in this repository.
 
 ## Open decisions
@@ -203,7 +207,8 @@ Each item says how it was verified.
   — it was **a blocker before any real person is onboarded**; at least two account admins are still required
   (`docs/ROADMAP.md`; ADR 0003, *One-time links need two parts*); (5) payload-bound approval.
 - Not yet decided: whether `postgres` and `secret-scan` become required status checks (both passed in CI on pull
-  request #15 and on `main`; today only `test` is required);
+  request #15 and on `main`; today only `test` is required), and likewise `lint`, `types` and `test-py311` after
+  their first green run;
   database-level append-only enforcement; production use of the psycopg binary wheel versus a local build
   (`docs/UPSTREAMS.md`).
 - Unresolved organisational decisions: D-07, D-08, D-12, D-13, D-14, D-15, D-16.
@@ -278,8 +283,24 @@ See *Proposed MVP-0 order* in `docs/ROADMAP.md`. No dates or delivery commitment
   merged, baseline, test counts, MVP-0 stage, upstream-matrix row) and the table of the six slices remaining before
   the MVP-0 exit added to `docs/ROADMAP.md`. On 2026-10-07: `scripts\run-tests.bat` `179 passed, 1 skipped, 1
   warning` (exit 0); `scripts\run-pg-tests.bat full` `200 passed, 1 warning` (exit 0).
-- Next: the MVP-0 slices in order (`docs/ROADMAP.md`, *Remaining before the MVP-0 exit*); the required-checks
-  decision for `postgres` and `secret-scan`; payload-bound approval after MVP-0.
+  Merged as `31966a2` (pull request #19).
+- Branch `ci/lint-types` from `31966a2` (MVP-0 slice 5; Admin-approved plan, 2026-10-07): ruff 0.16.10 with an
+  explicit rule list (E, W, F, I, B, UP, DTZ; no formatter), mypy 2.4.0 on `qms_os` (Python 3.11 target,
+  `warn_unused_ignores`, `warn_redundant_casts`) with a per-module baseline of the 99 existing errors in
+  `apps/api/pyproject.toml`, new extra `lint`, `scripts\run-lint.bat`, and CI jobs `lint`, `types` and `test-py311`
+  (Python 3.11.17, asserted in the job). Code changes are lint fixes only: automatic fixes (imports,
+  `timezone.utc` → `UTC`, typing modernisation), 27 long lines wrapped, `noqa` with a one-line reason for five
+  intentional DTZ cases, B017 (`pytest.raises(InvalidTag)`), B905 (`itertools.pairwise`, the same 2 pairs of 3
+  cycles), one unused import. Merged migrations and `qms_os/auth/service.py` are unchanged (per-file ignores).
+  Checked on 2026-10-07 (Windows, Python 3.12.7): `scripts\run-tests.bat` `179 passed, 1 skipped, 1 warning`
+  (exit 0); `scripts\run-pg-tests.bat full` `200 passed, 1 warning` (exit 0); `scripts\run-lint.bat` ruff "All
+  checks passed!", mypy "Success: no issues found in 38 source files" (exit 0). Scratch checks outside the repo: the
+  B017 test fails when the ciphertext is not bound to the user and when a wrong user gives an error other than
+  `InvalidTag` (the old `pytest.raises(Exception)` passed the latter); the mypy baseline still reports a new error
+  in an unlisted module and a new error code in a listed one. Not yet run in CI; Python 3.11 not verified locally.
+- Next: CI run of `ci/lint-types` (confirm 3.11.17 in the `test-py311` log); the required-checks decision for
+  `postgres`, `secret-scan`, `lint`, `types` and `test-py311`; the other MVP-0 slices (`docs/ROADMAP.md`,
+  *Remaining before the MVP-0 exit*); payload-bound approval after MVP-0.
 
 ## End-of-session update template
 

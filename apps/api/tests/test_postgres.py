@@ -6,35 +6,24 @@ rebuild that database's schema with ``alembic upgrade head`` and use only the sy
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta, timezone
-
-import pytest
+from datetime import UTC, datetime, timedelta, timezone
 
 import pg_support as PG
+import pytest
 
 URL = PG.checked_url()
 pytestmark = pytest.mark.postgres
 if URL is None:
     pytest.skip(f"{PG.ENV} is not set", allow_module_level=True)
 
+import test_auth as TA  # noqa: E402  (sign-in harness; its tests are not collected here)
 from alembic import command  # noqa: E402
 from alembic.autogenerate import compare_metadata  # noqa: E402
 from alembic.runtime.migration import MigrationContext  # noqa: E402
 from argon2 import PasswordHasher  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
-from sqlalchemy import create_engine, text  # noqa: E402
+from sqlalchemy import create_engine, select, text  # noqa: E402
 from sqlalchemy.exc import StatementError  # noqa: E402
-
-from qms_os.db import (Base, DatabaseSchemaError, make_engine, make_sessionmaker, normalise_url,  # noqa: E402
-                       require_schema_at_head)
-from qms_os.fixtures import load  # noqa: E402
-from qms_os.knowledge.store import KnowledgeBase  # noqa: E402
-from qms_os.main import create_app  # noqa: E402
-from qms_os.auth import service as AS  # noqa: E402
-from qms_os.models import AccountAction, AuditEvent, AuthSession, User, UserCredential  # noqa: E402
-from sqlalchemy import select  # noqa: E402
-
-import test_auth as TA  # noqa: E402  (sign-in harness; its tests are not collected here)
 
 # Representative existing flows, collected again here so they run on PostgreSQL through the `engine` fixture below.
 from test_api_risk_reports import test_owner_assesses_ma_co_approves_top_management_signs_off  # noqa: E402,F401
@@ -42,8 +31,23 @@ from test_api_workflow import test_full_nc_lifecycle, test_programme_plan_valida
 from test_knowledge_module import test_governance_flow  # noqa: E402,F401
 from test_no_retention import test_records_survive_ten_years_of_normal_operation  # noqa: E402,F401
 from test_risk_signoff import (  # noqa: E402,F401
-    test_reassessment_keeps_last_approved_visible_and_distinct_from_the_new_draft)
+    test_reassessment_keeps_last_approved_visible_and_distinct_from_the_new_draft,
+)
 from test_timestamps import test_api_timestamps_are_timezone_aware_utc  # noqa: E402,F401
+
+from qms_os.auth import service as AS  # noqa: E402
+from qms_os.db import (  # noqa: E402
+    Base,
+    DatabaseSchemaError,
+    make_engine,
+    make_sessionmaker,
+    normalise_url,
+    require_schema_at_head,
+)
+from qms_os.fixtures import load  # noqa: E402
+from qms_os.knowledge.store import KnowledgeBase  # noqa: E402
+from qms_os.main import create_app  # noqa: E402
+from qms_os.models import AccountAction, AuditEvent, AuthSession, User, UserCredential  # noqa: E402
 
 
 @pytest.fixture(scope="module")
@@ -113,7 +117,8 @@ def test_timestamps_stay_utc_when_the_session_time_zone_is_not_utc(pg):
         maker = make_sessionmaker(eng)
         with maker() as s:
             assert s.scalar(text("show timezone")) == "America/St_Johns"
-            s.add(AuditEvent(action="t", entity="x", at=datetime(2026, 1, 1, 12, 0)))
+            # noqa reason: a naive datetime on purpose - this test proves the write is rejected
+            s.add(AuditEvent(action="t", entity="x", at=datetime(2026, 1, 1, 12, 0)))  # noqa: DTZ001
             with pytest.raises(StatementError, match="naive datetime rejected"):
                 s.flush()
         other = timezone(timedelta(hours=-3, minutes=-30))
@@ -124,7 +129,7 @@ def test_timestamps_stay_utc_when_the_session_time_zone_is_not_utc(pg):
             eid = e.id
         with maker() as s:
             at = s.get(AuditEvent, eid).at
-        assert at == datetime(2026, 1, 1, 0, 0, tzinfo=timezone.utc) and at.utcoffset() == timedelta(0)
+        assert at == datetime(2026, 1, 1, 0, 0, tzinfo=UTC) and at.utcoffset() == timedelta(0)
     finally:
         eng.dispose()
 
@@ -167,7 +172,7 @@ def test_parallel_wrong_passwords_are_each_counted(engine, n, counted, locked):
         assert cred.failed_attempts == counted and (cred.locked_until is not None) is locked
 
 
-# ---------- concurrent credential reset (R-3): person, credential and action rows are locked in a fixed order ----------
+# ---------- concurrent credential reset (R-3): person, credential and action rows are locked in a fixed order ---------
 
 def _reset_requested(h, slow_target_password=False):
     """Three account admins (initiator plus two possible approvers), a target with an account, a pending reset.
