@@ -40,12 +40,12 @@ no unverified feature claim.
    - **Before any shared deployment:** operator audit events record the OS user name and host or a required `--reason`, and disabling the last active account admin is refused (same lock order: all account admins' person rows in id order, then the credential).
    - **Blocker before any real person is onboarded:** the one-time link code slice. A link is redeemable by whoever holds it, including the inviting or approving admin; the fix adds a short verification code set by the initiator and given to the person verbally, so redemption needs both (`docs/adr/0003-auth-dev-identity.md`, *Known limitation*). No account for a real person, and no shared or non-local deployment, until it is done.
 3. Repository restructure: done (`backend/` moved to `apps/api/`, R-1, pull request #5).
-4. PostgreSQL support and migrations (R-14): done (pull request #8); PostgreSQL runs are local only, not in CI.
+4. PostgreSQL support and migrations (R-14): done (pull request #8); the PostgreSQL suite also runs in CI (job `postgres`, pull request #15).
 5. Container or local runtime configuration: PostgreSQL service done (R-2); other services after their upstream checks.
 6. Upstream, licence and version matrix.
 7. Model-provider contract with a simulated provider.
 8. Local-model benchmark plan.
-9. CI hardening: lint and format, type checks, secret scan, Python 3.11, PostgreSQL integration job. Secret scan (gitleaks) and PostgreSQL job: on branch `ci/secret-scan-and-pg`, **not yet verified in CI**; lint and format, type checks and Python 3.11 not started.
+9. CI hardening: lint and format, type checks, secret scan, Python 3.11, PostgreSQL integration job. Secret scan (gitleaks) and PostgreSQL job: done, merged as `0f66d47` (pull request #15), both passed in CI on the pull request (run 37565023452) and on `main` (run 37566508358); not yet required status checks (only `test` is). Lint and format, type checks and Python 3.11 not started.
 
 ## Later stages (specification scope; all not started)
 

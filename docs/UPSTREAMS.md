@@ -87,7 +87,10 @@ the licence text is shipped beside it as `common-passwords.LICENSE.txt`. Checked
 - `scripts\run-pg-tests.bat full` (whole suite on PostgreSQL): `172 passed, 1 warning`.
 - `scripts\run-pg-tests.bat alembic check`: `No new upgrade operations detected.` (head `0b13751a07cc`).
 
-## CI tools and images (`.github/workflows/ci.yml`; added 2026-10-06, not yet verified in CI)
+## CI tools and images (`.github/workflows/ci.yml`; added 2026-10-06)
+
+Verified in CI on 2026-10-07: jobs `postgres` and `secret-scan` succeeded on pull request #15 (run 37565023452) and
+on `main` at `0f66d47` (run 37566508358), read from the public GitHub API (job logs not readable without a token).
 
 | Component | Version / pin | Licence | Used for |
 |---|---|---|---|
