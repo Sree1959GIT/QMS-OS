@@ -157,9 +157,10 @@ Each item says how it was verified.
 - Any UI; end-to-end or browser tests.
 - Python 3.11 on PostgreSQL: CI job `test-py311` (Python 3.11.17) covers the SQLite suite only; no local 3.11
   interpreter is installed.
-- Upstream matrix (`docs/UPSTREAMS.md`): primary-source licences for everything except FastAPI's (read at tag
-  `0.141.1`, commit SHA not obtained); Ollama, `gemma4:12b` (existence, digest, weights terms, 256K figure) and all
-  Tier C services. Network checks stopped at the first failed request (a `404`) on 2026-10-07.
+- Upstream matrix (`docs/UPSTREAMS.md`, branch `docs/upstream-matrix`): pluggy's licence from a primary source;
+  Ollama telemetry and per-request `num_ctx`; whether the Ollama `gemma4:12b` build accepts audio; Tier C feature
+  claims (Hermes skills and gateway, Hindsight plugin and isolation, WeKnora retrieval and ACL); Digital-Secretary;
+  Telegram terms. Model fit on the 12 GB VRAM host is a measurement (slice 4).
 - All live integrations (mail, Telegram, model providers/Ollama, Hermes, WeKnora, Hindsight).
 
 ## Local material outside the repository
@@ -310,11 +311,24 @@ See *Proposed MVP-0 order* in `docs/ROADMAP.md`. No dates or delivery commitment
   inspected" list (Tier D); `docs/DECISIONS.md` gains R-15 (object store, Admin decision) and R-16 (slice 1 scope,
   proposal) and R-12/R-13 updates; out-of-date status lines refreshed here and in `docs/ROADMAP.md`. Network:
   read-only WebFetch, no credentials; the first request (FastAPI `LICENSE` at `0.141.1`) succeeded, the second
-  (that tag's commit) returned `404`, and no further request was made. On 2026-10-07: `scriptsun-tests.bat`
-  `179 passed, 1 skipped, 1 warning` (exit 0); `scriptsun-lint.bat` ruff "All checks passed!", mypy "Success: no
-  issues found in 38 source files" (exit 0). Two local commits, not pushed. Synthetic mode.
-- Next: resume primary-source checks (a working way to read a tag's commit SHA without credentials, then Tiers A
-  and B); the Admin's decisions R-15 and R-16; slice 3 (provider contract); payload-bound approval after MVP-0.
+  (that tag's commit) returned `404`, and no further request was made. On 2026-10-07: `scripts
+un-tests.bat`
+  `179 passed, 1 skipped, 1 warning` (exit 0); `scripts
+un-lint.bat` ruff "All checks passed!", mypy "Success: no
+  issues found in 38 source files" (exit 0). Two local commits (`033b666`, `dd828a0`), not pushed. Synthetic mode.
+- Same branch, second pass (Admin's corrected stop rule, 2026-10-07: stop only on network-level failures; a 404 on a
+  guessed URL form is retried once with a documented alternative): tag commits from the GitHub ref API and licence
+  files at those commits. Tier A: 24 of 25 verified (pluggy names no repository); FastAPI's commit is
+  `95f8322e…`. Tier B: Ollama `v0.40.0` (commit `0d0720e5…`, MIT, installer and image digests); `gemma4:12b` exists
+  with 256K published context (matches the specification; nothing recorded in DECISIONS), Apache-2.0 weights (licence
+  layer hashed locally; Hugging Face revision `707f0a3b…`); conflicts recorded: two short IDs for the tag, and
+  text-and-image (Ollama) versus text, image, audio and video (Hugging Face) inputs. Tier C: WeKnora, Hermes, Hindsight
+  MIT, edge-tts LGPL-3.0 (one MIT file); edge-tts sends text to a Microsoft online service (from its source).
+  Findings: Ollama auto-updates on Windows; cloud model tags exist; WeKnora's compose file brings its own MinIO,
+  SearXNG and `:latest` images. No network-level failure occurred.
+- Next: pluggy's repository (from the project itself) and the remaining Tier B items (telemetry, per-request
+  `num_ctx`, audio input of the Ollama build); the Admin's decisions R-15 and R-16; slice 3 (provider contract);
+  payload-bound approval after MVP-0.
 
 ## End-of-session update template
 
