@@ -6,13 +6,13 @@
 
 - Repository: this repository (`QMS-OS`); confirm the remote with `git remote -v`.
 - Specification: `docs/SPECIFICATION.md`, v3.0 dated 29 September 2026. Verify title and version locally.
-- Baseline recorded here: `main` at `31966a2` ("Refresh status after the link-code merge; add MVP-0 remaining-slices
-  table (#19)"). Work in progress: branch `ci/lint-types` (CI hardening, the rest: lint, type checks, Python 3.11).
+- Baseline recorded here: `main` at `5b3e181` ("Add lint, type checks and a Python 3.11 test job (MVP-0 slice 5)
+  (#20)"). Work in progress: branch `docs/upstream-matrix` (MVP-0 slice 2, upstream matrix; local commits, not pushed).
   Re-verify branch, HEAD and working tree with Git at session start; this file may be stale.
 - Stage: MVP-0 in progress. Of the eight items in the ROADMAP's MVP-0 table, four are done (Git scaffold, CI and
   protected `main`; synthetic fixtures; fixture startup as a server process; documentation reconciled), two are in
   progress (upstream, licence and version matrix; container or local runtime configuration) and two are not started
-  (model-provider contract; local-model benchmark plan). Six slices remain before the MVP-0 exit — see *Remaining
+  (model-provider contract; local-model benchmark plan). Five slices remain before the MVP-0 exit — see *Remaining
   before the MVP-0 exit* in `docs/ROADMAP.md`.
 - Mode: synthetic only. No live connectors, staff accounts or model credentials are configured in this repository,
   and none has been verified; do not claim they are configured.
@@ -21,8 +21,10 @@
 
 Each item says how it was verified.
 
-- **Git:** on 2026-10-07 `main` was at `eb3c583…`, equal to `origin/main` after `git fetch`, and the working tree
-  was clean (checked with Git). Pull request #18 (`feat/link-code`, head `69a60d3`; the one-time link code) was
+- **Git:** on 2026-10-07 `main` was at `5b3e181…`, equal to `origin/main`, and the working tree was clean (checked
+  with `git status -sb`; no fetch in this session). Pull request #20 (`ci/lint-types`) was merged as `5b3e181` and
+  pull request #19 (`docs/refresh-status`) as `31966a2`; CI runs 37648488409 (#20) and 37617433395 (#19) as reported
+  by the Admin, not read from GitHub in this session. Earlier: on 2026-10-07 `main` was at `eb3c583…`. Pull request #18 (`feat/link-code`, head `69a60d3`; the one-time link code) was
   merged as `eb3c583`; jobs `test`, `postgres` and `secret-scan` all succeeded on the pull request (run 37614209373:
   jobs 112768522314, 112768521989, 112768522176) and on `main` (run 37614974061: jobs 112771010112, 112771010504,
   112771010529); the branch has been deleted (absent locally and on GitHub). Pull request #17 (`docs/scan-rule`,
@@ -54,8 +56,8 @@ Each item says how it was verified.
   Integrity events 3033/3077 at 12:08 local), so `scripts\run-tests.bat` could not load the tests. Later the same day
   its state read `0` (off) and all extensions loaded; the SQLAlchemy files were unchanged. Unsigned compiled
   dependencies can be blocked again if it is re-enabled.
-- **Python versions:** the project `.venv` runs Python **3.12.7**; CI runs 3.12.10 (plus 3.11.17 in job
-  `test-py311` on branch `ci/lint-types`, not yet run). Earlier local results recorded
+- **Python versions:** the project `.venv` runs Python **3.12.7**; CI runs 3.12.10, plus 3.11.17 in job
+  `test-py311` (SQLite suite only; verified per the Admin on 2026-10-07). Earlier local results recorded
   as 3.12.10 predate the project venv. The two have not been reconciled.
 - **Tests:** `python -m pytest -q -p no:cacheprovider`, run from `apps/api/`:
   - `main`, local Windows (`scripts\run-tests.bat`, Python 3.12.7) on 2026-10-05: `105 passed, 1 warning` (the
@@ -74,7 +76,7 @@ Each item says how it was verified.
   - History: before the Checkpoint A repair the suite stood at `4 failed, 32 passed`.
 - **CI:** `.github/workflows/ci.yml` runs on pull requests to `main`, pushes to `main` and manual runs, with
   `permissions: contents: read`, `persist-credentials: false`, actions pinned to full commit SHAs, and dependency
-  versions held by `apps/api/constraints-ci.txt`. No secrets are used. Three jobs (since pull request #15):
+  versions held by `apps/api/constraints-ci.txt`. No secrets are used. Six jobs since pull request #20 (`test-py311`, `lint`, `types` added); the first three since pull request #15:
   `test` (SQLite), `postgres` (the whole suite on a pinned PostgreSQL 17.11 service container, including the
   migration-drift and concurrency tests) and `secret-scan` (gitleaks 8.30.1, SHA-256-verified). **Verified in CI**
   (public GitHub API, 2026-10-07): all three succeeded on pull request #15 (run 37565023452: jobs 112610644153,
@@ -82,12 +84,13 @@ Each item says how it was verified.
   112615340462). Scan scope, from step results only: on the pull request "Scan the pull request's commits" ran and
   "Scan the whole history" was skipped; on `main` the whole-history step ran. The job logs are not readable without
   a token (`403`), so the scanned commit count and the `postgres` test count were not read (locally the same suite
-  gives `185 passed`). Required status checks on `main` (ruleset 24295033, public rules API): `test` only —
-  `postgres` and `secret-scan` run but are not required.
+  gives `185 passed`). Required status checks on `main` (ruleset 24295033): since 2026-10-07 all six jobs, with
+  branches required to be up to date (R-13; set by the Admin, as reported by the Admin, not re-read from GitHub).
 - **Layout:** application code lives in `apps/api/` (R-1; pull request #5). Verified by: `105 passed, 1 warning` run locally from `apps/api/`, and job `test` passing on pull request #5 and on the push to `main`.
 - **Local runtime:** PostgreSQL 17 runs through `compose.yaml` (R-2) and the Python venv and caches live inside the project folder. Verified on a local Windows machine on 2026-10-05 by: `scripts\start-db.bat` reaching a healthy container, `select version()` returning PostgreSQL 17.11, `scripts\backup-db.bat` writing a non-empty dump, and `scripts\run-tests.bat` giving `105 passed, 1 warning`.
 - **Protection of `main`** (GitHub public API): an active ruleset on the default branch blocks deletion and
-  force-pushes, requires pull requests and linear history, and requires the status check `test`. Bypass settings
+  force-pushes, requires pull requests and linear history, and (since 2026-10-07, per the Admin) the six status checks with the
+  up-to-date rule. Bypass settings
   are not visible through the public API.
 - **Implemented on `main` (synthetic/test data only):** `apps/api/` FastAPI + SQLAlchemy prototype — audit
   programme planning and auditor assignment, finding/corrective-action lifecycle, FMEA risk register, drafts-only
@@ -152,9 +155,11 @@ Each item says how it was verified.
   people; the CLI commands (`bootstrap-admin`, `grant-account-admin`, `revoke-account-admin`) run in a real terminal
   (tested with stubbed input; the revoke race on PostgreSQL, the rest on SQLite).
 - Any UI; end-to-end or browser tests.
-- Python 3.11: allowed by `apps/api/pyproject.toml`; CI job `test-py311` (Python 3.11.17, SQLite suite) exists on
-  branch `ci/lint-types` but has not run yet, and no local 3.11 interpreter is installed. Not verified until that
-  job is green and its log shows 3.11.17.
+- Python 3.11 on PostgreSQL: CI job `test-py311` (Python 3.11.17) covers the SQLite suite only; no local 3.11
+  interpreter is installed.
+- Upstream matrix (`docs/UPSTREAMS.md`): primary-source licences for everything except FastAPI's (read at tag
+  `0.141.1`, commit SHA not obtained); Ollama, `gemma4:12b` (existence, digest, weights terms, 256K figure) and all
+  Tier C services. Network checks stopped at the first failed request (a `404`) on 2026-10-07.
 - All live integrations (mail, Telegram, model providers/Ollama, Hermes, WeKnora, Hindsight).
 
 ## Local material outside the repository
@@ -184,8 +189,8 @@ Each item says how it was verified.
 - The specification makes PostgreSQL the authority; the code still defaults to SQLite. PostgreSQL support (R-14) is on
   `main` and is tested locally and in CI (job `postgres`).
 - The specification asks pull-request CI for formatter, type, lint and integration checks and a secret scan. On
-  `main`, CI runs the tests on SQLite and PostgreSQL and a secret scan. Branch `ci/lint-types` adds lint (ruff) and
-  type checks (mypy on `qms_os`, with a per-module baseline of existing errors); no formatter is enforced (Admin
+  `main`, CI runs the tests on SQLite (3.12 and 3.11) and PostgreSQL, a secret scan, lint (ruff) and type checks
+  (mypy on `qms_os`, with a per-module baseline of existing errors); no formatter is enforced (Admin
   decision, 2026-10-07: `ruff format` would rewrite about 4,400 lines).
 - `CLAUDE.md` refers to a stage-prompt document that is held by the Admin and is not in this repository.
 
@@ -206,10 +211,9 @@ Each item says how it was verified.
   a secret scan and a PostgreSQL job (done, pull request #15); (4) the one-time link code (done, pull request #18)
   — it was **a blocker before any real person is onboarded**; at least two account admins are still required
   (`docs/ROADMAP.md`; ADR 0003, *One-time links need two parts*); (5) payload-bound approval.
-- Not yet decided: whether `postgres` and `secret-scan` become required status checks (both passed in CI on pull
-  request #15 and on `main`; today only `test` is required), and likewise `lint`, `types` and `test-py311` after
-  their first green run;
-  database-level append-only enforcement; production use of the psycopg binary wheel versus a local build
+- Decided 2026-10-07 (Admin): all six CI jobs are required status checks, with the up-to-date rule (R-13).
+- Slice 1 blockers: the object-store product (R-15, Admin decision); scope proposal R-16 (Ollama first; not decided).
+- Not yet decided: database-level append-only enforcement; production use of the psycopg binary wheel versus a local build
   (`docs/UPSTREAMS.md`).
 - Unresolved organisational decisions: D-07, D-08, D-12, D-13, D-14, D-15, D-16.
 - Candidate values (D-01, D-02, D-04, D-05, D-06) need named owners before any becomes policy (R-4).
@@ -229,7 +233,7 @@ See *Proposed MVP-0 order* in `docs/ROADMAP.md`. No dates or delivery commitment
 - Telegram voice replies pair a full written answer with a short, separately composed spoken explanation; verbatim reading only on explicit request.
 - ISO 9001:2026 edition-specific mapping is human-validated against licensed text; no invented compliance or certification.
 
-## Last session (2026-10-06)
+## Last sessions (2026-10-06 and 2026-10-07)
 
 - Pull request #9 (run-tests exit code) merged as `997e55b`, CI passed.
 - R-3 (local accounts + TOTP) merged as `23329f3` (pull request #10, squash of `5e5ada2` and `74a4460`); CI job
@@ -297,10 +301,20 @@ See *Proposed MVP-0 order* in `docs/ROADMAP.md`. No dates or delivery commitment
   checks passed!", mypy "Success: no issues found in 38 source files" (exit 0). Scratch checks outside the repo: the
   B017 test fails when the ciphertext is not bound to the user and when a wrong user gives an error other than
   `InvalidTag` (the old `pytest.raises(Exception)` passed the latter); the mypy baseline still reports a new error
-  in an unlisted module and a new error code in a listed one. Not yet run in CI; Python 3.11 not verified locally.
-- Next: CI run of `ci/lint-types` (confirm 3.11.17 in the `test-py311` log); the required-checks decision for
-  `postgres`, `secret-scan`, `lint`, `types` and `test-py311`; the other MVP-0 slices (`docs/ROADMAP.md`,
-  *Remaining before the MVP-0 exit*); payload-bound approval after MVP-0.
+  in an unlisted module and a new error code in a listed one. Merged as `5b3e181` (pull request #20; CI run
+  37648488409 per the Admin; Python 3.11.17 verified for the SQLite suite only). The Admin then made all six jobs
+  required checks with the up-to-date rule.
+- Branch `docs/upstream-matrix` from `5b3e181` (MVP-0 slice 2; Admin-approved plan, 2026-10-07): `docs/UPSTREAMS.md`
+  gains the base application stack (Tier A: pinned versions, installed-metadata licences as a secondary source),
+  the model runtime and local models (Tier B), one row per named service (Tier C) and a "named, not adopted, not
+  inspected" list (Tier D); `docs/DECISIONS.md` gains R-15 (object store, Admin decision) and R-16 (slice 1 scope,
+  proposal) and R-12/R-13 updates; out-of-date status lines refreshed here and in `docs/ROADMAP.md`. Network:
+  read-only WebFetch, no credentials; the first request (FastAPI `LICENSE` at `0.141.1`) succeeded, the second
+  (that tag's commit) returned `404`, and no further request was made. On 2026-10-07: `scriptsun-tests.bat`
+  `179 passed, 1 skipped, 1 warning` (exit 0); `scriptsun-lint.bat` ruff "All checks passed!", mypy "Success: no
+  issues found in 38 source files" (exit 0). Two local commits, not pushed. Synthetic mode.
+- Next: resume primary-source checks (a working way to read a tag's commit SHA without credentials, then Tiers A
+  and B); the Admin's decisions R-15 and R-16; slice 3 (provider contract); payload-bound approval after MVP-0.
 
 ## End-of-session update template
 

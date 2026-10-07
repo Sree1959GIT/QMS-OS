@@ -172,3 +172,56 @@ Used by `scripts\run-lint.bat` and the CI jobs `lint` (ruff only) and `types` (m
   not distributed with QMS OS.
 - ruff, mypy, librt and ast-serialize ship unsigned compiled code on Windows; Smart App Control can block it if it is
   turned on again (see *Authentication* above).
+
+## Model runtime and local models (Tier B; not adopted; added 2026-10-07)
+
+Nothing below is installed, configured or tested. No primary source was read: network checks stopped at the first
+failed request (see *Base application stack*). Every field marked "not verified" needs the source named in the last
+column, read at a recorded tag, commit or digest.
+
+| Name | Version to inspect | Code licence | Weights licence | Primary source to read |
+|---|---|---|---|---|
+| Ollama | release tag on the day of inspection, with its commit and installer or image digest | not verified | n/a | `LICENSE` at the tag in Ollama's own repository; its release page |
+| Gemma 4 via Ollama, tag `gemma4:12b` (spec A17) | the tag's manifest digest | n/a | not verified; the weights' terms are separate from Ollama's licence | https://ollama.com/library/gemma4:12b and the licence or terms it links |
+
+Feature claims in `docs/SPECIFICATION.md` that need evidence (all **not verified**):
+
+| Claim | Evidence that would settle it |
+|---|---|
+| The tag `gemma4:12b` exists | the A17 page and its digest. If it does not exist, record that in `docs/DECISIONS.md`; no other tag is substituted silently |
+| 256K is the published context limit of `gemma4:12b` | the A17 page at the recorded digest; a contradiction is recorded in `docs/DECISIONS.md` |
+| Below 24 GiB of VRAM Ollama defaults to a much smaller context, set with `num_ctx` | https://docs.ollama.com/context-length (A18), and Ollama's docs or source at the pinned tag |
+| Tool calls, JSON-schema output, vision and audio for the variant | the model page's capability list for the digest |
+| Ollama can run on the host over a private network, or in a GPU-enabled Linux container under Docker Desktop/WSL2 | Ollama's docs at the tag show support only; working on this laptop needs a measurement (slice 1 or 4), not a document |
+| Listen address, telemetry and update checks (privacy) | Ollama's docs or source at the pinned tag |
+| Actual context, throughput, VRAM/DRAM peaks on the 12 GB VRAM host | measurement only, in the benchmark plan (slice 4); never from documentation |
+
+## Services named in the specification (Tier C; not adopted; added 2026-10-07)
+
+One version-and-licence row each. Feature claims are **not verified** unless a source file at the pinned commit
+supports them; none has been read.
+
+| Spec ID | Name | Version to inspect | Code licence | Model or weights licence | Main claims to check later |
+|---|---|---|---|---|---|
+| A27 | WeKnora | release tag + commit | not verified | not verified (models its own setup pulls in) | multimodal OCR, hybrid search and reranking, citations, derived wiki, ACL and revision filtering; which containers and models its own compose file starts |
+| A28 | Hermes agent | release tag + commit | not verified | not verified (default model, if any) | skills discovery, `skills.write_approval`, read-only skill folders, Telegram gateway, provider neutrality |
+| A10 | Hindsight | release tag + commit | not verified | not verified (embedding or reranking models it uses) | local self-hosting, Hermes plugin, `bank_id_template` isolation, cost of reflect and recall |
+| — | Object store | **no product chosen** (Admin decision; a slice 1 blocker) | — | — | — |
+| — | Speech recognition and text to speech | none named in the specification | — | — | — |
+| — | edge-tts (a dependency of Digital-Secretary, per the specification) | release tag + commit | not verified | n/a | **Privacy finding, not verified:** the specification says it "may transmit" (to a remote service). To be confirmed from edge-tts's own source at the pinned commit before any use with confidential text |
+| A19 | Digital-Secretary | not verified (owner's repository; its location is not recorded in this repository) | not verified | — | Telegram voice UX modules; actual speech dependency |
+| A20 | Telegram Bot API | a hosted service, not a release | service terms, not verified | — | voice notes are asynchronous files; long polling is outbound only |
+
+## Named, not adopted, not inspected (Tier D)
+
+Listed so that the matrix does not imply they were checked. Each needs its own entry and an explicit go/no-go before
+any use.
+
+- Laya, `NandhaKishorM/laya` (A14): no decision-routing integration is approved (`docs/DECISIONS.md`, *Scope
+  statement*). A39 and A40 are similarly named repositories that were **not** chosen.
+- CLM code and `CLM-v0.1-8B` checkpoint (A15, A16): the checkpoint is described as built on Qwen3-8B, so the base
+  model's licence and the CLM head's licence would both need reading.
+- SearXNG (A29), cloudflared (A30), Webcmd (A13), second-brain-os (A11), K-Plex (A12), Obsidian (A31).
+- Paid model providers named as candidates: OpenRouter, Perplexity, OpenAI, Anthropic, Gemini; each needs its terms,
+  data-retention region and endpoint checked, not a code licence.
+- Docker Desktop and WSL2 (the local platform): their licence and subscription terms are not recorded here yet.
