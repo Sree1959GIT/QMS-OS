@@ -6,10 +6,15 @@
 
 - Repository: this repository (`QMS-OS`); confirm the remote with `git remote -v`.
 - Specification: `docs/SPECIFICATION.md`, v3.0 dated 29 September 2026. Verify title and version locally.
-- Baseline recorded here: `main` at `81d0cb8` ("Add secret-scan and .env boundary rule to CLAUDE.md (#17)"),
-  matching `origin/main` on 2026-10-07. Work in progress: branch `feat/link-code` (the link-code slice, rebased onto
-  `81d0cb8`; not pushed). Re-verify branch, HEAD and working tree with Git at session start; this file may be stale.
-- Stage: pre-MVP-0 baseline merged; MVP-0 not started (see `docs/ROADMAP.md`).
+- Baseline recorded here: `main` at `eb3c5839513d2a2882c6fa7b7d41e86bfda9a234` ("Require a verification code with
+  every one-time link; two-admin invitations (#18)"), matching `origin/main` on 2026-10-07. Work in progress: branch
+  `docs/refresh-status` (this status refresh). Re-verify branch, HEAD and working tree with Git at session start;
+  this file may be stale.
+- Stage: MVP-0 in progress. Of the eight items in the ROADMAP's MVP-0 table, four are done (Git scaffold, CI and
+  protected `main`; synthetic fixtures; fixture startup as a server process; documentation reconciled), two are in
+  progress (upstream, licence and version matrix; container or local runtime configuration) and two are not started
+  (model-provider contract; local-model benchmark plan). Six slices remain before the MVP-0 exit — see *Remaining
+  before the MVP-0 exit* in `docs/ROADMAP.md`.
 - Mode: synthetic only. No live connectors, staff accounts or model credentials are configured in this repository,
   and none has been verified; do not claim they are configured.
 
@@ -17,9 +22,12 @@
 
 Each item says how it was verified.
 
-- **Git:** on 2026-10-07 `main` was at `81d0cb8…`, equal to `origin/main` after `git fetch`, and the working tree
-  was clean (checked with Git). Pull request #17 (`docs/scan-rule`, head `dd6034c`; the secret-scan and `.env`
-  boundary rule in `CLAUDE.md`) was merged as `81d0cb8`, and pull request #16 (`docs/handoff-ci-merged`, head
+- **Git:** on 2026-10-07 `main` was at `eb3c583…`, equal to `origin/main` after `git fetch`, and the working tree
+  was clean (checked with Git). Pull request #18 (`feat/link-code`, head `69a60d3`; the one-time link code) was
+  merged as `eb3c583`; jobs `test`, `postgres` and `secret-scan` all succeeded on the pull request (run 37614209373:
+  jobs 112768522314, 112768521989, 112768522176) and on `main` (run 37614974061: jobs 112771010112, 112771010504,
+  112771010529); the branch has been deleted (absent locally and on GitHub). Pull request #17 (`docs/scan-rule`,
+  head `dd6034c`; the secret-scan and `.env` boundary rule in `CLAUDE.md`) was merged as `81d0cb8`, and pull request #16 (`docs/handoff-ci-merged`, head
   `a11023a`; handoff after the CI merge) as `816f574`; jobs `test`, `postgres` and `secret-scan` all succeeded on
   pull request #16 (run 37608866464) and on `main` at `816f574` (run 37609515878), and on pull request #17 (run
   37611716382) and on `main` at `81d0cb8` (run 37611951140); both branches have been deleted (absent locally and on
@@ -58,6 +66,8 @@ Each item says how it was verified.
     returns pytest's exit code (pull request #9); before that it returned 0 even when pytest failed;
   - `main` at `23329f3…` (R-3 merged), local Windows on 2026-10-06: `155 passed, 1 skipped, 1 warning`, exit 0;
     branch results before the merge: see *Authentication (R-3)* below;
+  - `main` at `eb3c583…` (link code merged), local Windows on 2026-10-07: `scripts\run-tests.bat` `179 passed, 1
+    skipped, 1 warning` (exit 0); `scripts\run-pg-tests.bat full` `200 passed, 1 warning` (exit 0);
   - GitHub Actions, Ubuntu 24.04, Python 3.12.10: job `test` succeeded on pull request #1 (run 36837238711; its
     job log reports `104 passed, 1 warning`) and on the push of `30a0c198…` to `main` (run 36842625286).
   - Latest runs, same environment: job `test` succeeded on pull request #5 (run 37135721617) and on the push of `9a1c344…` to `main` (run 37135996806). The per-test count for these runs was not read from the logs.
@@ -126,7 +136,8 @@ Each item says how it was verified.
     account state, plus conditional UPDATEs; the recovery-code session ends after TOTP re-enrolment;
     `generate-key` refuses paths inside a Git work tree and `.gitignore` excludes `*.key`/`*.pem`. The concurrency
     tests were shown to fail against the pre-fix code (scratch mutation run). The one-time link limitation is
-    addressed on branch `feat/link-code` (ADR 0003, *One-time links need two parts*), not merged.
+    addressed by the link-code slice, merged as `eb3c583` (pull request #18; ADR 0003, *One-time links need two
+    parts*).
 
 ## Not verified
 
@@ -188,10 +199,9 @@ Each item says how it was verified.
   `docs/LOCAL-RUNTIME.md`.
 - Proposed order of the next slices (a proposal, not a commitment): (1) the `env.bat` `QMS_TEMP_ROOT` override
   (done, pull request #12); (2) a CLI command to grant or remove `account_admin` (done, pull request #14); (3) CI:
-  a secret scan and a PostgreSQL job (done, pull request #15); (4) the one-time link code (on branch
-  `feat/link-code`, not merged) — **a blocker before any
-  real person is onboarded** (`docs/ROADMAP.md`; ADR 0003, *One-time links need two parts*); (5) payload-bound
-  approval.
+  a secret scan and a PostgreSQL job (done, pull request #15); (4) the one-time link code (done, pull request #18)
+  — it was **a blocker before any real person is onboarded**; at least two account admins are still required
+  (`docs/ROADMAP.md`; ADR 0003, *One-time links need two parts*); (5) payload-bound approval.
 - Not yet decided: whether `postgres` and `secret-scan` become required status checks (both passed in CI on pull
   request #15 and on `main`; today only `test` is required);
   database-level append-only enforcement; production use of the psycopg binary wheel versus a local build
@@ -261,9 +271,15 @@ See *Proposed MVP-0 order* in `docs/ROADMAP.md`. No dates or delivery commitment
   when the exception counts only active admins). On 2026-10-07: `scripts\run-tests.bat` `179 passed, 1 skipped, 1
   warning` (exit 0); `scripts\run-pg-tests.bat full` `200 passed, 1 warning` (exit 0); `alembic check`: no new
   operations at `c5ee69870dbb`. Committed as `5313008`, then rebased onto `81d0cb8`; after the rebase the same two
-  commands gave the same counts and `alembic check` / `alembic current` showed `c5ee69870dbb (head)`.
-- Next: review and merge of the link-code slice; whether `postgres` and `secret-scan` become required checks;
-  then (5) payload-bound approval.
+  commands gave the same counts and `alembic check` / `alembic current` showed `c5ee69870dbb (head)`. Merged as
+  `eb3c583` (pull request #18, head `69a60d3`); CI passed on the pull request and on `main` (see *Verified state*,
+  Git); the branch has been deleted.
+- Branch `docs/refresh-status` from `eb3c583…`: documentation only — out-of-date status lines refreshed (link code
+  merged, baseline, test counts, MVP-0 stage, upstream-matrix row) and the table of the six slices remaining before
+  the MVP-0 exit added to `docs/ROADMAP.md`. On 2026-10-07: `scripts\run-tests.bat` `179 passed, 1 skipped, 1
+  warning` (exit 0); `scripts\run-pg-tests.bat full` `200 passed, 1 warning` (exit 0).
+- Next: the MVP-0 slices in order (`docs/ROADMAP.md`, *Remaining before the MVP-0 exit*); the required-checks
+  decision for `postgres` and `secret-scan`; payload-bound approval after MVP-0.
 
 ## End-of-session update template
 
