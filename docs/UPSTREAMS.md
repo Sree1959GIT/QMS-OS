@@ -2,9 +2,55 @@
 
 One entry per adopted upstream, with the fields `docs/SPECIFICATION.md` asks for: version or tag, checked date, licence,
 interface used, privacy behaviour, OS fit and the tests that pass with it. A licence entry records what the package
-metadata states; it is not a legal opinion. Entries start with the PostgreSQL slice; the dependencies adopted
-before it (FastAPI, SQLAlchemy, Pydantic, Uvicorn and their transitive packages) are not yet listed here. That is part
-of the MVP-0 upstream matrix (`docs/ROADMAP.md`).
+metadata states; it is not a legal opinion. Installed package metadata is a **secondary** source; a licence is
+*verified* only when read from the project's own repository, release page or model card at a recorded tag, commit or
+digest. Each primary read records the source URL, the commit SHA or digest, and the date read.
+
+## Base application stack (`apps/api`, core and `dev` dependencies; added 2026-10-07)
+
+Versions are the pins in `apps/api/constraints-ci.txt`, confirmed against the installed `.venv` (Python 3.12.7) on
+2026-10-07. The secondary column is the installed metadata (`License-Expression`, else `License`, else the licence
+classifier).
+
+**Primary-source check (2026-10-07, read-only WebFetch, no credentials).** One request succeeded: FastAPI's `LICENSE`
+at tag `0.141.1` (https://github.com/fastapi/fastapi/blob/0.141.1/LICENSE) reads "The MIT License (MIT)",
+"Copyright (c) 2018 Sebastián Ramírez"; the page shows no commit SHA, and the tag's commit SHA was **not obtained**.
+The next request (that tag's commit, to read the SHA) returned `404 Not Found`. Following the Admin's rule (stop at
+the first failed request), no further network request was made, so every other licence below is **not verified**
+from a primary source.
+
+| Package | Version | Licence, primary source | Licence, installed metadata (secondary) | Used for |
+|---|---|---|---|---|
+| fastapi | 0.141.1 | MIT (tag `0.141.1`; commit SHA not obtained) | MIT | Web framework (`qms_os.api`) |
+| starlette | 1.7.0 | not verified | BSD-3-Clause | FastAPI's ASGI toolkit; test client |
+| pydantic | 2.13.5 | not verified | MIT | Request and response models |
+| pydantic-core | 2.46.5 | not verified | MIT | Pydantic's compiled core |
+| pydantic-settings | 2.15.0 | not verified | MIT | Settings from environment variables |
+| sqlalchemy | 2.1.1 | not verified | MIT | ORM and database access |
+| uvicorn | 0.54.0 | not verified | BSD-3-Clause | ASGI server (`tests/test_startup_smoke.py`) |
+| h11 | 0.16.0 | not verified | MIT | Uvicorn and httpcore HTTP/1.1 |
+| click | 8.5.0 | not verified | BSD-3-Clause | Uvicorn command line |
+| colorama | 0.4.6 | not verified | BSD License (classifier only) | Click on Windows only |
+| anyio | 4.15.1 | not verified | MIT | Starlette and httpx async layer |
+| idna | 3.20 | not verified | BSD-3-Clause | anyio and httpx host names |
+| annotated-types | 0.8.0 | not verified | MIT | Pydantic constraints |
+| annotated-doc | 0.0.5 | not verified | MIT | FastAPI parameter docs |
+| typing-extensions | 4.16.0 | not verified | PSF-2.0 | Typing back-ports |
+| typing-inspection | 0.4.4 | not verified | MIT | Pydantic type introspection |
+| python-dotenv | 1.2.3 | not verified | BSD-3-Clause | pydantic-settings `.env` support (QMS OS does not point it at `.env`) |
+| pytest | 9.1.1 | not verified | MIT | Tests (`dev` extra) |
+| pluggy | 1.6.0 | not verified | MIT | pytest plugins |
+| iniconfig | 2.3.0 | not verified | MIT | pytest configuration |
+| packaging | 26.3 | not verified | Apache-2.0 OR BSD-2-Clause | pytest version handling |
+| pygments | 2.21.0 | not verified | BSD-2-Clause | pytest output |
+| httpx | 0.28.1 | not verified | BSD-3-Clause | Test client transport (`dev` extra) |
+| httpcore | 1.0.9 | not verified | BSD-3-Clause | httpx transport |
+| certifi | 2026.7.22 | not verified | MPL-2.0 | httpx CA bundle |
+
+- certifi's MPL-2.0 is file-level copyleft; it is a test-only dependency used unmodified.
+- None of these packages is configured by QMS OS to make outbound calls; httpx is used only as the in-process test
+  client. This is from the code that uses them, not from a review of the packages' source.
+- Tests passing with these versions: see `docs/HANDOFF.md` (*Tests*).
 
 ## PostgreSQL driver and migrations (`apps/api`, optional extra `postgres`)
 
