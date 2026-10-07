@@ -6,9 +6,9 @@
 
 - Repository: this repository (`QMS-OS`); confirm the remote with `git remote -v`.
 - Specification: `docs/SPECIFICATION.md`, v3.0 dated 29 September 2026. Verify title and version locally.
-- Baseline recorded here: `main` at `0f66d47f646c9dd522c24f153f97bfae7399591c` ("Add PostgreSQL CI job and gitleaks
-  secret scan (#15)"), matching `origin/main` on 2026-10-07. Work in progress: branch `docs/handoff-ci-merged` (this
-  handoff update). Re-verify branch, HEAD and working tree with Git at session start; this file may be stale.
+- Baseline recorded here: `main` at `81d0cb8` ("Add secret-scan and .env boundary rule to CLAUDE.md (#17)"),
+  matching `origin/main` on 2026-10-07. Work in progress: branch `feat/link-code` (the link-code slice, rebased onto
+  `81d0cb8`; not pushed). Re-verify branch, HEAD and working tree with Git at session start; this file may be stale.
 - Stage: pre-MVP-0 baseline merged; MVP-0 not started (see `docs/ROADMAP.md`).
 - Mode: synthetic only. No live connectors, staff accounts or model credentials are configured in this repository,
   and none has been verified; do not claim they are configured.
@@ -17,8 +17,13 @@
 
 Each item says how it was verified.
 
-- **Git:** on 2026-10-07 `main` was at `0f66d47…`, equal to `origin/main` after `git fetch`, and the working tree
-  was clean (checked with Git). Pull request #15 (`ci/secret-scan-and-pg`, head `e198781`) was merged to `main` as
+- **Git:** on 2026-10-07 `main` was at `81d0cb8…`, equal to `origin/main` after `git fetch`, and the working tree
+  was clean (checked with Git). Pull request #17 (`docs/scan-rule`, head `dd6034c`; the secret-scan and `.env`
+  boundary rule in `CLAUDE.md`) was merged as `81d0cb8`, and pull request #16 (`docs/handoff-ci-merged`, head
+  `a11023a`; handoff after the CI merge) as `816f574`; jobs `test`, `postgres` and `secret-scan` all succeeded on
+  pull request #16 (run 37608866464) and on `main` at `816f574` (run 37609515878), and on pull request #17 (run
+  37611716382) and on `main` at `81d0cb8` (run 37611951140); both branches have been deleted (absent locally and on
+  GitHub). Pull request #15 (`ci/secret-scan-and-pg`, head `e198781`) was merged to `main` as
   `0f66d47`; jobs `test`, `postgres` and `secret-scan` all succeeded on the pull request (run 37565023452) and on
   `main` (run 37566508358); the branch has been deleted (absent locally and on GitHub). Pull request #14
   (`feat/account-admin-cli`, head `58d81bd`) was merged to `main` as `d65b0c9`; CI job `test` succeeded on the pull request (run 37493133191) and on `main` (run 37493474630); the
@@ -120,8 +125,8 @@ Each item says how it was verified.
     `SELECT … FOR UPDATE` (with the person and account-action rows, in a fixed order) for every check or change of
     account state, plus conditional UPDATEs; the recovery-code session ends after TOTP re-enrolment;
     `generate-key` refuses paths inside a Git work tree and `.gitignore` excludes `*.key`/`*.pem`. The concurrency
-    tests were shown to fail against the pre-fix code (scratch mutation run). Open: whoever holds a one-time link can
-    redeem it (ADR 0003, *Known limitation*).
+    tests were shown to fail against the pre-fix code (scratch mutation run). The one-time link limitation is
+    addressed on branch `feat/link-code` (ADR 0003, *One-time links need two parts*), not merged.
 
 ## Not verified
 
@@ -183,8 +188,10 @@ Each item says how it was verified.
   `docs/LOCAL-RUNTIME.md`.
 - Proposed order of the next slices (a proposal, not a commitment): (1) the `env.bat` `QMS_TEMP_ROOT` override
   (done, pull request #12); (2) a CLI command to grant or remove `account_admin` (done, pull request #14); (3) CI:
-  a secret scan and a PostgreSQL job (done, pull request #15); (4) the one-time link code — **a blocker before any
-  real person is onboarded** (`docs/ROADMAP.md`; ADR 0003, *Known limitation*); (5) payload-bound approval.
+  a secret scan and a PostgreSQL job (done, pull request #15); (4) the one-time link code (on branch
+  `feat/link-code`, not merged) — **a blocker before any
+  real person is onboarded** (`docs/ROADMAP.md`; ADR 0003, *One-time links need two parts*); (5) payload-bound
+  approval.
 - Not yet decided: whether `postgres` and `secret-scan` become required status checks (both passed in CI on pull
   request #15 and on `main`; today only `test` is required);
   database-level append-only enforcement; production use of the psycopg binary wheel versus a local build
@@ -241,9 +248,22 @@ See *Proposed MVP-0 order* in `docs/ROADMAP.md`. No dates or delivery commitment
   allowlisted path in a scratch repository; `scripts\run-tests.bat` `167 passed, 1 skipped` (exit 0). Merged as
   `0f66d47` (pull request #15); all three jobs passed in CI on the pull request and on `main` (see *Verified
   state*, CI); the branch has been deleted.
-- Branch `docs/handoff-ci-merged` from `0f66d47…`: this handoff, ROADMAP and UPSTREAMS update only.
-- Next: decide on the design for (4), the one-time link code; then whether `postgres` and `secret-scan` become
-  required checks.
+- Branch `docs/handoff-ci-merged` from `0f66d47…`: this handoff, ROADMAP and UPSTREAMS update only. Merged as
+  `816f574` (pull request #16), then the `CLAUDE.md` scan rule as `81d0cb8` (pull request #17); CI passed for both.
+- Branch `feat/link-code` from `0f66d47…` (link-code slice; Admin decisions of 2026-10-07: option B, two-admin
+  invitations, Argon2id, old links refused, tightened single-admin exception): verification code shown only to the
+  initiator, link token only to the approver; invitations become two-step like resets; single-admin bootstrap
+  invitation only while exactly one account-admin record exists (disabled accounts count), flagged
+  `split_knowledge = false`; pending requests expire after 72 h, the code with the link (24 h); 5 wrong codes void the
+  link; links without a code refused. Migration `c5ee69870dbb` (additive). Tests: `tests/test_link_code.py` (12) and
+  three PostgreSQL race tests, each run against an unlocked mutation (wrong codes and parallel approvals fail 3 of 3
+  without locks; the disable race passes without locks — the record count does not depend on them — and fails 3 of 3
+  when the exception counts only active admins). On 2026-10-07: `scripts\run-tests.bat` `179 passed, 1 skipped, 1
+  warning` (exit 0); `scripts\run-pg-tests.bat full` `200 passed, 1 warning` (exit 0); `alembic check`: no new
+  operations at `c5ee69870dbb`. Committed as `5313008`, then rebased onto `81d0cb8`; after the rebase the same two
+  commands gave the same counts and `alembic check` / `alembic current` showed `c5ee69870dbb (head)`.
+- Next: review and merge of the link-code slice; whether `postgres` and `secret-scan` become required checks;
+  then (5) payload-bound approval.
 
 ## End-of-session update template
 

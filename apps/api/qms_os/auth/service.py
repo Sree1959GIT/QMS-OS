@@ -291,9 +291,32 @@ def change_password(s: Session, ctx: AuthContext, user: User, sess: AuthSession 
     event(s, "auth.password.changed", user.id, actor_id=user.id, channel=channel, other_sessions_revoked=revoked)
 
 
-# ---------- one-time links: invitation, reset, set-up ----------
+# ---------- one-time links: invitation, reset, set-up (link-code slice; ADR 0003) ----------
+# A link needs two parts: the link token (shown once to the approving admin) and a verification code (shown once to
+# the initiating admin, who tells the person in person). Neither admin alone can redeem it. The only exception is the
+# single-admin bootstrap invitation (exactly one account-admin record exists), which is recorded and flagged.
+
+CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"   # no look-alikes: 0/O and 1/I/L are excluded
+CODE_LENGTH = 10                                     # 31^10, about 49.5 bits; shown as XXXXX-XXXXX
+
+
+def new_link_code() -> str:
+    raw = "".join(secrets.choice(CODE_ALPHABET) for _ in range(CODE_LENGTH))
+    return f"{raw[:5]}-{raw[5:]}"
+
+
+def normalise_link_code(code: str) -> str:
+    return "".join(ch for ch in (code or "").upper() if ch not in " -")
+
+
+def _issue_code(ctx: AuthContext, action: AccountAction) -> str:
+    code = new_link_code()
+    action.code_hash, action.code_attempts = PW.hash_password(normalise_link_code(code), ctx.hasher), 0
+    return code
+
 
 def _issue_link(ctx: AuthContext, action: AccountAction) -> str:
+    """The link token; the verification code (issued earlier) expires with it."""
     token = secrets.token_urlsafe(32)
     action.link_hash, action.link_expires_at, action.status = _sha256(token), ctx.now() + ctx.limits.link_lifetime, \
         "link_issued"
@@ -306,29 +329,63 @@ def _supersede_open_actions(s: Session, user_id: int) -> None:
               .values(status="superseded"))
 
 
-def invite(s: Session, ctx: AuthContext, admin: User, target_id: int, channel: str = "web") -> tuple[AccountAction, str]:
-    """An account for an existing person record. The one-time link is shown once, to be handed over in person."""
+def _lock_admin_records(s: Session) -> list[User]:
+    """Lock every account-admin person row in id order (the first step of the lock order: admins by id, then the
+    target person, credential, action) and return those still account admins once locked. Disabled accounts count:
+    the role record exists whatever the state of the credential."""
+    ids = s.scalars(select(User.id).where(User.platform_role == ACCOUNT_ADMIN).order_by(User.id)).all()
+    locked = [locked_person(s, i) for i in ids]
+    return [u for u in locked if u is not None and u.platform_role == ACCOUNT_ADMIN]
+
+
+@dataclass
+class IssuedAction:
+    action: AccountAction
+    code: str
+    link_token: str | None = None          # only for the single-admin bootstrap invitation
+
+
+def invite(s: Session, ctx: AuthContext, admin: User, target_id: int, channel: str = "web") -> IssuedAction:
+    """Invitation for an existing person record. Normally a request that a different, active account admin must
+    approve (the approver receives the link); the initiator receives the verification code. Only while exactly one
+    account-admin record exists (counting disabled accounts, decided now under the admin locks) is the invitation
+    issued at once, with both parts to this admin, recorded as split_knowledge = false."""
+    admins = _lock_admin_records(s)
     target = locked_person(s, target_id)
     if target is None:
         raise NotFound(f"User {target_id} not found")
     cred = locked_credential(s, target.id)
     if cred is not None and cred.status != "invited":
         raise RuleViolation("this person already has an account; use a credential reset instead")
+    single_admin = len(admins) == 1
+    if not single_admin and not _active_admins(s, admin.id, target.id):
+        raise Held("second_admin_required", "an invitation needs a second, active account admin to approve it",
+                   "re-enable or appoint a second account admin", actor=admin, entity="account", entity_id=target.id,
+                   attempted="invite")
     if cred is None:
         s.add(UserCredential(user_id=target.id, status="invited", created_at=ctx.now()))
         s.add(AuthIdentity(user_id=target.id, kind="local", created_at=ctx.now()))
     _supersede_open_actions(s, target.id)
-    action = AccountAction(kind="invite", target_user_id=target.id, status="link_issued", initiated_by_id=admin.id,
-                           initiated_at=ctx.now())
-    token = _issue_link(ctx, action)
+    now = ctx.now()
+    action = AccountAction(kind="invite", target_user_id=target.id, status="pending_approval", initiated_by_id=admin.id,
+                           initiated_at=now, split_knowledge=not single_admin)
+    code = _issue_code(ctx, action)
+    token = None
+    if single_admin:
+        token = _issue_link(ctx, action)
+    else:
+        action.request_expires_at = now + ctx.limits.request_lifetime
     s.add(action)
     s.flush()
-    event(s, "auth.account.invited", target.id, actor_id=admin.id, channel=channel, action_id=action.id)
-    return action, token
+    event(s, "auth.account.invited", target.id, actor_id=admin.id, channel=channel, action_id=action.id,
+          split_knowledge=action.split_knowledge, code_issued=True)
+    if single_admin:
+        event(s, "auth.invite.single_admin", target.id, actor_id=admin.id, channel=channel, action_id=action.id)
+    return IssuedAction(action, code, token)
 
 
 def request_reset(s: Session, ctx: AuthContext, admin: User, target_id: int, identity_proof: str,
-                  channel: str = "web") -> AccountAction:
+                  channel: str = "web") -> IssuedAction:
     target = locked_person(s, target_id)
     if target is None:
         raise NotFound(f"User {target_id} not found")
@@ -344,67 +401,94 @@ def request_reset(s: Session, ctx: AuthContext, admin: User, target_id: int, ide
                    "appoint a second account admin", actor=admin, entity="account", entity_id=target.id,
                    attempted="request_reset")
     _supersede_open_actions(s, target.id)
+    now = ctx.now()
     action = AccountAction(kind="reset", target_user_id=target.id, status="pending_approval", initiated_by_id=admin.id,
-                           initiated_at=ctx.now(), identity_proof=identity_proof.strip())
+                           initiated_at=now, identity_proof=identity_proof.strip(), split_knowledge=True,
+                           request_expires_at=now + ctx.limits.request_lifetime)
+    code = _issue_code(ctx, action)
     s.add(action)
     s.flush()
-    event(s, "auth.reset.requested", target.id, actor_id=admin.id, channel=channel, action_id=action.id)
-    return action
+    event(s, "auth.reset.requested", target.id, actor_id=admin.id, channel=channel, action_id=action.id,
+          code_issued=True)
+    return IssuedAction(action, code)
 
 
-def approve_reset(s: Session, ctx: AuthContext, admin: User, action_id: int, channel: str = "web"
-                  ) -> tuple[AccountAction, str]:
+def approve_account_action(s: Session, ctx: AuthContext, admin: User, action_id: int, channel: str = "web"
+                           ) -> tuple[AccountAction, str]:
+    """A different account admin approves a pending invitation or reset and receives the link token, never the code.
+    A reset also clears the person's old credentials and sessions."""
     found = s.get(AccountAction, action_id)
-    if found is None or found.kind != "reset":
-        raise NotFound(f"reset request {action_id} not found")
+    if found is None or found.kind not in ("invite", "reset"):
+        raise NotFound(f"account request {action_id} not found")
     # lock in the standard order (person, credential, action), then decide on the locked, freshly read action
     locked_person(s, found.target_user_id)
     cred = locked_credential(s, found.target_user_id)
     action = locked_action(s, action_id)
     if action.status != "pending_approval":
-        raise RuleViolation(f"this reset request is {action.status}")
+        raise RuleViolation(f"this request is {action.status}")
+    if action.request_expires_at is not None and ctx.now() >= action.request_expires_at:
+        raise RuleViolation("this request has expired; start a new one")
     if admin.id in (action.initiated_by_id, action.target_user_id):
-        raise Forbidden("a reset must be approved by a different account admin, not the initiator or the person")
-    cred.status, cred.password_hash, cred.totp_secret_enc, cred.totp_pending_enc = "invited", None, None, None
-    cred.totp_enrolled_at, cred.totp_last_step, cred.must_reenroll_totp = None, None, False
-    cred.failed_attempts, cred.locked_until = 0, None
-    revoke_sessions(s, ctx, action.target_user_id, "credential_reset")
-    s.execute(update(RecoveryCode).where(RecoveryCode.user_id == action.target_user_id, RecoveryCode.used_at.is_(None),
-                                         RecoveryCode.superseded_at.is_(None)).values(superseded_at=ctx.now()))
+        raise Forbidden("a request must be approved by a different account admin, not the initiator or the person")
+    if action.kind == "reset":
+        cred.status, cred.password_hash, cred.totp_secret_enc, cred.totp_pending_enc = "invited", None, None, None
+        cred.totp_enrolled_at, cred.totp_last_step, cred.must_reenroll_totp = None, None, False
+        cred.failed_attempts, cred.locked_until = 0, None
+        revoke_sessions(s, ctx, action.target_user_id, "credential_reset")
+        s.execute(update(RecoveryCode).where(RecoveryCode.user_id == action.target_user_id,
+                                             RecoveryCode.used_at.is_(None), RecoveryCode.superseded_at.is_(None))
+                  .values(superseded_at=ctx.now()))
     action.approved_by_id, action.approved_at = admin.id, ctx.now()
     token = _issue_link(ctx, action)
-    event(s, "auth.reset.approved", action.target_user_id, actor_id=admin.id, channel=channel, action_id=action.id)
+    event(s, f"auth.{action.kind}.approved", action.target_user_id, actor_id=admin.id, channel=channel,
+          action_id=action.id)
     return action, token
 
 
-def _open_link(s: Session, ctx: AuthContext, token: str) -> tuple[AccountAction, User, UserCredential]:
+def _open_link(s: Session, ctx: AuthContext, token: str, code: str | None
+               ) -> tuple[AccountAction, User, UserCredential]:
+    """The link and, for step 1 (``code`` given), its verification code. Every failure is ``invalid_link``. The code is
+    checked (Argon2id) only after the token matched a live link; wrong codes are counted and the link is voided at
+    the limit. A link without a code (issued before this slice) is refused."""
     found = s.scalar(select(AccountAction).where(AccountAction.link_hash == _sha256(token))) if token else None
     if found is None:
         raise AuthFailure("invalid_link")
-    # standard lock order, then check the link on the locked, freshly read row (a concurrent redemption or a new
-    # reset may have used or superseded it while this request waited)
+    # standard lock order, then check the link on the locked, freshly read row (a concurrent redemption, a wrong-code
+    # attempt or a new request may have changed it while this request waited)
     user = locked_person(s, found.target_user_id)
     cred = locked_credential(s, found.target_user_id)
     action = locked_action(s, found.id)
-    if action.status != "link_issued" or ctx.now() >= action.link_expires_at:
+    if action.status != "link_issued" or ctx.now() >= action.link_expires_at or not action.code_hash:
+        raise AuthFailure("invalid_link")
+    if code is not None and not PW.verify_password(action.code_hash, normalise_link_code(code), ctx.hasher):
+        action.code_attempts += 1
+        event(s, "auth.link.code_rejected", user.id, actor_id=None, actor_kind="system", channel="web",
+              action_id=action.id, attempt=action.code_attempts)
+        if action.code_attempts >= ctx.limits.link_code_attempts:
+            action.status = "void"
+            event(s, "auth.link.voided", user.id, actor_id=None, actor_kind="system", channel="web",
+                  action_id=action.id, reason="too_many_wrong_codes")
         raise AuthFailure("invalid_link")
     return action, user, cred
 
 
-def setup_password(s: Session, ctx: AuthContext, token: str, password: str, channel: str = "web") -> dict:
-    """Step 1 of the link: the person sets their own password and receives a new authenticator secret."""
-    action, user, cred = _open_link(s, ctx, token)
+def setup_password(s: Session, ctx: AuthContext, token: str, code: str, password: str, channel: str = "web") -> dict:
+    """Step 1 of the link: with the link token and the verification code, the person sets their own password and
+    receives a new authenticator secret."""
+    action, user, cred = _open_link(s, ctx, token, code)
     check_password(user, password, ctx)
     secret = T.new_secret()
     cred.password_hash, cred.password_changed_at = PW.hash_password(password, ctx.hasher), ctx.now()
     cred.totp_pending_enc = ctx.box.seal(user.id, secret)
-    event(s, "auth.setup.password_set", user.id, actor_id=user.id, channel=channel, action_id=action.id)
+    event(s, "auth.setup.password_set", user.id, actor_id=user.id, channel=channel, action_id=action.id,
+          code_verified=True)
     return {"otpauth_uri": T.provisioning_uri(secret, user.email), "secret": secret}
 
 
 def setup_confirm(s: Session, ctx: AuthContext, token: str, code: str, channel: str = "web") -> list[str]:
-    """Step 2: the first authenticator code activates the account and returns recovery codes (shown once)."""
-    action, user, cred = _open_link(s, ctx, token)
+    """Step 2: the first authenticator code activates the account and returns recovery codes (shown once). It needs
+    no verification code: the authenticator secret it proves was given only to whoever completed step 1."""
+    action, user, cred = _open_link(s, ctx, token, None)
     if not cred.password_hash or not cred.totp_pending_enc:
         raise RuleViolation("set a password first")
     step = T.accept(ctx.box.open(user.id, cred.totp_pending_enc), code, ctx.now(), None)
@@ -517,8 +601,7 @@ def grant_account_admin(s: Session, email: str) -> User:
 def revoke_account_admin(s: Session, email: str) -> User:
     """Refused if it would leave no active account admin. Every current account admin's person row is locked first
     (in id order, before any credential), so two concurrent revocations cannot both count the other admin."""
-    for admin_id in s.scalars(select(User.id).where(User.platform_role == ACCOUNT_ADMIN).order_by(User.id)).all():
-        locked_person(s, admin_id)
+    _lock_admin_records(s)
     user, _ = _role_change_target(s, email)
     if user.platform_role != ACCOUNT_ADMIN:
         raise RuleViolation(f"{user.email} is not an account admin")

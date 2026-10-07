@@ -35,6 +35,7 @@ class CodeIn(BaseModel):
 
 class SetupIn(BaseModel):
     token: str = Field(max_length=200)
+    verification_code: str = Field(max_length=32)     # told to the person in person by the initiating admin
     password: str = Field(max_length=1024)
 
 
@@ -78,7 +79,7 @@ def login_recovery(body: RecoveryLoginIn, response: Response, _: None = Depends(
 @router.post("/auth/setup")
 def setup(body: SetupIn, _: None = Depends(public), s: Session = Depends(get_session),
           ctx: AS.AuthContext = Depends(auth_ctx)):
-    return AS.setup_password(s, ctx, body.token, body.password)
+    return AS.setup_password(s, ctx, body.token, body.verification_code, body.password)
 
 
 @router.post("/auth/setup/confirm")
@@ -157,11 +158,14 @@ def recovery_codes(u: User = Depends(step_up_user), s: Session = Depends(get_ses
 
 # ---------- account administration (account admins, step-up) ----------
 
-def _action_row(a, token: str | None = None) -> dict:
+def _action_row(a, *, token: str | None = None, code: str | None = None) -> dict:
+    """One-time values appear once: the verification code only for the initiator, the link token only for the
+    approver (both only for the single-admin bootstrap invitation, flagged by split_knowledge = false)."""
     row = {"id": a.id, "kind": a.kind, "target_user_id": a.target_user_id, "status": a.status,
            "initiated_by_id": a.initiated_by_id, "approved_by_id": a.approved_by_id,
+           "split_knowledge": a.split_knowledge, "request_expires_at": a.request_expires_at,
            "link_expires_at": a.link_expires_at}
-    return row | ({"link_token": token} if token else {})
+    return row | ({"verification_code": code} if code else {}) | ({"link_token": token} if token else {})
 
 
 @router.get("/admin/accounts")
@@ -172,21 +176,22 @@ def accounts(u: User = Depends(account_admin), s: Session = Depends(get_session)
 @router.post("/admin/accounts/{user_id}/invite")
 def invite(user_id: int, u: User = Depends(account_admin), s: Session = Depends(get_session),
            ctx: AS.AuthContext = Depends(auth_ctx)):
-    action, token = AS.invite(s, ctx, u, user_id, s.info["channel"])
-    return _action_row(action, token)
+    issued = AS.invite(s, ctx, u, user_id, s.info["channel"])
+    return _action_row(issued.action, token=issued.link_token, code=issued.code)
 
 
 @router.post("/admin/accounts/{user_id}/reset")
 def request_reset(user_id: int, body: ResetIn, u: User = Depends(account_admin), s: Session = Depends(get_session),
                   ctx: AS.AuthContext = Depends(auth_ctx)):
-    return _action_row(AS.request_reset(s, ctx, u, user_id, body.identity_proof, s.info["channel"]))
+    issued = AS.request_reset(s, ctx, u, user_id, body.identity_proof, s.info["channel"])
+    return _action_row(issued.action, code=issued.code)
 
 
 @router.post("/admin/account-actions/{action_id}/approve")
-def approve_reset(action_id: int, u: User = Depends(account_admin), s: Session = Depends(get_session),
-                  ctx: AS.AuthContext = Depends(auth_ctx)):
-    action, token = AS.approve_reset(s, ctx, u, action_id, s.info["channel"])
-    return _action_row(action, token)
+def approve_account_action(action_id: int, u: User = Depends(account_admin), s: Session = Depends(get_session),
+                           ctx: AS.AuthContext = Depends(auth_ctx)):
+    action, token = AS.approve_account_action(s, ctx, u, action_id, s.info["channel"])
+    return _action_row(action, token=token)
 
 
 @router.post("/admin/accounts/{user_id}/disable")

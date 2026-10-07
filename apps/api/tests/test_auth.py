@@ -99,12 +99,20 @@ class Harness:
         assert admin.login().status_code == 200
         return admin
 
-    def onboard(self, admin: Person, local: str, password: str = GOOD) -> Person:
+    def onboard(self, admin: Person, local: str, password: str = GOOD, approver: Person | None = None) -> Person:
+        """Invite and set up an account. With one account-admin record the invitation is issued at once (bootstrap
+        exception); otherwise ``approver`` (a different admin) approves it and receives the link."""
         r = admin.post(f"/api/admin/accounts/{self.uid(local)}/invite")
         assert r.status_code == 200, r.text
-        token = r.json()["link_token"]
+        code, token = r.json()["verification_code"], r.json().get("link_token")
+        if token is None:
+            assert approver is not None, "two account-admin records exist: the invitation needs an approver"
+            approver.login()                                        # fresh step-up for the approval
+            ok = approver.post(f"/api/admin/account-actions/{r.json()['id']}/approve")
+            assert ok.status_code == 200, ok.text
+            token = ok.json()["link_token"]
         anon = self.client()
-        setup = anon.post("/api/auth/setup", json={"token": token, "password": password})
+        setup = anon.post("/api/auth/setup", json={"token": token, "verification_code": code, "password": password})
         assert setup.status_code == 200, setup.text
         secret = setup.json()["secret"]
         done = anon.post("/api/auth/setup/confirm", json={"token": token, "code": T.code_at(secret, self.now())})
@@ -279,28 +287,30 @@ def test_reset_initiated_by_one_admin_approved_by_another_and_completed_by_the_p
     with h.db() as s:
         s.get(User, h.uid("md")).platform_role = AS.ACCOUNT_ADMIN    # granting the role is not an API yet
         s.commit()
-    qa = h.onboard(admin, "qa_head")
+    qa = h.onboard(admin, "qa_head", approver=second)              # two admin records: the invitation is approved
     qa.login()
+    admin.login()
     second.login()
     url = f"/api/admin/accounts/{h.uid('qa_head')}/reset"
     assert admin.post(url, {"identity_proof": ""}).status_code == 422
     action = admin.post(url, {"identity_proof": "seen in person, ID card checked"}).json()
-    assert action["status"] == "pending_approval" and "link_token" not in action
+    assert action["status"] == "pending_approval" and "link_token" not in action and action["verification_code"]
     assert admin.post(f"/api/admin/account-actions/{action['id']}/approve").status_code == 403   # initiator
     ok = second.post(f"/api/admin/account-actions/{action['id']}/approve").json()
-    assert ok["status"] == "link_issued" and ok["link_token"]
+    assert ok["status"] == "link_issued" and ok["link_token"] and "verification_code" not in ok
     assert qa.get("/api/me").json()["reason"] == "not_authenticated"   # sessions revoked
     assert qa.login().json() == INVALID                         # old credentials are gone
     anon = h.client()
     new_pw = "amber kettle seven lantern drift"
-    setup = anon.post("/api/auth/setup", json={"token": ok["link_token"], "password": new_pw}).json()
+    setup = anon.post("/api/auth/setup", json={"token": ok["link_token"], "verification_code": action["verification_code"],
+                                               "password": new_pw}).json()
     h.now.tick()
     assert anon.post("/api/auth/setup/confirm", json={"token": ok["link_token"],
                                                       "code": T.code_at(setup["secret"], h.now())}).status_code == 200
     qa.password, qa.secret = new_pw, setup["secret"]
     assert qa.login().status_code == 200
-    assert anon.post("/api/auth/setup", json={"token": ok["link_token"], "password": new_pw}).json()["reason"] == \
-        "invalid_link"                                         # one-time
+    assert anon.post("/api/auth/setup", json={"token": ok["link_token"], "verification_code": action["verification_code"],
+                                              "password": new_pw}).json()["reason"] == "invalid_link"   # one-time
 
 
 def test_account_admin_role_is_separate_from_qms_roles(h):
@@ -335,8 +345,9 @@ def test_password_policy_accepts_a_long_unrelated_passphrase():
 
 def test_weak_password_is_refused_at_set_up(h):
     admin = h.bootstrap()
-    token = admin.post(f"/api/admin/accounts/{h.uid('qa_head')}/invite").json()["link_token"]
-    r = h.client().post("/api/auth/setup", json={"token": token, "password": "password1234567"})
+    issued = admin.post(f"/api/admin/accounts/{h.uid('qa_head')}/invite").json()
+    r = h.client().post("/api/auth/setup", json={"token": issued["link_token"], "verification_code": issued["verification_code"],
+                                                 "password": "password1234567"})
     assert r.status_code == 422 and "common" in r.json()["detail"]
 
 
