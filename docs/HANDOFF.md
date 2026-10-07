@@ -6,9 +6,9 @@
 
 - Repository: this repository (`QMS-OS`); confirm the remote with `git remote -v`.
 - Specification: `docs/SPECIFICATION.md`, v3.0 dated 29 September 2026. Verify title and version locally.
-- Baseline recorded here: `main` at `9b79841792b582d24599a86ee5758de5bcf24e27` ("Keep Windows batch scripts CRLF
-  with .gitattributes (#13)"), matching `origin/main` on 2026-10-06. Work in progress: branch
-  `feat/account-admin-cli` (uncommitted when this file was written). Re-verify branch, HEAD and working tree with Git
+- Baseline recorded here: `main` at `d65b0c92b73fd73c421db4abc2d4d7a6a1489154` ("Add operator CLI to grant and
+  revoke account_admin (#14)"), matching `origin/main` on 2026-10-06. Work in progress: branch
+  `ci/secret-scan-and-pg` (uncommitted when this file was written). Re-verify branch, HEAD and working tree with Git
   at session start; this file may be stale.
 - Stage: pre-MVP-0 baseline merged; MVP-0 not started (see `docs/ROADMAP.md`).
 - Mode: synthetic only. No live connectors, staff accounts or model credentials are configured in this repository,
@@ -18,11 +18,14 @@
 
 Each item says how it was verified.
 
-- **Git:** on 2026-10-06 `main` was at `9b79841…`, equal to `origin/main` after `git fetch`, and the working tree
-  was clean (checked with Git). Pull request #13 (`chore/gitattributes-bat`, head `1ef0c7e`) was merged to `main` as
-  `9b79841`; CI job `test` succeeded on the pull request (run 37478760925) and on `main` (run 37478911185); the
-  branch has been deleted (absent locally and on GitHub). Pull request #12 (`feat/env-temp-root`, head `870a042`)
-  was merged to `main` as `58bfd13`; CI job `test` succeeded on the pull request (run 37465702805) and on `main` (run 37465852131); the
+- **Git:** on 2026-10-06 `main` was at `d65b0c9…`, equal to `origin/main` after `git fetch`, and the working tree
+  was clean (checked with Git). Pull request #14 (`feat/account-admin-cli`, head `58d81bd`) was merged to `main` as
+  `d65b0c9`; CI job `test` succeeded on the pull request (run 37493133191) and on `main` (run 37493474630); the
+  branch has been deleted (absent locally and on GitHub). Pull request #13 (`chore/gitattributes-bat`, head
+  `1ef0c7e`) was merged to `main` as `9b79841`; CI job `test` succeeded on the pull request (run 37478760925) and on
+  `main` (run 37478911185); the branch has been deleted (absent locally and on GitHub). Pull request #12
+  (`feat/env-temp-root`, head `870a042`) was merged to `main` as `58bfd13`; CI job `test` succeeded on the pull
+  request (run 37465702805) and on `main` (run 37465852131); the
   branch `feat/env-temp-root` has been deleted (absent locally and on GitHub). Pull request #11
   (`docs/handoff-r3-merged`, handoff only) was merged to `main` as
   `82d5897`; CI job `test` succeeded on `main` (run 37462907004). Pull request #10 (`feat/auth-r3`, head `74a4460`)
@@ -55,7 +58,10 @@ Each item says how it was verified.
   - History: before the Checkpoint A repair the suite stood at `4 failed, 32 passed`.
 - **CI:** `.github/workflows/ci.yml` runs job `test` on pull requests to `main` and on pushes to `main`, with
   `permissions: contents: read`, `persist-credentials: false`, actions pinned to full commit SHAs, and dependency
-  versions held by `apps/api/constraints-ci.txt`. No secrets are used.
+  versions held by `apps/api/constraints-ci.txt`. No secrets are used. Branch `ci/secret-scan-and-pg` adds two jobs,
+  **not yet verified in CI**: `postgres` (the whole suite on a pinned PostgreSQL 17.11 service container, including
+  the concurrency tests) and `secret-scan` (gitleaks 8.30.1, SHA-256-verified; the pull request's commits on pull
+  requests, the whole history on pushes to `main` and manual runs). The required status check is still only `test`.
 - **Layout:** application code lives in `apps/api/` (R-1; pull request #5). Verified by: `105 passed, 1 warning` run locally from `apps/api/`, and job `test` passing on pull request #5 and on the push to `main`.
 - **Local runtime:** PostgreSQL 17 runs through `compose.yaml` (R-2) and the Python venv and caches live inside the project folder. Verified on a local Windows machine on 2026-10-05 by: `scripts\start-db.bat` reaching a healthy container, `select version()` returning PostgreSQL 17.11, `scripts\backup-db.bat` writing a non-empty dump, and `scripts\run-tests.bat` giving `105 passed, 1 warning`.
 - **Protection of `main`** (GitHub public API): an active ruleset on the default branch blocks deletion and
@@ -112,7 +118,8 @@ Each item says how it was verified.
 
 ## Not verified
 
-- PostgreSQL in CI: none; PostgreSQL runs are local only. The API server *process* has not been run against
+- PostgreSQL in CI and the CI secret scan: jobs added on branch `ci/secret-scan-and-pg`, not yet verified in CI;
+  until a run passes, PostgreSQL runs are verified only locally. The API server *process* has not been run against
   PostgreSQL (tests use the in-process test client); `qms_os.seed` supports SQLite only. Database-level
   append-only enforcement (trigger or revoked privileges on `audit_events`) does not exist; append-only is enforced
   by application code and `tests/test_no_retention.py`. TLS to a non-local database is not configured.
@@ -152,8 +159,9 @@ Each item says how it was verified.
 - The specification's repository layout is partly adopted: the code lives in `apps/api/` (R-1, decided); other `apps/` and `packages/` folders do not exist yet.
 - The specification makes PostgreSQL the authority; the code still defaults to SQLite. PostgreSQL support (R-14) is on
   `main` and is tested locally, not in CI.
-- The specification asks pull-request CI for formatter, type, lint and integration checks and a secret scan; CI
-  currently runs the unit tests only.
+- The specification asks pull-request CI for formatter, type, lint and integration checks and a secret scan; CI on
+  `main` runs the unit tests only (secret scan and PostgreSQL job on branch `ci/secret-scan-and-pg`, not yet verified
+  in CI).
 - `CLAUDE.md` refers to a stage-prompt document that is held by the Admin and is not in this repository.
 
 ## Open decisions
@@ -169,12 +177,13 @@ Each item says how it was verified.
   cannot be created, stops the scripts with exit code 1 (no fallback to C:). On `main` since pull request #12; see
   `docs/LOCAL-RUNTIME.md`.
 - Proposed order of the next slices (a proposal, not a commitment): (1) the `env.bat` `QMS_TEMP_ROOT` override
-  (done, pull request #12); (2) a CLI command to grant or remove `account_admin` (on branch
-  `feat/account-admin-cli`); (3) CI: a secret scan and a PostgreSQL job (the PostgreSQL and concurrency tests run
-  only locally today); (4) the one-time link code — **a blocker before any real person is onboarded**
-  (`docs/ROADMAP.md`; ADR 0003, *Known limitation*); (5) payload-bound approval.
-- Not yet decided: a PostgreSQL job in CI; database-level append-only enforcement; production use of the psycopg
-  binary wheel versus a local build (`docs/UPSTREAMS.md`).
+  (done, pull request #12); (2) a CLI command to grant or remove `account_admin` (done, pull request #14); (3) CI:
+  a secret scan and a PostgreSQL job (on branch `ci/secret-scan-and-pg`, not yet verified in CI); (4) the one-time
+  link code — **a blocker before any real person is onboarded** (`docs/ROADMAP.md`; ADR 0003, *Known
+  limitation*); (5) payload-bound approval.
+- Not yet decided: whether `postgres` and `secret-scan` become required status checks (after they pass in CI);
+  database-level append-only enforcement; production use of the psycopg binary wheel versus a local build
+  (`docs/UPSTREAMS.md`).
 - Unresolved organisational decisions: D-07, D-08, D-12, D-13, D-14, D-15, D-16.
 - Candidate values (D-01, D-02, D-04, D-05, D-06) need named owners before any becomes policy (R-4).
 - The organisation policy needs an ID, version and effective date from the policy owner, then Top Management
@@ -219,8 +228,14 @@ See *Proposed MVP-0 order* in `docs/ROADMAP.md`. No dates or delivery commitment
   `tests/test_account_admin_cli.py` (12, SQLite) and one PostgreSQL test (two concurrent revocations leave exactly
   one admin; shown to fail 3 of 3 times against code without the row locks, scratch mutation run). On 2026-10-06:
   `scripts\run-tests.bat` `167 passed, 1 skipped, 1 warning` (exit 0); `scripts\run-pg-tests.bat full` `185 passed,
-  1 warning` (exit 0). Uncommitted at the time of writing. Synthetic mode.
-- Next: (3) CI: a secret scan and a PostgreSQL job (see *Proposed order of the next slices*).
+  1 warning` (exit 0). Merged as `d65b0c9` (pull request #14); the branch has been deleted. Synthetic mode.
+- Branch `ci/secret-scan-and-pg` from `d65b0c9…`: `.github/workflows/ci.yml` gains jobs `postgres` and
+  `secret-scan` and a `workflow_dispatch` trigger (job `test` unchanged); new `.gitleaks.toml` (default rules plus
+  one allowlisted path, the vendored password list). Checked locally only: `actionlint` 1.7.12 passed; gitleaks
+  8.30.1 found no leaks in the whole history (17 commits) and in the new files, and detected a fake key outside the
+  allowlisted path in a scratch repository; `scripts\run-tests.bat` `167 passed, 1 skipped` (exit 0). **Not yet
+  verified in CI** — the Admin pushes the branch and reads the first run. Uncommitted at the time of writing.
+- Next: the Admin's first CI run of `postgres` and `secret-scan`; then (4) the one-time link code.
 
 ## End-of-session update template
 

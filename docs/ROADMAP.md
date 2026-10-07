@@ -45,7 +45,7 @@ no unverified feature claim.
 6. Upstream, licence and version matrix.
 7. Model-provider contract with a simulated provider.
 8. Local-model benchmark plan.
-9. CI hardening: lint and format, type checks, secret scan, Python 3.11, PostgreSQL integration job.
+9. CI hardening: lint and format, type checks, secret scan, Python 3.11, PostgreSQL integration job. Secret scan (gitleaks) and PostgreSQL job: on branch `ci/secret-scan-and-pg`, **not yet verified in CI**; lint and format, type checks and Python 3.11 not started.
 
 ## Later stages (specification scope; all not started)
 
