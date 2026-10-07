@@ -6,10 +6,10 @@ from __future__ import annotations
 import os
 from datetime import date
 
+import pg_support as PG
 import pytest
 from fastapi.testclient import TestClient
 
-import pg_support as PG
 from qms_os.auth.keys import KEY_ENV
 from qms_os.auth.testing import TestIdentityProvider
 from qms_os.db import create_all, make_engine, make_sessionmaker

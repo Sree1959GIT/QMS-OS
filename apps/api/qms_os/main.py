@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Callable, Mapping
 from datetime import date, datetime
 from pathlib import Path
-from typing import Callable, Mapping
 
 from fastapi import FastAPI, Request
 from fastapi.encoders import jsonable_encoder
@@ -17,8 +17,8 @@ from .auth.limits import AuthConfigError, AuthLimits
 from .auth.service import AuthContext
 from .db import make_engine, make_sessionmaker, prepare_schema
 from .policy import Mode, load_context
-from .timeutil import utcnow
 from .services.common import ServiceError
+from .timeutil import utcnow
 
 
 def _auth_key(mode: Mode, env: Mapping[str, str], auth_key: bytes | None) -> bytes:

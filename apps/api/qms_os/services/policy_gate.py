@@ -9,7 +9,7 @@ approver; any change to the file or version invalidates it; nobody approves thei
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -147,7 +147,7 @@ def approve(s: Session, ctx: PolicyContext, actor: User, submission_id: int, *, 
     if confirm_version.strip() != sub.policy_version:
         raise RuleViolation("type the exact policy version to confirm approval")
     sub.status, sub.decided_by_id, sub.decided_by_name = "APPROVED", actor.id, actor.name
-    sub.decided_role, sub.decided_at, sub.decision_note = actor.role, datetime.now(timezone.utc), note
+    sub.decided_role, sub.decided_at, sub.decision_note = actor.role, datetime.now(UTC), note
     log(s, actor, "policy.approved", "policy_submission", sub.id, fingerprint=sub.fingerprint,
         version=sub.policy_version, effective_date=sub.effective_date, approver=actor.name)
     return sub
@@ -158,6 +158,6 @@ def reject(s: Session, ctx: PolicyContext, actor: User, submission_id: int, reas
         raise RuleViolation("a reason is required to reject")
     sub = _decidable(s, ctx, actor, submission_id, "policy_reject")
     sub.status, sub.decided_by_id, sub.decided_by_name = "REJECTED", actor.id, actor.name
-    sub.decided_role, sub.decided_at, sub.decision_note = actor.role, datetime.now(timezone.utc), reason
+    sub.decided_role, sub.decided_at, sub.decision_note = actor.role, datetime.now(UTC), reason
     log(s, actor, "policy.rejected", "policy_submission", sub.id, reason=reason)
     return sub

@@ -8,12 +8,12 @@ import json
 from datetime import date
 
 import pytest
+from conftest import org_policy_doc
 from sqlalchemy import select
 
 from qms_os.main import create_app
 from qms_os.models import AuditEvent, AuditProgram
 from qms_os.policy import PolicyConfigError, load_context
-from conftest import org_policy_doc
 
 
 def _held(r, rule):
@@ -23,7 +23,8 @@ def _held(r, rule):
 
 
 def _qa_head_risk(o):
-    return o.as_("qa_head").post("/api/risks", {"department_id": 1, "process": "Doc control", "failure_mode": "Obsolete form",
+    return o.as_("qa_head").post("/api/risks", {"department_id": 1, "process": "Doc control",
+                                             "failure_mode": "Obsolete form",
                                              "severity": 2, "occurrence": 2, "detection": 2})
 
 
@@ -117,9 +118,8 @@ def test_invalid_mode_refuses_startup(engine):
 def test_demo_programme_is_labelled_synthetic_and_its_policy_is_unapprovable(engine, clock):
     import os
 
-    from fastapi.testclient import TestClient
-
     from conftest import session_headers, user_ids
+    from fastapi.testclient import TestClient
     app = create_app(engine=engine, today=clock, mode="demo", auth_key=os.urandom(32))
     c, ids = TestClient(app), user_ids(engine)
     sessions = {who: session_headers(app, ids[who]) for who in ("ma", "md")}   # demo mode uses real sign-in
@@ -191,7 +191,8 @@ def test_file_changed_between_submission_and_approval(op):
     op.write(policy_version="t1b")
     o = op.start()
     _held(o.as_("md").post(f"/api/policy/submissions/{sub['id']}/approve",
-                           {"fingerprint": sub["fingerprint"], "confirm_version": "t1"}), "policy_changed_since_submission")
+                           {"fingerprint": sub["fingerprint"], "confirm_version": "t1"}),
+          "policy_changed_since_submission")
 
 
 def test_approved_policy_is_not_in_force_before_its_effective_date(op, clock):

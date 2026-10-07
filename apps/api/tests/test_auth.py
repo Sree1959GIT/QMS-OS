@@ -10,20 +10,21 @@ import json
 import os
 import shutil
 import subprocess
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
 from argon2 import PasswordHasher
+from conftest import write_test_key
+from cryptography.exceptions import InvalidTag
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
+from qms_os.auth import keys as keys_module
 from qms_os.auth import passwords as PW
 from qms_os.auth import service as AS
 from qms_os.auth import totp as T
 from qms_os.auth.cli import run_bootstrap
-from conftest import write_test_key
-from qms_os.auth import keys as keys_module
 from qms_os.auth.keys import KEY_ENV, SecretBox, generate_key_file, load_key_file
 from qms_os.auth.limits import AuthConfigError, AuthLimits
 from qms_os.auth.testing import TestIdentityProvider
@@ -36,7 +37,7 @@ FAST = PasswordHasher(time_cost=1, memory_cost=8, parallelism=1)
 
 class Now:
     def __init__(self):
-        self.t = datetime(2026, 3, 2, 9, 0, tzinfo=timezone.utc)
+        self.t = datetime(2026, 3, 2, 9, 0, tzinfo=UTC)
 
     def __call__(self) -> datetime:
         return self.t
@@ -123,7 +124,8 @@ class Harness:
 
     def events(self, prefix="auth."):
         with self.db() as s:
-            return list(s.scalars(select(AuditEvent).where(AuditEvent.action.like(f"{prefix}%")).order_by(AuditEvent.id)))
+            return list(s.scalars(select(AuditEvent).where(AuditEvent.action.like(f"{prefix}%"))
+                                  .order_by(AuditEvent.id)))
 
 
 @pytest.fixture
@@ -302,14 +304,16 @@ def test_reset_initiated_by_one_admin_approved_by_another_and_completed_by_the_p
     assert qa.login().json() == INVALID                         # old credentials are gone
     anon = h.client()
     new_pw = "amber kettle seven lantern drift"
-    setup = anon.post("/api/auth/setup", json={"token": ok["link_token"], "verification_code": action["verification_code"],
+    setup = anon.post("/api/auth/setup", json={"token": ok["link_token"],
+                                               "verification_code": action["verification_code"],
                                                "password": new_pw}).json()
     h.now.tick()
     assert anon.post("/api/auth/setup/confirm", json={"token": ok["link_token"],
                                                       "code": T.code_at(setup["secret"], h.now())}).status_code == 200
     qa.password, qa.secret = new_pw, setup["secret"]
     assert qa.login().status_code == 200
-    assert anon.post("/api/auth/setup", json={"token": ok["link_token"], "verification_code": action["verification_code"],
+    assert anon.post("/api/auth/setup", json={"token": ok["link_token"],
+                                              "verification_code": action["verification_code"],
                                               "password": new_pw}).json()["reason"] == "invalid_link"   # one-time
 
 
@@ -346,7 +350,8 @@ def test_password_policy_accepts_a_long_unrelated_passphrase():
 def test_weak_password_is_refused_at_set_up(h):
     admin = h.bootstrap()
     issued = admin.post(f"/api/admin/accounts/{h.uid('qa_head')}/invite").json()
-    r = h.client().post("/api/auth/setup", json={"token": issued["link_token"], "verification_code": issued["verification_code"],
+    r = h.client().post("/api/auth/setup", json={"token": issued["link_token"],
+                                                 "verification_code": issued["verification_code"],
                                                  "password": "password1234567"})
     assert r.status_code == 422 and "common" in r.json()["detail"]
 
@@ -395,14 +400,14 @@ def test_limits_can_be_tightened_but_not_loosened():
 def test_totp_matches_rfc_6238_vectors():
     secret = base64.b32encode(b"12345678901234567890").decode()
     for ts, code in ((59, "287082"), (1111111109, "081804"), (1234567890, "005924")):
-        assert T.code_at(secret, datetime.fromtimestamp(ts, timezone.utc)) == code
+        assert T.code_at(secret, datetime.fromtimestamp(ts, UTC)) == code
 
 
 def test_secret_box_binds_ciphertext_to_the_user():
     box = SecretBox(os.urandom(32))
     sealed = box.seal(7, "SECRET")
     assert box.open(7, sealed) == "SECRET"
-    with pytest.raises(Exception):
+    with pytest.raises(InvalidTag):
         box.open(8, sealed)
 
 

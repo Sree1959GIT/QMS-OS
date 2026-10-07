@@ -37,13 +37,15 @@ def test_no_runtime_dependency_on_reference_repository():
 
 def test_governance_flow(api):
     ma, auditee, viewer = api.as_("ma"), api.as_("qa_head"), api.as_("viewer")
-    src = ma.post("/api/knowledge/sources", {"name": "Synthetic controlled documents", "kind": "controlled-document"}).json()
+    src = ma.post("/api/knowledge/sources",
+                  {"name": "Synthetic controlled documents", "kind": "controlled-document"}).json()
     assert auditee.post("/api/knowledge/sources", {"name": "x"}).status_code == 403
     assert auditee.post("/api/knowledge/items", {"source_id": src["id"], "title": "t", "body": "b",
                                                  "origin": " "}).status_code == 422
     v1 = auditee.post("/api/knowledge/items", {
         "source_id": src["id"], "doc_number": "SYN/PROC/DOC", "doc_type": "PROC", "title": "Document control",
-        "body": "Documents are reviewed on a defined schedule.", "origin": "authored in QMS OS", "version": "1.0"}).json()
+        "body": "Documents are reviewed on a defined schedule.", "origin": "authored in QMS OS",
+        "version": "1.0"}).json()
     assert v1["status"] == "candidate"
     assert viewer.get("/api/knowledge/items?q=Document").json() == []          # candidates are not citable
     assert viewer.get("/api/knowledge/items?include_unapproved=true").status_code == 403

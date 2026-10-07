@@ -70,7 +70,8 @@ def test_full_nc_lifecycle(api, clock, fresh):
                 if u["department_id"] == a["department_id"] and u["role"] == "AUDITEE")
     auditee = api.as_(head["id"])
     other = next(k for k in api.users if k not in ("ma", "md", "viewer") and api.users[k] not in
-                 (a["auditor_id"], head["id"]) and k in ("qa_head", "pur_head", "it_head", "hr_head", "mkt_head", "eng_head"))
+                 (a["auditor_id"], head["id"])
+                 and k in ("qa_head", "pur_head", "it_head", "hr_head", "mkt_head", "eng_head"))
 
     # circular drafted on the notify date
     clock.d = date.fromisoformat(a["notify_on"])
@@ -83,7 +84,8 @@ def test_full_nc_lifecycle(api, clock, fresh):
         "category": "MINOR_NC", "statement": "No supplier re-evaluation record for 2025",
         "objective_evidence": "Supplier file S-12 has no re-evaluation record", "iso_clause": "8.4.1",
         "qms_ref": "SYN/PROC/PUR"}).json()
-    afi = auditor.post(f"/api/audits/{a['id']}/findings", {"category": "AFI", "statement": "Index could be searchable"}).json()
+    afi = auditor.post(f"/api/audits/{a['id']}/findings",
+                       {"category": "AFI", "statement": "Index could be searchable"}).json()
     assert nc["code"].endswith("-nc-1") and afi["code"].endswith("-afi-1")
     assert auditee.post(f"/api/audits/{a['id']}/findings", {"category": "AFI", "statement": "s"}).status_code == 403
 
@@ -107,10 +109,12 @@ def test_full_nc_lifecycle(api, clock, fresh):
     plan = {"root_cause": "Re-evaluation not scheduled", "corrective_action": "Add annual re-evaluation to calendar",
             "owner_name": "Buyer 1"}
     late = auditee.post(f"/api/findings/{nc['id']}/action-plan",
-                        plan | {"planned_closure": (report_day + timedelta(days=P.v("closure_limit_days") + 1)).isoformat()})
+                        plan | {"planned_closure":
+                                (report_day + timedelta(days=P.v("closure_limit_days") + 1)).isoformat()})
     assert late.status_code == 422 and "closure limit" in late.json()["detail"]
     ok = auditee.post(f"/api/findings/{nc['id']}/action-plan",
-                      plan | {"planned_closure": (report_day + timedelta(days=P.v("closure_limit_days") // 2)).isoformat()})
+                      plan | {"planned_closure":
+                              (report_day + timedelta(days=P.v("closure_limit_days") // 2)).isoformat()})
     assert ok.status_code == 200
     assert auditor.post(f"/api/findings/{nc['id']}/accept").status_code == 403
     assert api.as_("ma").post(f"/api/findings/{nc['id']}/accept").json()["status"] == "ACTION_PLANNED"

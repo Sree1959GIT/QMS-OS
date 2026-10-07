@@ -17,8 +17,10 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "httpx>=0.27"]
-# PostgreSQL driver and migrations; not installed in CI (SQLite only there)
+# PostgreSQL driver and migrations; installed in CI only by the jobs postgres and types
 postgres = ["psycopg[binary]>=3.2", "alembic>=1.13"]
+# Lint and type checks (scripts\run-lint.bat, CI jobs lint and types); exact versions in constraints-ci.txt
+lint = ["ruff>=0.16", "mypy>=2.4"]
 
 [build-system]
 requires = ["setuptools>=68"]
@@ -29,6 +31,81 @@ include = ["qms_os*"]
 
 [tool.setuptools.package-data]
 "qms_os.auth" = ["data/*.txt"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+# An explicit list, so a ruff upgrade does not change the rules: pycodestyle (E, W), pyflakes (F), import order (I),
+# bugbear (B), pyupgrade for 3.11 (UP), timezone-aware datetimes (DTZ). No formatter (ruff format) is enforced.
+select = ["E", "W", "F", "I", "B", "UP", "DTZ"]
+
+[tool.ruff.lint.per-file-ignores]
+# Migrations keep Alembic's generated header byte-for-byte (merged migrations are history): trailing space after
+# "Revises:" (W291), import order (I001) and typing.Union / typing.Sequence (UP007, UP035).
+"migrations/versions/*" = ["W291", "I001", "UP007", "UP035"]
+# Kept byte-for-byte when lint was added (Admin condition, 2026-10-07): `from typing import Callable` stays.
+"qms_os/auth/service.py" = ["UP035"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI dependencies are declared as Depends(...) defaults by design; AuthLimits is a frozen dataclass.
+extend-immutable-calls = ["fastapi.Depends", "qms_os.auth.limits.AuthLimits"]
+
+[tool.mypy]
+python_version = "3.11"
+files = ["qms_os"]
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unused_configs = true
+
+# Baseline (2026-10-07, mypy 2.4.0): the 99 errors that existed when type checks were added, as one override per
+# module that switches off only the error codes found there; counts are per module, by code. Every other module and
+# every other code is checked. Remove a module's entry once its errors are fixed; never add codes to hide new errors.
+
+[[tool.mypy.overrides]]
+module = "qms_os.api.deps"  # 1: arg-type 1
+disable_error_code = ["arg-type"]
+
+[[tool.mypy.overrides]]
+module = "qms_os.api.routes"  # 1: arg-type 1
+disable_error_code = ["arg-type"]
+
+[[tool.mypy.overrides]]
+module = "qms_os.auth.service"  # 58: union-attr 46, arg-type 5, return-value 4, attr-defined 2, operator 1
+disable_error_code = ["union-attr", "arg-type", "return-value", "attr-defined", "operator"]
+
+[[tool.mypy.overrides]]
+module = "qms_os.db"  # 2: assignment 2
+disable_error_code = ["assignment"]
+
+[[tool.mypy.overrides]]
+module = "qms_os.fixtures"  # 1: index 1
+disable_error_code = ["index"]
+
+[[tool.mypy.overrides]]
+module = "qms_os.policy"  # 8: operator 6, arg-type 1, attr-defined 1
+disable_error_code = ["operator", "arg-type", "attr-defined"]
+
+[[tool.mypy.overrides]]
+module = "qms_os.services.findings"  # 5: arg-type 4, operator 1
+disable_error_code = ["arg-type", "operator"]
+
+[[tool.mypy.overrides]]
+module = "qms_os.services.policy_gate"  # 5: union-attr 3, assignment 2
+disable_error_code = ["union-attr", "assignment"]
+
+[[tool.mypy.overrides]]
+module = "qms_os.services.program"  # 11: arg-type 7, union-attr 3, index 1
+disable_error_code = ["arg-type", "union-attr", "index"]
+
+[[tool.mypy.overrides]]
+module = "qms_os.services.reports"  # 1: arg-type 1
+disable_error_code = ["arg-type"]
+
+[[tool.mypy.overrides]]
+module = "qms_os.services.risks"  # 6: union-attr 3, arg-type 2, operator 1
+disable_error_code = ["union-attr", "arg-type", "operator"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

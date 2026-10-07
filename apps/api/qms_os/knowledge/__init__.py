@@ -13,4 +13,4 @@ Boundaries (see docs/adr/0004-independent-knowledge-module.md):
   approved material is a later, separately reviewed phase
   (docs/05-knowledge-roadmap.md).
 """
-from .service import KnowledgeService, KnowledgeError, ApprovalStatus  # noqa: F401
+from .service import ApprovalStatus, KnowledgeError, KnowledgeService  # noqa: F401

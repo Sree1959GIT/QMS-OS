@@ -53,7 +53,8 @@ def test_acceptable_classification_and_rating_validation(api):
     base = {"department_id": qa["id"], "process": "Doc control", "failure_mode": "Obsolete form used"}
     assert api.as_("qa_head").post("/api/risks", base | {"severity": HI + 1, "occurrence": LO,
                                                       "detection": LO}).status_code == 422
-    assert api.as_("qa_head").post("/api/risks", base | {"severity": 0, "occurrence": 1, "detection": 1}).status_code == 422
+    assert api.as_("qa_head").post("/api/risks",
+                                   base | {"severity": 0, "occurrence": 1, "detection": 1}).status_code == 422
     r = api.as_("qa_head").post("/api/risks", base | _ratings(ACCEPTABLE)).json()
     assert r["proposed_classification"] == "A"
 

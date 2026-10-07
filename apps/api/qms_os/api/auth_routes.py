@@ -10,8 +10,17 @@ from sqlalchemy.orm import Session
 from ..auth import service as AS
 from ..models import User
 from ..services.common import RuleViolation
-from .deps import (SESSION_COOKIE, Principal, account_admin, auth_ctx, current_principal, get_session, public,
-                   step_up_principal, step_up_user)
+from .deps import (
+    SESSION_COOKIE,
+    Principal,
+    account_admin,
+    auth_ctx,
+    current_principal,
+    get_session,
+    public,
+    step_up_principal,
+    step_up_user,
+)
 from .routes import user_row
 
 router = APIRouter(prefix="/api")
@@ -57,7 +66,8 @@ def _signed_in(response: Response, ctx: AS.AuthContext, user: User, issued: AS.I
     response.set_cookie(SESSION_COOKIE, issued.token, httponly=True, secure=True, samesite="strict", path="/api",
                         max_age=int(ctx.limits.session_absolute.total_seconds()))
     return {"user": user_row(user), "csrf_token": issued.csrf, "method": issued.session.method,
-            "idle_expires_at": issued.session.idle_expires_at, "absolute_expires_at": issued.session.absolute_expires_at}
+            "idle_expires_at": issued.session.idle_expires_at,
+            "absolute_expires_at": issued.session.absolute_expires_at}
 
 
 # ---------- public ----------

@@ -70,9 +70,11 @@ TRANSITIONS: dict[tuple[Status, Action], Transition] = {
     (Status.DRAFT, Action.ISSUE_REPORT): Transition(Status.OPEN, frozenset({Role.AUDITOR}), _NC_AFI),
     (Status.OPEN, Action.ACCEPT_ACTION_PLAN): Transition(Status.ACTION_PLANNED, frozenset({Role.MA}), _NC_AFI),
     (Status.ESCALATED, Action.ACCEPT_ACTION_PLAN): Transition(Status.ACTION_PLANNED, frozenset({Role.MA}), _NC_AFI),
-    (Status.ACTION_PLANNED, Action.SUBMIT_CLOSURE): Transition(Status.PENDING_VERIFICATION, frozenset({Role.AUDITEE}), _NC_AFI),
+    (Status.ACTION_PLANNED, Action.SUBMIT_CLOSURE):
+        Transition(Status.PENDING_VERIFICATION, frozenset({Role.AUDITEE}), _NC_AFI),
     (Status.PENDING_VERIFICATION, Action.VERIFY): Transition(Status.CLOSED, frozenset({Role.AUDITOR}), _NC_AFI),
-    (Status.PENDING_VERIFICATION, Action.REJECT_VERIFICATION): Transition(Status.ACTION_PLANNED, frozenset({Role.AUDITOR}), _NC_AFI),
+    (Status.PENDING_VERIFICATION, Action.REJECT_VERIFICATION):
+        Transition(Status.ACTION_PLANNED, frozenset({Role.AUDITOR}), _NC_AFI),
     (Status.OPEN, Action.ESCALATE): Transition(Status.ESCALATED, frozenset({Role.MA}), _NC),
     (Status.ACTION_PLANNED, Action.ESCALATE): Transition(Status.ESCALATED, frozenset({Role.MA}), _NC),
     (Status.ESCALATED, Action.DEESCALATE): Transition(Status.OPEN, frozenset({Role.MA}), _NC),

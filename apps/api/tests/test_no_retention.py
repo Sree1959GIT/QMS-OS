@@ -10,8 +10,8 @@ from pathlib import Path
 from sqlalchemy import select
 
 from qms_os.db import Base
-from qms_os.knowledge.store import KnowledgeBase
 from qms_os.demo_policy import DEMO_POLICY
+from qms_os.knowledge.store import KnowledgeBase
 
 PKG = Path(__file__).resolve().parents[1] / "qms_os"
 

@@ -10,6 +10,7 @@ Steps (from the repo root)
 3. `scripts\start-db.bat` starts PostgreSQL on 127.0.0.1:5432 (database `qmsos`) and generates a git-ignored `.env` with a password.
 4. `scripts\where.bat` prints where the venv, temp files and caches live.
 5. `scripts\stop-db.bat` stops it, `scripts\backup-db.bat` writes a dump to `backups\`, and `scripts\reset-db.bat` deletes all local data after a typed confirmation.
+6. `scripts\run-lint.bat` runs the same checks as the CI jobs `lint` and `types`: `ruff check` on `apps\api` and `mypy` on `qms_os` (configuration in `apps\api\pyproject.toml`; caches in the `env.bat` cache folder). Install the tools once: `cmd /c "call scripts\env.bat && cd apps\api && ..\..\.venv\Scripts\python.exe -m pip install -c constraints-ci.txt -e .[dev,lint]"`. Autofix (review the diff afterwards): `ruff check --fix` from `apps\api`. No formatter is enforced.
 
 PostgreSQL for the API (opt-in; synthetic data only)
 - Install the driver and migration tool: `cmd /c "call scripts\env.bat && cd apps\api && ..\..\.venv\Scripts\python.exe -m pip install -c constraints-ci.txt -e .[dev,postgres]"`.

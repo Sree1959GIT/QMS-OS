@@ -3,8 +3,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from sqlalchemy import (JSON, Boolean, Column, Date, ForeignKey, Integer, String, Table, Text,
-                        UniqueConstraint)
+from sqlalchemy import JSON, Boolean, Column, Date, ForeignKey, Integer, String, Table, Text, UniqueConstraint
 from sqlalchemy import false as sa_false
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -56,7 +55,7 @@ class AuditProgram(Base):
     policy_basis: Mapped[str] = mapped_column(String(16), default="")
     policy_fingerprint: Mapped[str | None] = mapped_column(String(64))
     policy_submission_id: Mapped[int | None] = mapped_column(ForeignKey("policy_submissions.id"))
-    cycles: Mapped[list["AuditCycle"]] = relationship(back_populates="program", order_by="AuditCycle.seq",
+    cycles: Mapped[list[AuditCycle]] = relationship(back_populates="program", order_by="AuditCycle.seq",
                                                       cascade="all, delete-orphan")
 
 
@@ -67,7 +66,7 @@ class AuditCycle(Base):
     seq: Mapped[int] = mapped_column(Integer)
     code: Mapped[str] = mapped_column(String(16), unique=True)
     program: Mapped[AuditProgram] = relationship(back_populates="cycles")
-    audits: Mapped[list["Audit"]] = relationship(back_populates="cycle", order_by="Audit.audit_date",
+    audits: Mapped[list[Audit]] = relationship(back_populates="cycle", order_by="Audit.audit_date",
                                                  cascade="all, delete-orphan")
 
 
@@ -143,8 +142,8 @@ class Finding(Base):
     closed_on: Mapped[date | None] = mapped_column(Date)
     created_by_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     audit: Mapped[Audit] = relationship()
-    action: Mapped["CorrectiveAction | None"] = relationship(back_populates="finding", uselist=False)
-    risks: Mapped[list["Risk"]] = relationship(secondary=finding_risks, back_populates="findings")
+    action: Mapped[CorrectiveAction | None] = relationship(back_populates="finding", uselist=False)
+    risks: Mapped[list[Risk]] = relationship(secondary=finding_risks, back_populates="findings")
 
 
 class CorrectiveAction(Base):
@@ -211,7 +210,7 @@ class Risk(Base):
     last_approved_ratings: Mapped[dict | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=now)
     department: Mapped[Department] = relationship()
-    project: Mapped["Project | None"] = relationship()
+    project: Mapped[Project | None] = relationship()
     findings: Mapped[list[Finding]] = relationship(secondary=finding_risks, back_populates="risks")
 
 
@@ -305,7 +304,8 @@ class UserCredential(Base):
     totp_secret_enc: Mapped[str | None] = mapped_column(Text)                # AES-GCM, key file outside Git
     totp_enrolled_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
     totp_last_step: Mapped[int | None] = mapped_column(Integer)              # single use: last accepted step
-    totp_pending_enc: Mapped[str | None] = mapped_column(Text)               # new secret until its first code is confirmed
+    # new secret until its first code is confirmed
+    totp_pending_enc: Mapped[str | None] = mapped_column(Text)
     must_reenroll_totp: Mapped[bool] = mapped_column(Boolean, default=False)
     failed_attempts: Mapped[int] = mapped_column(Integer, default=0)
     locked_until: Mapped[datetime | None] = mapped_column(UTCDateTime)
@@ -359,7 +359,8 @@ class AccountAction(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     kind: Mapped[str] = mapped_column(String(16))                            # invite | reset
     target_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    status: Mapped[str] = mapped_column(String(16))                          # pending_approval | link_issued | completed | superseded | void
+    # pending_approval | link_issued | completed | superseded | void
+    status: Mapped[str] = mapped_column(String(16))
     initiated_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     initiated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=now)
     identity_proof: Mapped[str] = mapped_column(Text, default="")            # in-person identity check, as recorded

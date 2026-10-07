@@ -11,9 +11,9 @@ working day, so notice periods never shrink and closure limits never stretch.
 """
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date, timedelta
-from typing import Iterable
 
 from ..policy import Policy
 

@@ -4,12 +4,15 @@
 # 2026-10-05 (Windows, Python 3.12.7, PostgreSQL 17.11); CI does not install the postgres extra.
 # Authentication (R-3: argon2-cffi, argon2-cffi-bindings, cffi, pycparser, pyotp, cryptography): verified locally
 # on 2026-10-06 (Windows, Python 3.12.7); first CI run pending.
+# Lint extra (ruff, mypy and mypy's dependencies ast-serialize, librt, mypy-extensions, pathspec): verified locally
+# on 2026-10-07 (Windows, Python 3.12.7); used by scripts\run-lint.bat and the CI jobs lint and types.
 alembic==1.20.0
 annotated-doc==0.0.5
 annotated-types==0.8.0
 anyio==4.15.1
 argon2-cffi==25.1.0
 argon2-cffi-bindings==26.1.0
+ast-serialize==0.12.1
 certifi==2026.7.22
 cffi==2.1.1
 click==8.5.0
@@ -21,9 +24,13 @@ httpcore==1.0.9
 httpx==0.28.1
 idna==3.20
 iniconfig==2.3.0
+librt==0.16.0
 mako==1.4.3
 markupsafe==3.0.4
+mypy==2.4.0
+mypy-extensions==1.1.0
 packaging==26.3
+pathspec==1.1.1
 pluggy==1.6.0
 psycopg==3.3.6
 psycopg-binary==3.3.6
@@ -35,6 +42,7 @@ pygments==2.21.0
 pyotp==2.10.0
 pytest==9.1.1
 python-dotenv==1.2.3
+ruff==0.16.10
 sqlalchemy==2.1.1
 starlette==1.7.0
 typing-extensions==4.16.0

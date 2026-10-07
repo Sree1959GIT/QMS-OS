@@ -35,8 +35,9 @@ def main() -> None:
     with make_sessionmaker(engine)() as s:
         users = load(s)
         if args.demo:
-            prog = PS.create_program(s, users["ma"], 2026, ctx, date.today())
-            PS.approve_program(s, users["ma"], prog.id, ctx, date.today())
+            # noqa reason: the demo programme uses the local business date, not a stored timestamp
+            prog = PS.create_program(s, users["ma"], 2026, ctx, date.today())  # noqa: DTZ011
+            PS.approve_program(s, users["ma"], prog.id, ctx, date.today())  # noqa: DTZ011
         s.commit()
     print(f"Seeded {engine.url} ({ctx.mode} mode, synthetic organisation)")
 

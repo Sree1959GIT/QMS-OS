@@ -19,11 +19,11 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Mapping
 
 SCHEMA_VERSION = 1
 
@@ -61,7 +61,8 @@ def _mmdd(v):
     if not isinstance(v, str):
         return "must be a 'MM-DD' string"
     try:
-        datetime.strptime(f"2000-{v}", "%Y-%m-%d")
+        # noqa reason: validates a calendar day only; the result is discarded, so no timezone is involved
+        datetime.strptime(f"2000-{v}", "%Y-%m-%d")  # noqa: DTZ007
     except ValueError:
         return "must be a valid 'MM-DD' date"
     return None

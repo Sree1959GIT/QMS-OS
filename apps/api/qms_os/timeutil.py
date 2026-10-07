@@ -9,14 +9,14 @@ Every timestamp in QMS OS is an aware UTC datetime. SQLite does not store a UTC 
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import DateTime
 from sqlalchemy.types import TypeDecorator
 
 
 def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class UTCDateTime(TypeDecorator):
@@ -30,11 +30,11 @@ class UTCDateTime(TypeDecorator):
             raise TypeError(f"UTCDateTime expects a datetime, got {type(value).__name__}")
         if value.tzinfo is None or value.utcoffset() is None:
             raise ValueError("naive datetime rejected: timestamps must be timezone-aware (UTC)")
-        return value.astimezone(timezone.utc)
+        return value.astimezone(UTC)
 
     def process_result_value(self, value, dialect):
         if value is None:
             return None
         if value.tzinfo is None:            # SQLite: stored as UTC without an offset
-            return value.replace(tzinfo=timezone.utc)
-        return value.astimezone(timezone.utc)
+            return value.replace(tzinfo=UTC)
+        return value.astimezone(UTC)

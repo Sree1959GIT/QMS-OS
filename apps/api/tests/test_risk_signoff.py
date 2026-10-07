@@ -110,6 +110,7 @@ def test_reassessment_keeps_last_approved_visible_and_distinct_from_the_new_draf
 
 def test_closure_authority_is_unresolved_so_closing_is_held_for_everyone(api, fresh):
     from sqlalchemy import select
+
     from qms_os.models import AuditEvent, Risk
     rid = _to_ma_reviewed(api)
     api.as_("md").post(f"/api/risks/{rid}/signoff", {"approve": True})
