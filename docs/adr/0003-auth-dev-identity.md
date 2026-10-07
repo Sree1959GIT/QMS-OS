@@ -31,8 +31,8 @@ OIDC identity later records issuer and subject. Accounts are never linked by e-m
 | Recovery codes | 10 codes of 120 bits (24 base32 characters), stored as SHA-256 (the approved alternative to Argon2id: at least 112 bits), single use. A recovery-code sign-in **never satisfies step-up**: the session can only re-enrol TOTP, and account admins get a drafted notice. Confirming the new authenticator **ends that session**; the person then signs in normally with password + the new TOTP. Re-enrolment never marks any session as step-up fresh. |
 | Validation errors | `422` responses list only the error type, location and message; submitted values (`input`, `ctx`) are never echoed, so a malformed password or code is not returned. |
 | First Admin | `python -m qms_os.auth bootstrap-admin --email … --name …` on the host: runs only while no active account admin exists, asks for the password interactively (never from arguments or the environment), requires a confirming TOTP code, prints recovery codes once. There is no default password anywhere. |
-| New accounts | An account admin invites an existing person record; the one-time link (24 hours) is handed over in person; the person sets their own password and enrols TOTP through it. |
-| Credential resets | Initiated by one account admin, who records the in-person identity check, and **approved by a second account admin** (neither the initiator nor the person). With no second account admin the request is held (`409`, rule `second_admin_required`, durable `transition.held` event). Approval clears the old password, TOTP and recovery codes and revokes sessions; the person sets a new password and enrols TOTP through a one-time link. |
+| New accounts | An account admin requests an invitation for an existing person record and receives a verification code; a different account admin approves it and receives the one-time link (24 hours). Both are handed to the person in person; the person sets their own password and enrols TOTP through the link. See *One-time links need two parts* (single-admin bootstrap exception included). |
+| Credential resets | Initiated by one account admin, who records the in-person identity check, and **approved by a second account admin** (neither the initiator nor the person). With no second account admin the request is held (`409`, rule `second_admin_required`, durable `transition.held` event). Approval clears the old password, TOTP and recovery codes and revokes sessions; the person sets a new password and enrols TOTP through a one-time link, which also needs the verification code shown to the initiator (see *One-time links need two parts*). |
 | Account admin | `users.platform_role = account_admin`, separate from QMS roles: it grants no QMS approval right, and a QMS role grants no account administration. The bootstrapped admin's QMS role is `VIEWER`. After the first Admin (`bootstrap-admin`), the role is granted and revoked **only by the operator on the host**: `python -m qms_os.auth grant-account-admin <email>` (the operator types the e-mail address again to confirm) and `revoke-account-admin <email>`. There is no API route. The person must have an active account; revoking is refused if it would leave no active account admin. Each change writes `auth.account_admin.granted` / `.revoked` with actor kind `operator`, channel `cli`, the target and the old and new role. A revocation locks every account admin's person row (in id order) before the credential, so two concurrent revocations cannot remove the last admin (tested on PostgreSQL). A static test checks that only these commands and the bootstrap set `platform_role`. |
 | Access levels | Every route declares exactly one level: **public** (health, sign-in, one-time-link endpoints), **human**, or **human+step-up** (approve, reject, accept, verify, acknowledge, MA review, sign-off, close, decide, and all `/api/admin/*`). `tests/test_auth_routes.py` enumerates the routes. |
 | Principals | Only humans authenticate in this slice. `actor_kind` (human, agent, telegram, system, operator — the person at the host running a CLI command) and `channel` (web, cli, telegram, test) are recorded on audit events; a non-human principal on a human route gets `403`. Agents and Telegram principals will get their own credentials later and never a password, TOTP or session. |
@@ -48,22 +48,45 @@ approval to the exact content approved. **Payload-bound approval — a fresh non
 payload (recipients, body, attachments, document revision), repeated whenever the payload changes, as the
 specification requires — is a later slice.** Until then, no approval in QMS OS should be described as payload-bound.
 
-## Known limitation: whoever holds a one-time link can redeem it
+## One-time links need two parts (link-code slice)
 
-The one-time link token is returned to the admin who issues it (the inviting admin, or the second admin who approves a
-reset) so that it can be handed to the person in person. Nothing technical stops that admin from opening the link
-themselves, setting a password and enrolling their own authenticator — taking over the account. The in-person
-handover is a procedure, not a control, and for a reset the second-admin approval does not protect against the
-approving admin.
+*Decided by the Admin on 2026-10-07 (option B, two-admin invitations, Argon2id, old links refused); implemented on
+branch `feat/link-code`.* It replaces the earlier known limitation that whoever held a link could redeem it.
 
-Proposed fix (not implemented; awaiting Admin decision): a second, short one-time verification code that the
-initiating admin sets and tells the person verbally, stored only as a hash. Redeeming a link needs the link token
-and the code; five wrong codes end the link. For a reset the initiator knows only the code and the approver only the
-link, so neither admin alone can redeem it. For an invitation by a single admin both parts are with one person, so
-invitations would also need a second admin (with an exception, or the CLI, for the first ones).
+- **Threat.** The link token went to the admin who issued it, who could open it, set a password and enrol their own
+  authenticator, taking over the account (for a reset, with all its QMS rights).
+- **Two parts.** At the request the system generates a **verification code** and shows it once, only to the
+  **initiating** admin, who tells it to the person in person. At approval it generates the **link token** and shows it
+  once, only to the **approving** admin (never the initiator or the person; `403` otherwise). Redeeming the link
+  (`POST /api/auth/setup`) needs both; step 2 (`setup/confirm`) needs the authenticator code from the secret that only
+  step 1 revealed.
+- **Code.** 10 characters from a look-alike-free alphabet (`23456789ABCDEFGHJKMNPQRSTUVWXYZ`: no 0/O, 1/I/L), about
+  49.5 bits, shown as `XXXXX-XXXXX`; case, spaces and hyphens are ignored when typed. Stored only as Argon2id, checked
+  only after the token matched a live link. Every failure — unknown token, wrong code, used, voided or expired
+  link — is the same `401 invalid_link`.
+- **Limits** (candidate values; may be tightened, never loosened): the code expires with the link, 24 hours from
+  approval; a pending request expires 72 hours after it was made (approval is then refused, `422`); 5 wrong codes void
+  the link (`auth.link.code_rejected` with the attempt number, then `auth.link.voided`).
+- **Invitations need two admins**, like resets. If two or more account-admin records exist but no other admin is
+  active, the invitation is held (`409`, `second_admin_required`).
+- **Single-admin bootstrap exception.** Only while **exactly one account-admin record** exists — counting disabled
+  accounts, decided at request time under the admin locks (every account admin's person row in id order, then the
+  target person, credential and action, as for a revocation) — is an invitation issued at once with both parts to that
+  admin. It is recorded with `split_knowledge = false` and flagged by `auth.invite.single_admin`. Disabling the second
+  admin does not reopen the exception (the record still exists). This is how the first admin onboards the second.
+- **Old links.** Links issued before this slice have no code and are refused; they must be issued again.
+- **Concurrency** (PostgreSQL, tested with unlocked mutations): parallel wrong codes are counted exactly and void the
+  link at 5; two parallel approvals of one invitation approve once; a disable racing an invitation never produces a
+  single-admin invitation.
 
-**Revisit trigger:** before any account is created for a real person, before any shared or non-local deployment,
-or when a second account admin exists — whichever comes first.
+**Accepted limits.**
+- *Two-admin collusion*: two account admins acting together (one with the code, one with the link) can still take over
+  an account. Dual control cannot stop collusion; the audit trail records both.
+- *Voiding nuisance*: whoever holds the link token (the approving admin, or anyone it leaks to) can enter wrong codes
+  and void the link, forcing a new request. This is a denial of service, not a takeover, and is visible in the audit
+  events.
+- *Bootstrap invitation*: the first single-admin invitation has no split knowledge; it is flagged so it can be
+  reviewed, and no real person should be onboarded until at least two account admins exist.
 
 ## Not in this slice
 

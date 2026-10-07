@@ -22,7 +22,9 @@ class AuthLimits:
     lockout_duration: timedelta = timedelta(minutes=15)
     password_min_length: int = 15
     password_max_length: int = 128
-    link_lifetime: timedelta = timedelta(hours=24)
+    link_lifetime: timedelta = timedelta(hours=24)          # the one-time link, and with it its verification code
+    request_lifetime: timedelta = timedelta(hours=72)       # a pending invitation or reset awaiting the second admin
+    link_code_attempts: int = 5                             # wrong verification codes before the link is voided
     recovery_code_count: int = 10
 
     def __post_init__(self):
@@ -30,7 +32,8 @@ class AuthLimits:
         if base is None:
             return
         # "upper" limits may only go down, "lower" limits may only go up
-        upper = ("session_idle", "session_absolute", "step_up_window", "lockout_threshold", "link_lifetime")
+        upper = ("session_idle", "session_absolute", "step_up_window", "lockout_threshold", "link_lifetime",
+                 "request_lifetime", "link_code_attempts")
         lower = ("lockout_duration", "password_min_length", "recovery_code_count")
         for name in upper:
             if getattr(self, name) > getattr(base, name):

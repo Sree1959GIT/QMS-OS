@@ -181,13 +181,14 @@ def _reset_requested(h, slow_target_password=False):
         s.commit()
     if slow_target_password:
         h.ctx.hasher = PasswordHasher(time_cost=12, memory_cost=65536, parallelism=1)
-    target = h.onboard(first, "qa_head")
+    target = h.onboard(first, "qa_head", approver=approvers[0])   # three admin records: invitations are approved
     h.ctx.hasher = TA.FAST
+    first.login()                                            # fresh step-up for the request
     action = first.post(f"/api/admin/accounts/{h.uid('qa_head')}/reset", {"identity_proof": "seen in person"}).json()
     assert action["status"] == "pending_approval", action
     for a in approvers:
         assert a.login().status_code == 200                  # fresh step-up for the approval
-    return approvers, target, action["id"]
+    return approvers, target, action["id"], action["verification_code"]
 
 
 def _assert_reset_state(h, action_id):
@@ -207,12 +208,13 @@ def _assert_reset_state(h, action_id):
 
 def test_two_concurrent_approvals_of_one_reset_approve_exactly_once(engine):
     h = TA.Harness(engine)
-    approvers, _, action_id = _reset_requested(h)
+    approvers, _, action_id, code = _reset_requested(h)
     results = _together(2, lambda i: approvers[i].post(f"/api/admin/account-actions/{action_id}/approve"))
     assert sorted(r.status_code for r in results) == [200, 422]
     winner = next(r.json() for r in results if r.status_code == 200)
     assert _assert_reset_state(h, action_id) == winner["approved_by_id"]
-    setup = h.client().post("/api/auth/setup", json={"token": winner["link_token"], "password": TA.GOOD})
+    setup = h.client().post("/api/auth/setup", json={"token": winner["link_token"], "verification_code": code,
+                                                     "password": TA.GOOD})
     assert setup.status_code == 200                           # the single issued link is the one that works
 
 
@@ -221,7 +223,7 @@ def test_reset_approval_racing_the_person_signing_in_leaves_a_consistent_state(e
     sign-in and then revokes its session. Unlocked, the approval would commit mid-sign-in and the sign-in would still
     issue a session for a reset account."""
     h = TA.Harness(engine)
-    approvers, target, action_id = _reset_requested(h, slow_target_password=True)
+    approvers, target, action_id, _ = _reset_requested(h, slow_target_password=True)
     h.now.tick()
     code = target.code()
 
@@ -262,3 +264,86 @@ def test_two_concurrent_revocations_never_leave_zero_account_admins(engine, monk
         admins = s.scalars(select(User).where(User.platform_role == AS.ACCOUNT_ADMIN)).all()
         revoked = s.scalars(select(AuditEvent).where(AuditEvent.action == "auth.account_admin.revoked")).all()
     assert len(admins) == 1 and len(revoked) == 1
+
+
+# ---------- link-code slice: verification code, two-admin invitations, single-admin exception ----------
+
+def _two_admin_records(h):
+    """The bootstrap admin plus a second account admin (md, granted by the operator CLI), both signed in."""
+    from qms_os.auth import cli
+    first = h.bootstrap()
+    second = h.onboard(first, "md")
+    assert cli.run_grant(h.app.state.sessionmaker, second.email, read_line=lambda _: second.email,
+                         write=lambda _: None) == 0
+    second.login()
+    first.login()
+    return first, second
+
+
+def test_parallel_wrong_link_codes_count_exactly_and_void_the_link(engine):
+    """Eight wrong codes at once: exactly five are counted and the link is void; the rest find it void."""
+    h = TA.Harness(engine)
+    first, second = _two_admin_records(h)
+    req = first.post(f"/api/admin/accounts/{h.uid('qa_head')}/invite").json()
+    token = second.post(f"/api/admin/account-actions/{req['id']}/approve").json()["link_token"]
+    clients = [h.client() for _ in range(8)]
+    results = _together(8, lambda i: clients[i].post("/api/auth/setup", json={
+        "token": token, "verification_code": "22222-22222", "password": TA.GOOD}).status_code)
+    assert results == [401] * 8
+    with h.db() as s:
+        action = s.get(AccountAction, req["id"])
+        rejected = s.scalars(select(AuditEvent).where(AuditEvent.action == "auth.link.code_rejected")).all()
+    assert (action.status, action.code_attempts, len(rejected)) == ("void", 5, 5)
+
+
+def test_two_concurrent_approvals_of_one_invitation_approve_exactly_once(engine):
+    from qms_os.auth import cli
+    h = TA.Harness(engine)
+    first, second = _two_admin_records(h)
+    third = h.onboard(first, "ma", approver=second)
+    assert cli.run_grant(h.app.state.sessionmaker, third.email, read_line=lambda _: third.email,
+                         write=lambda _: None) == 0
+    first.login()
+    req = first.post(f"/api/admin/accounts/{h.uid('qa_head')}/invite").json()
+    approvers = [second, third]
+    for a in approvers:
+        a.login()
+    results = _together(2, lambda i: approvers[i].post(f"/api/admin/account-actions/{req['id']}/approve"))
+    assert sorted(r.status_code for r in results) == [200, 422]
+    with h.db() as s:
+        approved = s.scalars(select(AuditEvent).where(AuditEvent.action == "auth.invite.approved",
+                                                      AuditEvent.entity_id == h.uid("qa_head"))).all()
+    assert len(approved) == 1
+
+
+def test_disable_racing_an_invitation_never_gives_a_single_admin_invitation(engine, monkeypatch):
+    """With two account-admin records, one admin invites while (in another session) disabling the other admin. The
+    invitation counts admin records (disabled ones included), so whichever finishes first it is either a two-admin
+    request or held (409) - never a single-admin invitation. A 0.3 s pause before counting lets the disable commit
+    first, which is when counting only *active* admins would wrongly reopen the exception."""
+    h = TA.Harness(engine)
+    first, second = _two_admin_records(h)
+    other_session = TA.Person(h, first.email, first.password, first.secret)
+    assert other_session.login().status_code == 200
+    count = AS._lock_admin_records
+
+    def slow_count(s):
+        time.sleep(0.3)
+        return count(s)
+    monkeypatch.setattr(AS, "_lock_admin_records", slow_count)
+
+    def act(i):
+        if i == 0:
+            return first.post(f"/api/admin/accounts/{h.uid('qa_head')}/invite")
+        return other_session.post(f"/api/admin/accounts/{h.uid('md')}/disable")
+    invite, disable = _together(2, act)
+    assert disable.status_code == 200
+    assert invite.status_code in (200, 409)
+    if invite.status_code == 200:
+        assert invite.json()["split_knowledge"] is True and "link_token" not in invite.json()
+    with h.db() as s:
+        single = s.scalars(select(AccountAction).where(AccountAction.target_user_id == h.uid("qa_head"),
+                                                       AccountAction.split_knowledge.is_(False))).all()
+        flagged = s.scalars(select(AuditEvent).where(AuditEvent.action == "auth.invite.single_admin",
+                                                     AuditEvent.entity_id == h.uid("qa_head"))).all()
+    assert single == [] and flagged == []

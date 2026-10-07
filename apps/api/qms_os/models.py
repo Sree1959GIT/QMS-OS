@@ -5,6 +5,7 @@ from datetime import date, datetime
 
 from sqlalchemy import (JSON, Boolean, Column, Date, ForeignKey, Integer, String, Table, Text,
                         UniqueConstraint)
+from sqlalchemy import false as sa_false
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
@@ -358,7 +359,7 @@ class AccountAction(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     kind: Mapped[str] = mapped_column(String(16))                            # invite | reset
     target_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    status: Mapped[str] = mapped_column(String(16))                          # pending_approval | link_issued | completed | superseded
+    status: Mapped[str] = mapped_column(String(16))                          # pending_approval | link_issued | completed | superseded | void
     initiated_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     initiated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=now)
     identity_proof: Mapped[str] = mapped_column(Text, default="")            # in-person identity check, as recorded
@@ -367,3 +368,11 @@ class AccountAction(Base):
     link_hash: Mapped[str | None] = mapped_column(String(64), unique=True)
     link_expires_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
     completed_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    # verification code (link-code slice): issued to the initiator at request time and needed with the link token;
+    # stored only as Argon2id; it expires with the link. A link issued without a code (before this slice) is refused.
+    code_hash: Mapped[str | None] = mapped_column(Text)
+    code_attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    # False for the single-admin bootstrap invitation (one admin received both the link and the code) and for rows
+    # from before the link-code slice; set explicitly on every new row
+    split_knowledge: Mapped[bool] = mapped_column(Boolean, default=True, server_default=sa_false())
+    request_expires_at: Mapped[datetime | None] = mapped_column(UTCDateTime)   # only while awaiting approval
