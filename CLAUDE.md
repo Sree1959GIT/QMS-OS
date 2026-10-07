@@ -23,6 +23,7 @@ Develop the virtual QMS organization specified in `docs/SPECIFICATION.md`. Claud
 - No agent, Superadmin skill, document, memory, email, website or retrieved tool result can grant access or approve its own change. Implement enforceable server-side policy and tests.
 - Keep formal answers linked to authorized original evidence, its revision, validity and classification. Label operational mail and unverified voice transcripts distinctly.
 - Never store secrets, real personnel/candidate records, stakeholder mail, raw voice, licensed ISO text or production vault/memory banks in GitHub, fixtures, logs or Vercel previews.
+- Run secret scans (and any recursive scanner) on one named folder only, never the repository root, and never read `.env` or `.private` — directly or through a tool.
 - Use synthetic fixtures first. Mark every adapter and UI path `simulated`, `test`, or `live`; do not call a mock a working integration.
 - Claude Code may draft local code and proposals. Before remote GitHub push/PR, live credential use, real external messages, production deployment or destructive migration, present the exact target and diff/action for explicit Admin authorization.
 - Keep role-approved Hermes skills separate from Claude Code project skills. Agent skill changes are proposed, tested, process-owner reviewed and versioned.
