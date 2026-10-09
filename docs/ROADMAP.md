@@ -30,7 +30,7 @@ no unverified feature claim.
 | Fixture startup as a running server process | Done | `tests/test_startup_smoke.py` (Windows locally; Linux in CI) |
 | Upstream, licence and version matrix | In progress | `docs/UPSTREAMS.md` on `main` covers the PostgreSQL driver and migrations (R-14), the authentication packages and the vendored password list (R-3), and the CI tools and images (pull request #15); pull request #21 (merged as `fe6eb05`) added the base application stack (25 of 25 licences verified at the tag's commit since 2026-10-09; pluggy then), Ollama `v0.40.0` and `gemma4:12b` (exists, 256K, Apache-2.0 weights; telemetry, per-request `num_ctx` and the Ollama build's audio input not verified), one row per named service (WeKnora, Hermes, Hindsight, edge-tts licences verified; feature claims mostly not verified) and a list of candidates |
 | Container or local runtime configuration | In progress | PostgreSQL service only (R-2; `compose.yaml`); other services after upstream checks |
-| Model-provider contract (interface and a simulated provider only) | In progress | branch `feat/provider-contract` (local commits, not pushed): contract, simulated providers, gateway, allow-list, cloud switch, egress log and admin routes; ADR 0005, R-24, R-25 |
+| Model-provider contract (interface and a simulated provider only) | Done | pull request #23, merged as `53f6f23`; `main` CI run 37939344103 green (as reported by the Admin): contract, simulated providers, gateway, allow-list, cloud switch, egress log and admin routes; ADR 0005, R-24, R-25 |
 | Local-model benchmark plan | Not started | audio benchmark plan is slice 4 below |
 | Documentation reconciled with the repository | Done | pull request #2 |
 
@@ -45,7 +45,7 @@ no unverified feature claim.
 4. PostgreSQL support and migrations (R-14): done (pull request #8); the PostgreSQL suite also runs in CI (job `postgres`, pull request #15).
 5. Container or local runtime configuration: PostgreSQL service done (R-2); other services after their upstream checks.
 6. Upstream, licence and version matrix.
-7. Model-provider contract with a simulated provider.
+7. Model-provider contract with a simulated provider: done (pull request #23, `53f6f23`).
 8. Local-model benchmark plan.
 9. CI hardening: lint and format, type checks, secret scan, Python 3.11, PostgreSQL integration job. Secret scan (gitleaks) and PostgreSQL job: done, merged as `0f66d47` (pull request #15), both passed in CI on the pull request (run 37565023452) and on `main` (run 37566508358); not yet required status checks (only `test` is). Lint (ruff), type checks (mypy on `qms_os` with a per-module
    baseline) and a Python 3.11 test job (`test-py311`): done, merged as `5b3e181` (pull request #20, CI run
@@ -53,16 +53,16 @@ no unverified feature claim.
    required status checks, with the up-to-date rule on (R-13, Admin, 2026-10-07). No formatter is enforced (Admin
    decision, 2026-10-07).
 
-### Remaining before the MVP-0 exit (as of `fe6eb05`, 2026-10-09)
+### Remaining before the MVP-0 exit (as of `53f6f23`, 2026-10-09)
 
-Five slices remain for the exit (1, 2, 3, 4, 6); slice 5 is done; slices 3a and 3b are not exit items. Statuses: in progress = some work is on `main`; not started = none is.
+Four slices remain for the exit (1, 2, 4, 6); slices 3 and 5 are done; slices 3a and 3b are not exit items. Statuses: in progress = some work is on `main`; not started = none is.
 
 | # | Slice | Status | Depends on |
 |---|---|---|---|
 | 1 | Container or local runtime configuration (item 5): services beyond PostgreSQL | In progress (PostgreSQL only, R-2) | 3a (digest check runs first; slice 1 fixes its baseline, R-21); 2 — other services wait for their upstream checks (stated above); the object-store product (R-15, Admin decision); scope proposal R-16 |
 | 2 | Upstream, licence and version matrix (item 6) | In progress (`docs/UPSTREAMS.md`, merged in pull request #21: Tier A 25 of 25 since 2026-10-09, Tier B mostly verified from primary sources, WeKnora's third-party notices read; not all rows) | the open items listed in `docs/UPSTREAMS.md`: Ollama telemetry, per-request `num_ctx` and the audio input of the Ollama build; Tier C feature claims |
-| 3 | Model-provider contract with a simulated provider (item 7): a `data_egress` class per provider (`local`, `org_private`, `third_party_cloud`); an admin-controlled allow-list; Ollama `:cloud` tags rejected unless an admin enables them; every call logs provider, model and egress class, with no prompt or response content (R-17 to R-20) | In progress: implemented on branch `feat/provider-contract` (two local commits, not pushed; ADR 0005); done when merged | — |
-| 3a | CI image-digest check, baseline style: fails on any new image reference without `@sha256:`; current violations listed in a baseline file, to be fixed in slice 1 (R-21). Runs before slice 1. Not an MVP-0 exit item by itself | Not started | — |
+| 3 | Model-provider contract with a simulated provider (item 7): a `data_egress` class per provider (`local`, `org_private`, `third_party_cloud`); an admin-controlled allow-list; Ollama `:cloud` tags rejected unless an admin enables them; every call logs provider, model and egress class, with no prompt or response content (R-17 to R-20) | Done (pull request #23, merged as `53f6f23`; `main` CI run 37939344103 green, as reported by the Admin; ADR 0005) | — |
+| 3a | CI image-digest check, baseline style: fails on any new image reference without `@sha256:`; current violations listed in a baseline file, to be fixed in slice 1 (R-21). Runs before slice 1. Not an MVP-0 exit item by itself | In progress: branch `feat/ci-image-digest-check` (not pushed): `scripts/check_image_digests.py` as a step in the `lint` job, baseline `scripts/image-digest-baseline.txt` with one entry (`compose.yaml`); done when merged | — |
 | 3b | WeKnora spike (R-22): separate branch, 3 to 5 working days, exit criteria written before it starts; real documents stay on the Admin's machine, untracked, and only aggregate results go into the repository (R-23). Not an MVP-0 exit item; R-15 and R-16 stay open until it ends | Not started | 2 (WeKnora entry in `docs/UPSTREAMS.md`) |
 | 4 | Local-model benchmark plan (item 8), including audio work. In MVP-0 only the plan, with pass criteria for word error rate, latency and memory on English with different accents (including Indian and American), with shop-floor noise and QMS vocabulary; measurements later. Recordings stay on the Admin's machine, untracked (R-23) | Not started | 3 and 2 — **inferred, not stated in the specification**: the plan measures models through the provider contract, and the local models need licence entries for code and weights. Ollama `v0.40.0`, the `gemma4:12b` manifest digests, its Apache-2.0 weights licence and 256K published context are recorded in `docs/UPSTREAMS.md` (Tier B, pull request #21); fit on the 12 GB VRAM host is a measurement for this slice |
 | 5 | CI hardening, the rest (item 9): lint and format, type checks, Python 3.11; whether `postgres` and `secret-scan` become required checks | Done (pull requests #15 and #20; all six jobs required, R-13). Python 3.11.17 verified for the SQLite suite only | — |

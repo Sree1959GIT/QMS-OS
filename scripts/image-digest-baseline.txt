@@ -1,0 +1,3 @@
+# Image references without an @sha256 digest that existed when the check was added (R-21; ROADMAP slice 3a).
+# One '<path> <reference>' per line, sorted. Slice 1 pins them; remove each line when its reference is fixed.
+compose.yaml postgres:${POSTGRES_TAG:-17}

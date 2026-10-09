@@ -105,6 +105,13 @@ jobs:
       - name: Lint
         run: python -m ruff check --no-cache --output-format=github .
 
+      - name: Image digest check
+        # R-21 (ROADMAP slice 3a): every container image reference in a tracked Dockerfile, compose file or workflow
+        # is pinned by @sha256 digest or listed in scripts/image-digest-baseline.txt; a stale baseline entry fails.
+        # Standard library only; a step here rather than a seventh job (six required checks, R-13).
+        working-directory: ${{ github.workspace }}
+        run: python scripts/check_image_digests.py
+
   types:
     # mypy on qms_os with the configuration and the per-module baseline in pyproject.toml ([tool.mypy]). Installs the
     # postgres extra because qms_os/db.py imports alembic.
