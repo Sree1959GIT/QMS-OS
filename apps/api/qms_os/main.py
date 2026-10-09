@@ -17,6 +17,8 @@ from .auth.limits import AuthConfigError, AuthLimits
 from .auth.service import AuthContext
 from .db import make_engine, make_sessionmaker, prepare_schema
 from .policy import Mode, load_context
+from .providers.gateway import ProviderGateway
+from .providers.registry import default_registry
 from .services.common import ServiceError
 from .timeutil import utcnow
 
@@ -55,6 +57,7 @@ def create_app(engine=None, today: Callable[[], date] = date.today, mode: str | 
     app.state.policy_ctx = policy_ctx
     app.state.auth = AuthContext(box=box, limits=auth_limits or AuthLimits(), now=now)
     app.state.test_identity = identity_provider
+    app.state.providers = ProviderGateway(default_registry(policy_ctx.mode), app.state.sessionmaker)
 
     @app.exception_handler(ServiceError)
     async def _service_error(_: Request, exc: ServiceError):
