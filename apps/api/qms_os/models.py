@@ -377,3 +377,58 @@ class AccountAction(Base):
     # from before the link-code slice; set explicitly on every new row
     split_knowledge: Mapped[bool] = mapped_column(Boolean, default=True, server_default=sa_false())
     request_expires_at: Mapped[datetime | None] = mapped_column(UTCDateTime)   # only while awaiting approval
+
+
+# ---------- model providers (docs/adr/0005-provider-contract-and-egress.md, R-17 to R-21) ----------
+# Rows are never deleted (D-14): an allow-list entry is disabled, not removed; the egress log is append-only.
+
+class ProviderAllowEntry(Base):
+    """An admin-approved (provider, model) pair. ``egress_class`` is copied from adapter code when the entry is
+    created and must still match it at call time; ``max_data_class`` is the most sensitive data class it may
+    receive."""
+    __tablename__ = "provider_allow_entries"
+    __table_args__ = (UniqueConstraint("provider_id", "model"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    provider_id: Mapped[str] = mapped_column(String(64))
+    model: Mapped[str] = mapped_column(String(200))
+    model_digest: Mapped[str | None] = mapped_column(String(100))        # required for live adapters later (R-21)
+    egress_class: Mapped[str] = mapped_column(String(24))                # contract.EgressClass
+    max_data_class: Mapped[str] = mapped_column(String(16))              # contract.DataClass
+    ceiling_reason: Mapped[str] = mapped_column(Text, default="")        # why a cloud ceiling was raised
+    status: Mapped[str] = mapped_column(String(16), default="enabled")   # enabled | disabled
+    created_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=now)
+    updated_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    updated_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+
+
+class ProviderEgressSetting(Base):
+    """Global switch for third-party cloud providers: one row (id 1) once an admin has changed it. No row means
+    off (R-17)."""
+    __tablename__ = "provider_egress_settings"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    third_party_cloud_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    updated_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    updated_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+
+
+class ModelEgressLog(Base):
+    """One row per model-call decision (R-18): identifiers and codes only. There is deliberately no text or JSON
+    column, so no prompt, response or error message can be stored here (tests/test_providers.py). Written in its
+    own committed transaction; an allowed call writes ``dispatched`` before any data leaves, then ``completed`` or
+    ``failed``, linked by ``request_id``."""
+    __tablename__ = "model_egress_log"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    at: Mapped[datetime] = mapped_column(UTCDateTime, default=now)
+    request_id: Mapped[str] = mapped_column(String(32), index=True)
+    provider_id: Mapped[str | None] = mapped_column(String(64))          # NULL if the caller's value was malformed
+    model: Mapped[str | None] = mapped_column(String(200))               # NULL if the caller's value was malformed
+    egress_class: Mapped[str | None] = mapped_column(String(24))         # NULL for an unknown provider
+    data_class: Mapped[str | None] = mapped_column(String(16))           # NULL if missing or unknown
+    outcome: Mapped[str] = mapped_column(String(16))                     # refused | dispatched | completed | failed
+    reason: Mapped[str | None] = mapped_column(String(32))               # gateway.REASONS
+    integration_mode: Mapped[str | None] = mapped_column(String(16))     # simulated | test | live
+    allow_entry_id: Mapped[int | None] = mapped_column(ForeignKey("provider_allow_entries.id"))
+    actor_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    actor_kind: Mapped[str | None] = mapped_column(String(16))
+    channel: Mapped[str | None] = mapped_column(String(16))

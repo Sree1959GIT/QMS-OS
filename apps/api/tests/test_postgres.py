@@ -352,3 +352,27 @@ def test_disable_racing_an_invitation_never_gives_a_single_admin_invitation(engi
         flagged = s.scalars(select(AuditEvent).where(AuditEvent.action == "auth.invite.single_admin",
                                                      AuditEvent.entity_id == h.uid("qa_head"))).all()
     assert single == [] and flagged == []
+
+
+def test_egress_log_commits_independently_of_the_callers_transaction(engine):
+    """The caller writes first and then rolls back: its write is gone, the gateway's log rows stay (committed in
+    their own transaction, not through the caller's)."""
+    from test_providers import CANARY, CTX, allow, gateway, log_rows
+
+    from qms_os.models import Notification
+    from qms_os.providers.gateway import ProviderRefused
+
+    allow(engine, "sim-local", "gemma4:12b")
+    gw = gateway(engine)
+    caller = make_sessionmaker(engine)()
+    caller.add(Notification(kind="t", to="x", subject="caller write", body=""))
+    caller.flush()                                                      # uncommitted write held by the caller
+    gw.call(provider_id="sim-local", model="gemma4:12b", data_class="public", prompt=CANARY, ctx=CTX)
+    with pytest.raises(ProviderRefused):
+        gw.call(provider_id="sim-local", model="not-listed", data_class="public", prompt=CANARY, ctx=CTX)
+    assert [x.outcome for x in log_rows(engine)] == ["dispatched", "completed", "refused"]   # visible before
+    caller.rollback()
+    caller.close()
+    assert [x.outcome for x in log_rows(engine)] == ["dispatched", "completed", "refused"]
+    with make_sessionmaker(engine)() as s:
+        assert s.scalar(select(Notification).where(Notification.subject == "caller write")) is None
