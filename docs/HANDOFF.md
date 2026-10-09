@@ -6,14 +6,14 @@
 
 - Repository: this repository (`QMS-OS`); confirm the remote with `git remote -v`.
 - Specification: `docs/SPECIFICATION.md`, v3.0 dated 29 September 2026. Verify title and version locally.
-- Baseline recorded here: `main` at `fe6eb05` ("dd the upstream licence and version matrix (MVP-0 slice 2, partial)
-  (#21)"). Work in progress: branch `docs/provider-decisions` (decisions R-17 to R-23, roadmap slices 3, 3a, 3b and 4,
-  pluggy and WeKnora licence reads; documentation only; local commit, not pushed).
+- Baseline recorded here: `main` at `dae34ae` ("Record provider and knowledge-base decisions; plan slices 3, 3a, 3b
+  and 4 (#22)"). Work in progress: branch `feat/provider-contract` from `dae34ae` (ROADMAP slice 3, the model-provider
+  contract; two local commits, `9322839` and the commit carrying this file; not pushed).
   Re-verify branch, HEAD and working tree with Git at session start; this file may be stale.
 - Stage: MVP-0 in progress. Of the eight items in the ROADMAP's MVP-0 table, four are done (Git scaffold, CI and
   protected `main`; synthetic fixtures; fixture startup as a server process; documentation reconciled), two are in
-  progress (upstream, licence and version matrix; container or local runtime configuration) and two are not started
-  (model-provider contract; local-model benchmark plan). Five slices remain before the MVP-0 exit — see *Remaining
+  progress (upstream, licence and version matrix; container or local runtime configuration; the model-provider
+  contract is implemented on an unmerged branch) and one is not started (local-model benchmark plan). Five slices remain before the MVP-0 exit — see *Remaining
   before the MVP-0 exit* in `docs/ROADMAP.md`.
 - Mode: synthetic only. No live connectors, staff accounts or model credentials are configured in this repository,
   and none has been verified; do not claim they are configured.
@@ -22,8 +22,11 @@
 
 Each item says how it was verified.
 
-- **Git:** on 2026-10-09 `main` was at `fe6eb05…` and the working tree was clean (checked with `git status` and
-  `git log`; no fetch in this session). Pull request #21 (`docs/upstream-matrix`) was merged as `fe6eb05`; the squash
+- **Git:** on 2026-10-09 `main` was at `dae34ae…` with a clean working tree (`git status -sb`: `main...origin/main`;
+  no fetch in this session). Pull request #22 (`docs/provider-decisions`) was merged as `dae34ae`: pull request run
+  37883681486, six jobs green, and `main` run 37910850440 for `dae34ae`, six jobs green — both as reported by the
+  Admin, not read from GitHub. Branch `feat/provider-contract` was created from `dae34ae` (local only). Earlier: on
+  2026-10-09 `main` was at `fe6eb05…`. Pull request #21 (`docs/upstream-matrix`) was merged as `fe6eb05`; the squash
   title lost the "A" of "Add" ("dd the upstream licence…"), and `main` is not rewritten for it. Pull request #21's six
   CI jobs passed, as reported by the Admin (run IDs not captured); `main` run 37876971887 for `fe6eb05`, six jobs
   green, as reported by the Admin, not read from GitHub. Earlier: on 2026-10-07 `main` was at `5b3e181…`. Pull request #20 (`ci/lint-types`) was merged as `5b3e181` and
@@ -72,6 +75,11 @@ Each item says how it was verified.
     returns pytest's exit code (pull request #9); before that it returned 0 even when pytest failed;
   - `main` at `23329f3…` (R-3 merged), local Windows on 2026-10-06: `155 passed, 1 skipped, 1 warning`, exit 0;
     branch results before the merge: see *Authentication (R-3)* below;
+  - branch `feat/provider-contract`, local Windows on 2026-10-09: `scripts\run-tests.bat` `229 passed, 1 skipped,
+    1 warning`; `scripts\run-pg-tests.bat` `22 passed, 229 deselected`; `scripts\run-pg-tests.bat full` `251
+    passed`; `alembic check` "No new upgrade operations detected."; `alembic heads` `44bca21ba248 (head)` (single
+    head); ruff "All checks passed!"; mypy "Success: no issues found in 46 source files". Nine deliberate breaks
+    (M1–M9) each made their tests fail (see *Last sessions*);
   - `main` at `eb3c583…` (link code merged), local Windows on 2026-10-07: `scripts\run-tests.bat` `179 passed, 1
     skipped, 1 warning` (exit 0); `scripts\run-pg-tests.bat full` `200 passed, 1 warning` (exit 0);
   - GitHub Actions, Ubuntu 24.04, Python 3.12.10: job `test` succeeded on pull request #1 (run 36837238711; its
@@ -166,6 +174,11 @@ Each item says how it was verified.
   Telegram terms; the licences of the images in WeKnora's compose file. Model fit on the 12 GB VRAM host is a
   measurement (slice 4).
 - All live integrations (mail, Telegram, model providers/Ollama, Hermes, WeKnora, Hindsight).
+- Model-provider contract (branch `feat/provider-contract`): simulated providers only. Not verified: Ollama's
+  cloud-tag naming rule (`docs/cloud.mdx` at `28a9f8c…` gives one example and no rule; any name containing "cloud"
+  is treated as cloud), whether a local Ollama daemon contacts the network, any real endpoint, error message, key,
+  spend cap or speech provider. The gateway is an application-level control; Hermes and network-level egress are not
+  covered.
 
 ## Local material outside the repository
 
@@ -188,7 +201,8 @@ Each item says how it was verified.
 
 - Code references to documents that do not exist: `apps/api/qms_os/knowledge/__init__.py` cites
   `docs/adr/0004-independent-knowledge-module.md` and `docs/05-knowledge-roadmap.md`. (`docs/adr/0003` exists on
-  `main` since pull request #10, and the development-identity docstring it replaced is gone.)
+  `main` since pull request #10, and the development-identity docstring it replaced is gone.) The provider ADR is
+  therefore numbered 0005 and 0004 stays unused; `knowledge/__init__.py` is unchanged (Admin, 2026-10-09).
 - `docs/SPECIFICATION.md` refers to `docs/decisions.md`; the file is `docs/DECISIONS.md`.
 - The specification's repository layout is partly adopted: the code lives in `apps/api/` (R-1, decided); other `apps/` and `packages/` folders do not exist yet.
 - The specification makes PostgreSQL the authority; the code still defaults to SQLite. PostgreSQL support (R-14) is on
@@ -224,6 +238,10 @@ Each item says how it was verified.
   `local` or `org_private` providers unless an admin allows otherwise; R-20 edge-tts off by default and never for
   confidential content; R-21 images by digest, models by digest or commit; R-22 WeKnora a candidate shared knowledge
   base, Hermes keeps its own vaults; R-23 real spike material stays on the Admin's machine, aggregates only in Git.
+- Decided 2026-10-09 (Admin, slice 3 plan): R-24 data classes `public < internal < confidential` (Candidate
+  values), cloud ceiling `public` by default; R-25 one account admin with step-up changes provider settings, live
+  adapters refused until two-admin approval of widening changes exists; global cloud switch kept, off by default;
+  `model_digest` optional until live adapters (R-21).
 - Not yet decided: database-level append-only enforcement; production use of the psycopg binary wheel versus a local build
   (`docs/UPSTREAMS.md`).
 - Unresolved organisational decisions: D-07, D-08, D-12, D-13, D-14, D-15, D-16.
@@ -342,9 +360,35 @@ See *Proposed MVP-0 order* in `docs/ROADMAP.md`. No dates or delivery commitment
   and PyPI provenance), Tier A now 25 of 25; WeKnora `THIRD_PARTY_NOTICES.md` and `licenses/` read at `3e8b0bfc…`
   (MPL-2.0, Apache-2.0 and MIT components). Read-only WebFetch, no credentials, no network-level failure. A
   line-break corruption in the previous entry (`scriptsun-tests.bat`) was repaired. Synthetic mode.
-- Next: the remaining slice 2 items (Ollama telemetry, per-request `num_ctx`, audio input of the Ollama build); slice
-  3a before slice 1; slice 3 (provider contract); exit criteria for the WeKnora spike (3b) before it starts;
-  payload-bound approval after MVP-0.
+- Pull request #22 (`docs/provider-decisions`) merged as `dae34ae` (see *Verified state*, Git).
+- Branch `feat/provider-contract` from `dae34ae` (2026-10-09; ROADMAP slice 3; synthetic, simulated providers only;
+  ADR 0005, R-24, R-25). Commit 1 `9322839`: `qms_os/providers/` (contract, egress rules, simulated providers,
+  registry refusing `live` adapters, gateway), tables `provider_allow_entries`, `provider_egress_settings`,
+  `model_egress_log`, additive migration `44bca21ba248` (down_revision `c5ee69870dbb`, autogenerated against the
+  PostgreSQL test database and reviewed), `tests/test_providers.py`, one PostgreSQL test. Commit 2: admin service and
+  routes under `/api/admin/providers` (account admin + step-up, audit events `provider.allowlist.*` and
+  `provider.cloud_egress.*`), `tests/test_provider_admin.py`, docs. No new dependency. Ollama docs read once by
+  WebFetch (no credentials). Mutation checks (patches kept in `D:\QMS-OS-TEMP\scratch\mutations`, not committed;
+  each file restored byte-identical and checked by SHA-256 afterwards), each applied alone, with the failing output:
+  - M1 no cloud-tag check: `test_ollama_cloud_tag_refused_while_cloud_is_off` 4 of 4 failed,
+    `assert 'not_allowlisted' == 'cloud_tag'`.
+  - M2 allow-list looked up by provider only: `test_provider_or_model_not_on_the_allow_list_refused` failed.
+  - M3 no data-class check: `test_data_class_ceiling` 2 of 5 failed and
+    `test_ollama_cloud_tag_allowed_only_with_switch_entry_and_public_data` failed, `DID NOT RAISE ProviderRefused`.
+  - M4 prompt written to Python logging: the no-content test failed, `assert 'CANARY-…' not in 'INFO …'`.
+  - M5 cloud switch ignored: the cloud-tag test 4 of 4 failed (`'not_allowlisted' == 'cloud_tag'`) and
+    `test_cloud_provider_refused_by_default` failed (`DID NOT RAISE ProviderRefused`).
+  - M6 `add_entry` at level `human` instead of `account_admin`: the access test failed for fixture person `ma`, and
+    `test_approval_and_admin_routes_need_step_up` failed on `/api/admin/providers/allowlist`. (A first M6 attempt was
+    invalid — its inline comment cut the signature, `NameError` — and was redone.)
+  - M7 no audit event on add: `test_adding_an_entry_…_is_audited` failed, `assert [] == [('provider.a…`.
+  - M8 log rows not committed in their own transaction: the SQLite rollback test and the PostgreSQL test
+    `test_egress_log_commits_independently_of_the_callers_transaction` failed, `assert [] == ['dispatched'…`.
+  - M9 `dispatched` written after the call: `test_dispatched_row_is_committed_before_the_provider_is_called`
+    failed, `assert [] == ['dispatched']`.
+- Next: Admin review of `feat/provider-contract`, then push and pull request on authorisation; the remaining slice 2
+  items (Ollama telemetry, per-request `num_ctx`, audio input of the Ollama build); slice 3a before slice 1; exit
+  criteria for the WeKnora spike (3b) before it starts; payload-bound approval after MVP-0.
 
 ## End-of-session update template
 
