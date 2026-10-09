@@ -6,8 +6,9 @@
 
 - Repository: this repository (`QMS-OS`); confirm the remote with `git remote -v`.
 - Specification: `docs/SPECIFICATION.md`, v3.0 dated 29 September 2026. Verify title and version locally.
-- Baseline recorded here: `main` at `5b3e181` ("Add lint, type checks and a Python 3.11 test job (MVP-0 slice 5)
-  (#20)"). Work in progress: branch `docs/upstream-matrix` (MVP-0 slice 2, upstream matrix; local commits, not pushed).
+- Baseline recorded here: `main` at `fe6eb05` ("dd the upstream licence and version matrix (MVP-0 slice 2, partial)
+  (#21)"). Work in progress: branch `docs/provider-decisions` (decisions R-17 to R-23, roadmap slices 3, 3a, 3b and 4,
+  pluggy and WeKnora licence reads; documentation only; local commit, not pushed).
   Re-verify branch, HEAD and working tree with Git at session start; this file may be stale.
 - Stage: MVP-0 in progress. Of the eight items in the ROADMAP's MVP-0 table, four are done (Git scaffold, CI and
   protected `main`; synthetic fixtures; fixture startup as a server process; documentation reconciled), two are in
@@ -21,8 +22,11 @@
 
 Each item says how it was verified.
 
-- **Git:** on 2026-10-07 `main` was at `5b3e181…`, equal to `origin/main`, and the working tree was clean (checked
-  with `git status -sb`; no fetch in this session). Pull request #20 (`ci/lint-types`) was merged as `5b3e181` and
+- **Git:** on 2026-10-09 `main` was at `fe6eb05…` and the working tree was clean (checked with `git status` and
+  `git log`; no fetch in this session). Pull request #21 (`docs/upstream-matrix`) was merged as `fe6eb05`; the squash
+  title lost the "A" of "Add" ("dd the upstream licence…"), and `main` is not rewritten for it. Pull request #21's six
+  CI jobs passed, as reported by the Admin (run IDs not captured); `main` run 37876971887 for `fe6eb05`, six jobs
+  green, as reported by the Admin, not read from GitHub. Earlier: on 2026-10-07 `main` was at `5b3e181…`. Pull request #20 (`ci/lint-types`) was merged as `5b3e181` and
   pull request #19 (`docs/refresh-status`) as `31966a2`; CI runs 37648488409 (#20) and 37617433395 (#19) as reported
   by the Admin, not read from GitHub in this session. Earlier: on 2026-10-07 `main` was at `eb3c583…`. Pull request #18 (`feat/link-code`, head `69a60d3`; the one-time link code) was
   merged as `eb3c583`; jobs `test`, `postgres` and `secret-scan` all succeeded on the pull request (run 37614209373:
@@ -157,10 +161,10 @@ Each item says how it was verified.
 - Any UI; end-to-end or browser tests.
 - Python 3.11 on PostgreSQL: CI job `test-py311` (Python 3.11.17) covers the SQLite suite only; no local 3.11
   interpreter is installed.
-- Upstream matrix (`docs/UPSTREAMS.md`, branch `docs/upstream-matrix`): pluggy's licence from a primary source;
-  Ollama telemetry and per-request `num_ctx`; whether the Ollama `gemma4:12b` build accepts audio; Tier C feature
+- Upstream matrix (`docs/UPSTREAMS.md`; slice 2 stays in progress): Ollama telemetry and per-request `num_ctx`; whether the Ollama `gemma4:12b` build accepts audio; Tier C feature
   claims (Hermes skills and gateway, Hindsight plugin and isolation, WeKnora retrieval and ACL); Digital-Secretary;
-  Telegram terms. Model fit on the 12 GB VRAM host is a measurement (slice 4).
+  Telegram terms; the licences of the images in WeKnora's compose file. Model fit on the 12 GB VRAM host is a
+  measurement (slice 4).
 - All live integrations (mail, Telegram, model providers/Ollama, Hermes, WeKnora, Hindsight).
 
 ## Local material outside the repository
@@ -213,7 +217,13 @@ Each item says how it was verified.
   — it was **a blocker before any real person is onboarded**; at least two account admins are still required
   (`docs/ROADMAP.md`; ADR 0003, *One-time links need two parts*); (5) payload-bound approval.
 - Decided 2026-10-07 (Admin): all six CI jobs are required status checks, with the up-to-date rule (R-13).
-- Slice 1 blockers: the object-store product (R-15, Admin decision); scope proposal R-16 (Ollama first; not decided).
+- Slice 1 blockers: the image-digest check (slice 3a, R-21) runs first; the object-store product (R-15, Admin
+  decision) and scope proposal R-16 (Ollama first) stay open until the WeKnora spike (slice 3b, R-22).
+- Decided 2026-10-09 (Admin): R-17 local providers by default, cloud only when an admin enables it and the data class
+  permits; R-18 every model call logs provider, model and egress class, no content; R-19 confidential records only to
+  `local` or `org_private` providers unless an admin allows otherwise; R-20 edge-tts off by default and never for
+  confidential content; R-21 images by digest, models by digest or commit; R-22 WeKnora a candidate shared knowledge
+  base, Hermes keeps its own vaults; R-23 real spike material stays on the Admin's machine, aggregates only in Git.
 - Not yet decided: database-level append-only enforcement; production use of the psycopg binary wheel versus a local build
   (`docs/UPSTREAMS.md`).
 - Unresolved organisational decisions: D-07, D-08, D-12, D-13, D-14, D-15, D-16.
@@ -234,7 +244,7 @@ See *Proposed MVP-0 order* in `docs/ROADMAP.md`. No dates or delivery commitment
 - Telegram voice replies pair a full written answer with a short, separately composed spoken explanation; verbatim reading only on explicit request.
 - ISO 9001:2026 edition-specific mapping is human-validated against licensed text; no invented compliance or certification.
 
-## Last sessions (2026-10-06 and 2026-10-07)
+## Last sessions (2026-10-06 to 2026-10-09)
 
 - Pull request #9 (run-tests exit code) merged as `997e55b`, CI passed.
 - R-3 (local accounts + TOTP) merged as `23329f3` (pull request #10, squash of `5e5ada2` and `74a4460`); CI job
@@ -311,10 +321,8 @@ See *Proposed MVP-0 order* in `docs/ROADMAP.md`. No dates or delivery commitment
   inspected" list (Tier D); `docs/DECISIONS.md` gains R-15 (object store, Admin decision) and R-16 (slice 1 scope,
   proposal) and R-12/R-13 updates; out-of-date status lines refreshed here and in `docs/ROADMAP.md`. Network:
   read-only WebFetch, no credentials; the first request (FastAPI `LICENSE` at `0.141.1`) succeeded, the second
-  (that tag's commit) returned `404`, and no further request was made. On 2026-10-07: `scripts
-un-tests.bat`
-  `179 passed, 1 skipped, 1 warning` (exit 0); `scripts
-un-lint.bat` ruff "All checks passed!", mypy "Success: no
+  (that tag's commit) returned `404`, and no further request was made. On 2026-10-07: `scriptsun-tests.bat`
+  `179 passed, 1 skipped, 1 warning` (exit 0); `scriptsun-lint.bat` ruff "All checks passed!", mypy "Success: no
   issues found in 38 source files" (exit 0). Two local commits (`033b666`, `dd828a0`), not pushed. Synthetic mode.
 - Same branch, second pass (Admin's corrected stop rule, 2026-10-07: stop only on network-level failures; a 404 on a
   guessed URL form is retried once with a documented alternative): tag commits from the GitHub ref API and licence
@@ -326,8 +334,16 @@ un-lint.bat` ruff "All checks passed!", mypy "Success: no
   MIT, edge-tts LGPL-3.0 (one MIT file); edge-tts sends text to a Microsoft online service (from its source).
   Findings: Ollama auto-updates on Windows; cloud model tags exist; WeKnora's compose file brings its own MinIO,
   SearXNG and `:latest` images. No network-level failure occurred.
-- Next: pluggy's repository (from the project itself) and the remaining Tier B items (telemetry, per-request
-  `num_ctx`, audio input of the Ollama build); the Admin's decisions R-15 and R-16; slice 3 (provider contract);
+  Merged as `fe6eb05` (pull request #21; see *Verified state*, Git).
+- Branch `docs/provider-decisions` from `fe6eb05` (2026-10-09, documentation only): `docs/DECISIONS.md` gains R-17
+  to R-23 (Admin decisions of 2026-10-09); `docs/ROADMAP.md` gains slices 3 (provider contract scope), 3a (CI
+  image-digest check), 3b (WeKnora spike) and the slice 4 audio benchmark plan (still not started); `docs/UPSTREAMS.md`:
+  pluggy 1.6.0 verified MIT (`pytest-dev/pluggy`, tag commit `fd08ab5f…`; repository from the project's documentation
+  and PyPI provenance), Tier A now 25 of 25; WeKnora `THIRD_PARTY_NOTICES.md` and `licenses/` read at `3e8b0bfc…`
+  (MPL-2.0, Apache-2.0 and MIT components). Read-only WebFetch, no credentials, no network-level failure. A
+  line-break corruption in the previous entry (`scriptsun-tests.bat`) was repaired. Synthetic mode.
+- Next: the remaining slice 2 items (Ollama telemetry, per-request `num_ctx`, audio input of the Ollama build); slice
+  3a before slice 1; slice 3 (provider contract); exit criteria for the WeKnora spike (3b) before it starts;
   payload-bound approval after MVP-0.
 
 ## End-of-session update template

@@ -38,7 +38,7 @@ The licence column names the licence the file states; it is not a legal opinion.
 | typing-inspection | 0.4.4 | `pydantic/typing-inspection`, `v0.4.4` | `83d4dbb74fc367db4403c76be8c0f83cd4b63fbe` | `LICENSE` | MIT | MIT | Pydantic type introspection |
 | python-dotenv | 1.2.3 | `theskumar/python-dotenv`, `v1.2.3` | `49515afee2d50c33cad9419b3800b3a0dc93fc59` | `LICENSE` | BSD-3-Clause | BSD-3-Clause | pydantic-settings `.env` support (QMS OS does not point it at `.env`) |
 | pytest | 9.1.1 | `pytest-dev/pytest`, `9.1.1` | `cf470ec0bf7eb89cd97dd56df4859eae5db46447` | `LICENSE` | MIT | MIT | Tests (`dev` extra) |
-| pluggy | 1.6.0 | **not verified**: neither the installed metadata nor PyPI (https://pypi.org/pypi/pluggy/1.6.0/json, read 2026-10-07: `project_urls` and `home_page` null) names a repository | — | — | not verified | MIT | pytest plugins |
+| pluggy | 1.6.0 | `pytest-dev/pluggy`, `1.6.0` (read 2026-10-09; repository from the project's own documentation, https://pluggy.readthedocs.io/en/stable/, "Fork me on GitHub" link, and the PyPI page's provenance section, https://pypi.org/project/pluggy/1.6.0/, which names the same publishing commit) | `fd08ab5f811a9b2fa9124ae8cbbd393221151e2c` (lightweight tag) | `LICENSE` | MIT ("The MIT License (MIT)") | MIT | pytest plugins |
 | iniconfig | 2.3.0 | `pytest-dev/iniconfig`, `v2.3.0` | `7faed13ae50bad7c5da3f5782f254a8a7736bb84` | `LICENSE` | MIT | MIT | pytest configuration |
 | packaging | 26.3 | `pypa/packaging`, `26.3` | `929fd4b1410ac7ef61ef3f45b2f5d7e87711a9b5` | `LICENSE`, `LICENSE.BSD` (`LICENSE.APACHE` not read) | Apache-2.0 OR BSD-2-Clause (`LICENSE`: "either of the licenses found in LICENSE.APACHE or LICENSE.BSD") | Apache-2.0 OR BSD-2-Clause | pytest version handling |
 | pygments | 2.21.0 | `pygments/pygments`, `2.21.0` | `a43b45dcf081b6010c6ab4428f149f7f6d2499c4` | `LICENSE` | BSD-2-Clause | BSD-2-Clause | pytest output |
@@ -46,8 +46,9 @@ The licence column names the licence the file states; it is not a legal opinion.
 | httpcore | 1.0.9 | `encode/httpcore`, `1.0.9` | `98209758cc14e1a5f966fe1dfdc1064b94055d8c` | `LICENSE.md` | BSD-3-Clause | BSD-3-Clause | httpx transport |
 | certifi | 2026.7.22 | `certifi/python-certifi`, `2026.07.22` | `f4bc676bc101fe2235846e37044e8c693d6cbaf4` | `LICENSE` | MPL-2.0 (the file states the CA bundle is derived from Mozilla's root certificates) | MPL-2.0 | httpx CA bundle |
 
-- 24 of 25 licences are verified against the repository at the tag's commit; all 24 agree with the installed
-  metadata. pluggy stays **not verified** until the project itself names a repository.
+- 25 of 25 licences are verified against the repository at the tag's commit; all 25 agree with the installed
+  metadata. pluggy was added on 2026-10-09: the PyPI JSON API (read 2026-10-07) names no repository, but the
+  project's documentation and the PyPI page's provenance section do.
 - certifi's MPL-2.0 is file-level copyleft; it is a test-only dependency used unmodified.
 - None of these packages is configured by QMS OS to make outbound calls; httpx is used only as the in-process test
   client. This is from the code that uses them, not from a review of the packages' source.
@@ -201,7 +202,7 @@ Claims, with what the primary source says:
 | Prompts stay local | Documentation statement only: "Ollama runs locally. We don't see your prompts or data when you run locally." Not checked in source. Telemetry: **not verified** (the FAQ has no telemetry statement) | FAQ |
 | Updates | **Finding:** "Ollama on macOS and Windows will automatically download updates." The installed version can drift from the pinned one; the benchmark must record `ollama --version` for every run | FAQ |
 | GPU in a Linux container under Docker Desktop/WSL2 | Documented as supported ("Linux or Windows (with WSL2)", needs `nvidia-container-toolkit`); **not verified** on this laptop (a measurement, slice 1 or 4) | FAQ |
-| Cloud models | **Finding:** cloud tags exist (`gemma4:cloud`, `gemma4:31b-cloud`); configure only local tags, so that no prompt leaves the host unintentionally. Ollama's cloud terms are not verified | https://ollama.com/library/gemma4/tags |
+| Cloud models | **Finding:** cloud tags exist (`gemma4:cloud`, `gemma4:31b-cloud`); configure only local tags, so that no prompt leaves the host unintentionally. Ollama's cloud terms are not verified. Admin decision R-17 (2026-10-09): `:cloud` tags are rejected unless an admin enables them (ROADMAP slice 3) | https://ollama.com/library/gemma4/tags |
 
 ### Gemma 4, tag `gemma4:12b` (specification A17)
 
@@ -223,14 +224,36 @@ verified** unless a note below names the file read.
 
 | Spec ID | Name | Release, tag commit | Code licence (file at the tag) | Model or weights licence | Notes from the files read |
 |---|---|---|---|---|---|
-| A27 | WeKnora (`Tencent/WeKnora`) | `v0.8.2` (2026-09-24), `3e8b0bfc80b845b2d4b2ed683994748741450a97` | MIT, except third-party components under their own licences (`LICENSE` points to `THIRD_PARTY_NOTICES.md` and `licenses/`, not read) | not verified: `docker-compose.yml` at the tag sets no model defaults (models are configured, for example through `OLLAMA_BASE_URL`) | `docker-compose.yml` at the tag defines its own services, including `paradedb/paradedb:v0.22.6-pg17`, `redis:7.0-alpine`, `quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z`, `searxng/searxng:latest`, `neo4j:2025.10.1`, `qdrant/qdrant:v1.16.2`, `milvusdb/milvus:v2.6.11`, `semitechnologies/weaviate:1.28.4`, Apache Doris, Dex and Langfuse; its own images default to `:latest` (`WEKNORA_VERSION`). Which services are optional profiles is not verified. It brings its own object store (MinIO) and SearXNG; neither is chosen for QMS OS (R-15) |
+| A27 | WeKnora (`Tencent/WeKnora`) | `v0.8.2` (2026-09-24), `3e8b0bfc80b845b2d4b2ed683994748741450a97` | MIT, except third-party components under their own licences (`LICENSE` points to `THIRD_PARTY_NOTICES.md` and `licenses/`; both read 2026-10-09, see below) | not verified: `docker-compose.yml` at the tag sets no model defaults (models are configured, for example through `OLLAMA_BASE_URL`) | `docker-compose.yml` at the tag defines its own services, including `paradedb/paradedb:v0.22.6-pg17`, `redis:7.0-alpine`, `quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z`, `searxng/searxng:latest`, `neo4j:2025.10.1`, `qdrant/qdrant:v1.16.2`, `milvusdb/milvus:v2.6.11`, `semitechnologies/weaviate:1.28.4`, Apache Doris, Dex and Langfuse; its own images default to `:latest` (`WEKNORA_VERSION`). Which services are optional profiles is not verified. It brings its own object store (MinIO) and SearXNG; neither is chosen for QMS OS (R-15) |
 | A28 | Hermes agent (`NousResearch/hermes-agent`) | `v2026.9.24` (2026-09-24), annotated tag → `f97608f178d1ffeca59860195ab7da295f7c8e5f` | MIT | not verified | skills, `skills.write_approval` and the Telegram gateway: not verified |
 | A10 | Hindsight (`vectorize-io/hindsight`) | `v0.10.2` (2026-09-29), annotated tag → `5fc4ce20917b916240cef27c212c387a177f115b` | MIT | not verified: the README at the tag names no default embedding or reranking model | The README at the tag gives the image `ghcr.io/vectorize-io/hindsight:latest` (digest not read) and does not mention Hermes; the Hermes plugin and `bank_id_template` are **not verified** |
 | — | Object store | **no product chosen** (Admin decision R-15; a slice 1 blocker) | — | — | — |
 | — | Speech recognition and text to speech | none named in the specification | — | — | — |
-| — | edge-tts (`rany2/edge-tts`, the repository named in its PyPI metadata) | `7.2.8` (2026-03-22), `4bdb8e4c6ea62f151a45a3fceb4cf6ff696bb89f` | LGPL-3.0 for all files except `src/edge_tts/srt_composer.py` (MIT), per `LICENSE` | n/a | **Privacy finding (verified from source):** `src/edge_tts/constants.py` at the tag sets `BASE_URL = "speech.platform.bing.com/consumer/speech/synthesize/readaloud"` and `WSS_URL = f"wss://{BASE_URL}/edge/v1?TrustedClientToken=…"`, and the README says it uses "Microsoft Edge's online text-to-speech service". Text to be spoken is therefore sent to a Microsoft online service: unsuitable for confidential text; local TTS stays the default (specification §8) |
+| — | edge-tts (`rany2/edge-tts`, the repository named in its PyPI metadata) | `7.2.8` (2026-03-22), `4bdb8e4c6ea62f151a45a3fceb4cf6ff696bb89f` | LGPL-3.0 for all files except `src/edge_tts/srt_composer.py` (MIT), per `LICENSE` | n/a | **Privacy finding (verified from source):** `src/edge_tts/constants.py` at the tag sets `BASE_URL = "speech.platform.bing.com/consumer/speech/synthesize/readaloud"` and `WSS_URL = f"wss://{BASE_URL}/edge/v1?TrustedClientToken=…"`, and the README says it uses "Microsoft Edge's online text-to-speech service". Text to be spoken is therefore sent to a Microsoft online service: unsuitable for confidential text; local TTS stays the default (specification §8). Admin decision R-20 (2026-10-09): not used for confidential content, off by default, any use needs Admin approval, and if enabled it is a `third_party_cloud` provider with an opt-in, a UI notice and an audit log entry |
 | A19 | Digital-Secretary | not verified (owner's repository; its location is not recorded in this repository) | not verified | — | Telegram voice UX modules; actual speech dependency |
 | A20 | Telegram Bot API | a hosted service, not a release | service terms, not verified | — | voice notes are asynchronous files; long polling is outbound only: not verified |
+
+### WeKnora third-party notices (read 2026-10-09)
+
+Read at commit `3e8b0bfc80b845b2d4b2ed683994748741450a97` (tag `v0.8.2`) with read-only WebFetch:
+https://github.com/Tencent/WeKnora/blob/3e8b0bfc80b845b2d4b2ed683994748741450a97/THIRD_PARTY_NOTICES.md and
+https://api.github.com/repos/Tencent/WeKnora/contents/licenses?ref=3e8b0bfc80b845b2d4b2ed683994748741450a97 (and
+`licenses/sources`). What the files state; not a legal opinion:
+
+| Component (as stated) | Licence (as stated) | Where (as stated) | `licenses/` file, blob SHA |
+|---|---|---|---|
+| Go MySQL Driver `github.com/go-sql-driver/mysql` v1.10.0 | Mozilla Public License 2.0 | backend and desktop binaries (Doris MySQL protocol); unmodified | `go-sql-driver-mysql-MPL-2.0.txt`, `a612ad9813b006ce81d1ee438dd784da99a54007` |
+| go-m1cpu `github.com/shoenig/go-m1cpu` v0.1.6 | Mozilla Public License 2.0 | macOS dependency chain through gopsutil; absent from the Linux backend build; unmodified | `go-m1cpu-MPL-2.0.txt`, `be2cc4dfb609fb6c38f6365ec345bded3350dd63` |
+| OpenCC dictionary data (`TSPhrases.txt`, `TSCharacters.txt`) from `github.com/longbridgeapp/opencc` v0.3.13 | Apache-2.0 | copied unchanged; data only, WeKnora's own lookup code | `OpenCC-Apache-2.0.txt`, `261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64` |
+| Wails v2.12.0 Windows installer template | MIT | build only; `cmd/desktop/build/windows/installer/project.nsi`, with local changes | `Wails-MIT.txt`, `28f2a3683c3a98f8a157a2151af3ebab2e1ff6a8` |
+| cbindgen 0.29.4 | MPL-2.0 | build only (generates a C header in the Rust build); not shipped per the build recipes | no file in `licenses/` |
+
+- `licenses/sources/` holds one file, `modules.tsv` (blob `638cc01af8d629f7fa0749a7bf09378fb3831211`, 204 bytes;
+  contents not read). The notices say source archives of the MPL-2.0 modules are bundled in binary releases, and
+  that the notices, `LICENSE` and `licenses/` must accompany redistributed backend and desktop packages.
+- Scope: this covers WeKnora's own code and the components it lists. The images in its `docker-compose.yml` (ParadeDB,
+  Redis, MinIO, SearXNG, Neo4j, Qdrant, Milvus, Weaviate, Doris, Dex, Langfuse) carry their own licences, which are
+  **not verified**; the spike (ROADMAP slice 3b, R-22) decides which of them would be used.
 
 ## Named, not adopted, not inspected (Tier D)
 
