@@ -1,6 +1,6 @@
 @echo off
-rem Lint (ruff check) and type check (mypy on qms_os) with the configuration in apps\api\pyproject.toml - the same
-rem checks as the CI jobs lint and types. Needs the lint extra once:
+rem Lint (ruff check), type check (mypy on qms_os) and the image digest check (scripts\check_image_digests.py, R-21) -
+rem the same checks as the CI jobs lint and types; ruff and mypy use apps\api\pyproject.toml. Needs the lint extra once:
 rem   .venv\Scripts\python.exe -m pip install -c apps\api\constraints-ci.txt -e "apps\api[dev,lint]"
 rem Caches go under the env.bat cache folder (.cache or QMS_TEMP_ROOT\cache), never into the repository.
 setlocal
@@ -14,4 +14,6 @@ echo == ruff check
 "%PY%" -m ruff check --cache-dir "%QMSOS_CACHE%\ruff" . || set "RC=1"
 echo == mypy
 "%PY%" -m mypy --cache-dir "%QMSOS_CACHE%\mypy" || set "RC=1"
+echo == image digest check
+"%PY%" "%QMSOS_HOME%\scripts\check_image_digests.py" || set "RC=1"
 endlocal & exit /b %RC%

@@ -201,6 +201,20 @@ def test_unknown_provider_and_malformed_identifiers_refused(engine):
         [("no-such", "m1", None), ("sim-local", None, None)]
 
 
+@pytest.mark.parametrize("provider_id,model", [
+    ("sim-local", "gemma4 12b"),                                   # a space: free text cannot pass as a model name
+    ("sim-local", "-".join(["m"] * 101)),                          # 201 characters, hyphenated: over the 200 limit
+    ("-".join(["sim-local"] * 7), "gemma4:12b"),                   # 69 characters: over the 64 limit
+])
+def test_model_name_with_spaces_or_overlong_identifier_refused(engine, provider_id, model):
+    allow(engine, "sim-local", "gemma4:12b")
+    assert refused(gateway(engine), provider_id=provider_id, model=model, data_class="public").reason \
+        == "invalid_identifier"
+    row = log_rows(engine)[-1]
+    assert (row.outcome, row.reason) == ("refused", "invalid_identifier")
+    assert row.provider_id is None or row.model is None
+
+
 def test_default_ceilings():
     assert DEFAULT_CEILING == {EgressClass.LOCAL: DataClass.CONFIDENTIAL,
                                EgressClass.ORG_PRIVATE: DataClass.CONFIDENTIAL,

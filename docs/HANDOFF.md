@@ -6,14 +6,14 @@
 
 - Repository: this repository (`QMS-OS`); confirm the remote with `git remote -v`.
 - Specification: `docs/SPECIFICATION.md`, v3.0 dated 29 September 2026. Verify title and version locally.
-- Baseline recorded here: `main` at `dae34ae` ("Record provider and knowledge-base decisions; plan slices 3, 3a, 3b
-  and 4 (#22)"). Work in progress: branch `feat/provider-contract` from `dae34ae` (ROADMAP slice 3, the model-provider
-  contract; two local commits, `9322839` and the commit carrying this file; not pushed).
+- Baseline recorded here: `main` at `53f6f23` ("Add the model-provider contract with egress controls (MVP-0 slice
+  3) (#23)"). Work in progress: branch `feat/ci-image-digest-check` from `53f6f23` (ROADMAP slice 3a; local, not
+  pushed).
   Re-verify branch, HEAD and working tree with Git at session start; this file may be stale.
-- Stage: MVP-0 in progress. Of the eight items in the ROADMAP's MVP-0 table, four are done (Git scaffold, CI and
-  protected `main`; synthetic fixtures; fixture startup as a server process; documentation reconciled), two are in
-  progress (upstream, licence and version matrix; container or local runtime configuration; the model-provider
-  contract is implemented on an unmerged branch) and one is not started (local-model benchmark plan). Five slices remain before the MVP-0 exit — see *Remaining
+- Stage: MVP-0 in progress. Of the eight items in the ROADMAP's MVP-0 table, five are done (Git scaffold, CI and
+  protected `main`; synthetic fixtures; fixture startup as a server process; documentation reconciled; model-provider
+  contract), two are in progress (upstream, licence and version matrix; container or local runtime configuration) and
+  one is not started (local-model benchmark plan). Four slices remain before the MVP-0 exit — see *Remaining
   before the MVP-0 exit* in `docs/ROADMAP.md`.
 - Mode: synthetic only. No live connectors, staff accounts or model credentials are configured in this repository,
   and none has been verified; do not claim they are configured.
@@ -22,10 +22,12 @@
 
 Each item says how it was verified.
 
-- **Git:** on 2026-10-09 `main` was at `dae34ae…` with a clean working tree (`git status -sb`: `main...origin/main`;
-  no fetch in this session). Pull request #22 (`docs/provider-decisions`) was merged as `dae34ae`: pull request run
+- **Git:** on 2026-10-09 `main` was at `53f6f23…` with a clean working tree (`git fetch`, then `git status -sb`:
+  `main...origin/main`). Pull request #23 (`feat/provider-contract`, ROADMAP slice 3) was merged as `53f6f23`; `main`
+  CI run 37939344103 green, as reported by the Admin, not read from GitHub. Branch `feat/ci-image-digest-check` was
+  created from `53f6f23` (local only). Earlier: on 2026-10-09 `main` was at `dae34ae…`. Pull request #22 (`docs/provider-decisions`) was merged as `dae34ae`: pull request run
   37883681486, six jobs green, and `main` run 37910850440 for `dae34ae`, six jobs green — both as reported by the
-  Admin, not read from GitHub. Branch `feat/provider-contract` was created from `dae34ae` (local only). Earlier: on
+  Admin, not read from GitHub. Earlier: on
   2026-10-09 `main` was at `fe6eb05…`. Pull request #21 (`docs/upstream-matrix`) was merged as `fe6eb05`; the squash
   title lost the "A" of "Add" ("dd the upstream licence…"), and `main` is not rewritten for it. Pull request #21's six
   CI jobs passed, as reported by the Admin (run IDs not captured); `main` run 37876971887 for `fe6eb05`, six jobs
@@ -75,7 +77,12 @@ Each item says how it was verified.
     returns pytest's exit code (pull request #9); before that it returned 0 even when pytest failed;
   - `main` at `23329f3…` (R-3 merged), local Windows on 2026-10-06: `155 passed, 1 skipped, 1 warning`, exit 0;
     branch results before the merge: see *Authentication (R-3)* below;
-  - branch `feat/provider-contract`, local Windows on 2026-10-09: `scripts\run-tests.bat` `229 passed, 1 skipped,
+  - branch `feat/ci-image-digest-check`, local Windows on 2026-10-09: `scripts\run-tests.bat` `261 passed, 1
+    skipped, 1 warning`; `scripts\run-pg-tests.bat` `22 passed, 261 deselected`; `scripts\run-pg-tests.bat full`
+    `283 passed`; `alembic check` "No new upgrade operations detected."; `alembic heads` `44bca21ba248 (head)`;
+    `scripts\run-lint.bat`: ruff "All checks passed!", mypy "Success: no issues found in 46 source files", "image
+    digest check: 2 scanned in 2 files, 1 baselined, 0 problems";
+  - branch `feat/provider-contract` (merged as `53f6f23`), local Windows on 2026-10-09: `scripts\run-tests.bat` `229 passed, 1 skipped,
     1 warning`; `scripts\run-pg-tests.bat` `22 passed, 229 deselected`; `scripts\run-pg-tests.bat full` `251
     passed`; `alembic check` "No new upgrade operations detected."; `alembic heads` `44bca21ba248 (head)` (single
     head); ruff "All checks passed!"; mypy "Success: no issues found in 46 source files". Nine deliberate breaks
@@ -174,11 +181,16 @@ Each item says how it was verified.
   Telegram terms; the licences of the images in WeKnora's compose file. Model fit on the 12 GB VRAM host is a
   measurement (slice 4).
 - All live integrations (mail, Telegram, model providers/Ollama, Hermes, WeKnora, Hindsight).
-- Model-provider contract (branch `feat/provider-contract`): simulated providers only. Not verified: Ollama's
-  cloud-tag naming rule (`docs/cloud.mdx` at `28a9f8c…` gives one example and no rule; any name containing "cloud"
-  is treated as cloud), whether a local Ollama daemon contacts the network, any real endpoint, error message, key,
-  spend cap or speech provider. The gateway is an application-level control; Hermes and network-level egress are not
-  covered.
+- Model-provider contract (on `main` since `53f6f23`): simulated providers only. Not verified: Ollama's cloud-tag
+  naming rule (`docs/cloud.mdx` at `28a9f8c…` gives one example and no rule; any name containing "cloud" is treated
+  as cloud), whether a local Ollama daemon contacts the network, any real endpoint, whether an `org_private` endpoint
+  is really private, error messages, keys, spend caps and speech providers. The gateway is an application-level
+  control only; Hermes and network-level egress are not covered.
+- Image digest check (branch `feat/ci-image-digest-check`): not run in CI yet. Known limits, listed in
+  `scripts/check_image_digests.py`: `--build-arg` overrides, `COPY --from` and `RUN --mount ... from=` images, YAML
+  flow mappings, anchors and multi-line scalars, images in scripts and documentation, and files not yet tracked (it
+  reads `git ls-files`: `git add` a new file before running it locally). CI's ruff and mypy cover `apps/api` only,
+  so `scripts/` is not linted or type-checked in CI (known gap; the script was checked by hand with both).
 
 ## Local material outside the repository
 
@@ -339,8 +351,8 @@ See *Proposed MVP-0 order* in `docs/ROADMAP.md`. No dates or delivery commitment
   inspected" list (Tier D); `docs/DECISIONS.md` gains R-15 (object store, Admin decision) and R-16 (slice 1 scope,
   proposal) and R-12/R-13 updates; out-of-date status lines refreshed here and in `docs/ROADMAP.md`. Network:
   read-only WebFetch, no credentials; the first request (FastAPI `LICENSE` at `0.141.1`) succeeded, the second
-  (that tag's commit) returned `404`, and no further request was made. On 2026-10-07: `scriptsun-tests.bat`
-  `179 passed, 1 skipped, 1 warning` (exit 0); `scriptsun-lint.bat` ruff "All checks passed!", mypy "Success: no
+  (that tag's commit) returned `404`, and no further request was made. On 2026-10-07: `scripts\run-tests.bat`
+  `179 passed, 1 skipped, 1 warning` (exit 0); `scripts\run-lint.bat` ruff "All checks passed!", mypy "Success: no
   issues found in 38 source files" (exit 0). Two local commits (`033b666`, `dd828a0`), not pushed. Synthetic mode.
 - Same branch, second pass (Admin's corrected stop rule, 2026-10-07: stop only on network-level failures; a 404 on a
   guessed URL form is retried once with a documented alternative): tag commits from the GitHub ref API and licence
@@ -359,7 +371,7 @@ See *Proposed MVP-0 order* in `docs/ROADMAP.md`. No dates or delivery commitment
   pluggy 1.6.0 verified MIT (`pytest-dev/pluggy`, tag commit `fd08ab5f…`; repository from the project's documentation
   and PyPI provenance), Tier A now 25 of 25; WeKnora `THIRD_PARTY_NOTICES.md` and `licenses/` read at `3e8b0bfc…`
   (MPL-2.0, Apache-2.0 and MIT components). Read-only WebFetch, no credentials, no network-level failure. A
-  line-break corruption in the previous entry (`scriptsun-tests.bat`) was repaired. Synthetic mode.
+  line-break corruption in the previous entry (`scripts\run-tests.bat`) was repaired. Synthetic mode.
 - Pull request #22 (`docs/provider-decisions`) merged as `dae34ae` (see *Verified state*, Git).
 - Branch `feat/provider-contract` from `dae34ae` (2026-10-09; ROADMAP slice 3; synthetic, simulated providers only;
   ADR 0005, R-24, R-25). Commit 1 `9322839`: `qms_os/providers/` (contract, egress rules, simulated providers,
@@ -386,9 +398,22 @@ See *Proposed MVP-0 order* in `docs/ROADMAP.md`. No dates or delivery commitment
     `test_egress_log_commits_independently_of_the_callers_transaction` failed, `assert [] == ['dispatched'…`.
   - M9 `dispatched` written after the call: `test_dispatched_row_is_committed_before_the_provider_is_called`
     failed, `assert [] == ['dispatched']`.
-- Next: Admin review of `feat/provider-contract`, then push and pull request on authorisation; the remaining slice 2
-  items (Ollama telemetry, per-request `num_ctx`, audio input of the Ollama build); slice 3a before slice 1; exit
-  criteria for the WeKnora spike (3b) before it starts; payload-bound approval after MVP-0.
+- Pull request #23 (`feat/provider-contract`) merged as `53f6f23`; `main` CI run 37939344103 green (as reported by
+  the Admin).
+- Branch `feat/ci-image-digest-check` from `53f6f23` (2026-10-09; ROADMAP slice 3a; synthetic): stdlib-only
+  `scripts/check_image_digests.py` (tracked files only; Dockerfile `FROM` with ARG defaults, compose and workflow
+  `image:`, workflow `container:` and `docker://`), baseline `scripts/image-digest-baseline.txt` with one entry
+  (`compose.yaml postgres:${POSTGRES_TAG:-17}`; slice 1 fixes it), a stale entry fails (ratchet); a step in the `lint`
+  job and in `scripts\run-lint.bat`; `tests/test_image_digest_check.py` (29 tests, one against this repository).
+  Shown failing once in a scratch git repository outside the project (`D:\QMS-OS-TEMP\scratch\digest-demo`, not
+  committed): an unpinned `redis:7` gave "compose.yaml:3: image reference without @sha256 digest: redis:7", exit 1;
+  after pinning it, the old baseline line gave "stale entry, remove it", exit 1. Separate carry-over from slice 3:
+  `tests/test_providers.py` refuses a model name with a space and over-long hyphenated model and provider ids with
+  `invalid_identifier`.
+- Next: Admin review of `feat/ci-image-digest-check`, then push and pull request on authorisation; slice 1 (pin
+  `compose.yaml` and empty the baseline); the remaining slice 2 items (Ollama telemetry, per-request `num_ctx`, audio
+  input of the Ollama build); exit criteria for the WeKnora spike (3b) before it starts; payload-bound approval after
+  MVP-0.
 
 ## End-of-session update template
 
