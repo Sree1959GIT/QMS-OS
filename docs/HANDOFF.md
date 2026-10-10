@@ -6,9 +6,9 @@
 
 - Repository: this repository (`QMS-OS`); confirm the remote with `git remote -v`.
 - Specification: `docs/SPECIFICATION.md`, v3.0 dated 29 September 2026. Verify title and version locally.
-- Baseline recorded here: `main` at `53f6f23` ("Add the model-provider contract with egress controls (MVP-0 slice
-  3) (#23)"). Work in progress: branch `feat/ci-image-digest-check` from `53f6f23` (ROADMAP slice 3a; local, not
-  pushed).
+- Baseline recorded here: `main` at `a7b90da` ("Add a CI image-digest check with a baseline (MVP-0 slice 3a)
+  (#24)"). Work in progress: branch `feat/pin-compose-postgres` from `a7b90da` (ROADMAP slice 1, PostgreSQL pin
+  only; local, not committed, not pushed).
   Re-verify branch, HEAD and working tree with Git at session start; this file may be stale.
 - Stage: MVP-0 in progress. Of the eight items in the ROADMAP's MVP-0 table, five are done (Git scaffold, CI and
   protected `main`; synthetic fixtures; fixture startup as a server process; documentation reconciled; model-provider
@@ -22,7 +22,11 @@
 
 Each item says how it was verified.
 
-- **Git:** on 2026-10-09 `main` was at `53f6f23…` with a clean working tree (`git fetch`, then `git status -sb`:
+- **Git:** on 2026-10-10 local `main` was at `a7b90da…` with a clean working tree (`git rev-parse HEAD`, `git
+  status`; not fetched). Pull request #24 (`feat/ci-image-digest-check`, ROADMAP slice 3a) was merged as `a7b90da`:
+  pull request run 38024123786 and `main` run 38024289981, as reported by the Admin, not read from GitHub. Branch
+  `feat/pin-compose-postgres` was created from `a7b90da` (local only). Earlier: on 2026-10-09 `main` was at
+  `53f6f23…` with a clean working tree (`git fetch`, then `git status -sb`:
   `main...origin/main`). Pull request #23 (`feat/provider-contract`, ROADMAP slice 3) was merged as `53f6f23`; `main`
   CI run 37939344103 green, as reported by the Admin, not read from GitHub. Branch `feat/ci-image-digest-check` was
   created from `53f6f23` (local only). Earlier: on 2026-10-09 `main` was at `dae34ae…`. Pull request #22 (`docs/provider-decisions`) was merged as `dae34ae`: pull request run
@@ -106,7 +110,7 @@ Each item says how it was verified.
   gives `185 passed`). Required status checks on `main` (ruleset 24295033): since 2026-10-07 all six jobs, with
   branches required to be up to date (R-13; set by the Admin, as reported by the Admin, not re-read from GitHub).
 - **Layout:** application code lives in `apps/api/` (R-1; pull request #5). Verified by: `105 passed, 1 warning` run locally from `apps/api/`, and job `test` passing on pull request #5 and on the push to `main`.
-- **Local runtime:** PostgreSQL 17 runs through `compose.yaml` (R-2) and the Python venv and caches live inside the project folder. Verified on a local Windows machine on 2026-10-05 by: `scripts\start-db.bat` reaching a healthy container, `select version()` returning PostgreSQL 17.11, `scripts\backup-db.bat` writing a non-empty dump, and `scripts\run-tests.bat` giving `105 passed, 1 warning`.
+- **Local runtime:** PostgreSQL 17 runs through `compose.yaml` (R-2) and the Python venv and caches live inside the project folder. Verified on a local Windows machine on 2026-10-05 by: `scripts\start-db.bat` reaching a healthy container, `select version()` returning PostgreSQL 17.11, `scripts\backup-db.bat` writing a non-empty dump, and `scripts\run-tests.bat` giving `105 passed, 1 warning`. On 2026-10-10 (branch `feat/pin-compose-postgres`) the image is pinned to the CI reference, `postgres:17.11@sha256:d74eeac9…` (no `POSTGRES_TAG`): `scripts\backup-db.bat` wrote an 878-byte dump first; `docker compose config --images` printed the pinned reference; `scripts\start-db.bat` recreated the container on that image (exit 0), health `healthy`, and `select version()` returned `PostgreSQL 17.11 (Debian 17.11-1.pgdg13+2) on x86_64-pc-linux-gnu`. The named volume was kept; `scripts\run-pg-tests.bat` afterwards gave `22 passed, 261 deselected`.
 - **Protection of `main`** (GitHub public API): an active ruleset on the default branch blocks deletion and
   force-pushes, requires pull requests and linear history, and (since 2026-10-07, per the Admin) the six status checks with the
   up-to-date rule. Bypass settings
@@ -186,7 +190,9 @@ Each item says how it was verified.
   as cloud), whether a local Ollama daemon contacts the network, any real endpoint, whether an `org_private` endpoint
   is really private, error messages, keys, spend caps and speech providers. The gateway is an application-level
   control only; Hermes and network-level egress are not covered.
-- Image digest check (branch `feat/ci-image-digest-check`): not run in CI yet. Known limits, listed in
+- Whether the pinned PostgreSQL digest (`d74eeac9…`) is a multi-arch index or an amd64-only manifest; only amd64
+  hosts have used it (local Docker Desktop and the CI runner).
+- Image digest check (on `main` since `a7b90da`): CI runs as reported by the Admin; the job logs were not read. Known limits, listed in
   `scripts/check_image_digests.py`: `--build-arg` overrides, `COPY --from` and `RUN --mount ... from=` images, YAML
   flow mappings, anchors and multi-line scalars, images in scripts and documentation, and files not yet tracked (it
   reads `git ls-files`: `git add` a new file before running it locally). CI's ruff and mypy cover `apps/api` only,
@@ -274,7 +280,7 @@ See *Proposed MVP-0 order* in `docs/ROADMAP.md`. No dates or delivery commitment
 - Telegram voice replies pair a full written answer with a short, separately composed spoken explanation; verbatim reading only on explicit request.
 - ISO 9001:2026 edition-specific mapping is human-validated against licensed text; no invented compliance or certification.
 
-## Last sessions (2026-10-06 to 2026-10-09)
+## Last sessions (2026-10-06 to 2026-10-10)
 
 - Pull request #9 (run-tests exit code) merged as `997e55b`, CI passed.
 - R-3 (local accounts + TOTP) merged as `23329f3` (pull request #10, squash of `5e5ada2` and `74a4460`); CI job
@@ -410,8 +416,20 @@ See *Proposed MVP-0 order* in `docs/ROADMAP.md`. No dates or delivery commitment
   after pinning it, the old baseline line gave "stale entry, remove it", exit 1. Separate carry-over from slice 3:
   `tests/test_providers.py` refuses a model name with a space and over-long hyphenated model and provider ids with
   `invalid_identifier`.
-- Next: Admin review of `feat/ci-image-digest-check`, then push and pull request on authorisation; slice 1 (pin
-  `compose.yaml` and empty the baseline); the remaining slice 2 items (Ollama telemetry, per-request `num_ctx`, audio
+- Pull request #24 (`feat/ci-image-digest-check`) merged as `a7b90da`; pull request run 38024123786 and `main` run
+  38024289981 (as reported by the Admin).
+- Branch `feat/pin-compose-postgres` from `a7b90da` (2026-10-10; ROADMAP slice 1, PostgreSQL pin only; synthetic;
+  not committed): `compose.yaml` image `postgres:17.11@sha256:d74eeac9a635390a49bc21bd49fccd973de707e2a53a76ac49b552b8712ec46f`
+  (the CI reference; Admin decision 2026-10-10), `POSTGRES_TAG=17` removed from `.env.example`, the baseline line
+  removed (header kept), the real-repo test renamed `test_this_repository_passes_with_an_empty_baseline`. With
+  compose pinned and the line still present the check gave "image-digest-baseline.txt: stale entry, remove it:
+  compose.yaml postgres:${POSTGRES_TAG:-17}", exit 1; after removing it "2 scanned in 2 files, 0 baselined, 0
+  problems", exit 0. Commands run on Windows: `scripts\run-tests.bat` `261 passed, 1 skipped, 1 warning` (exit 0);
+  `scripts\run-lint.bat` ruff "All checks passed!", mypy "Success: no issues found in 46 source files", digest
+  check as above (exit 0); `scripts\run-pg-tests.bat full` `283 passed, 1 warning` (exit 0); `alembic check` "No new
+  upgrade operations detected." (exit 0); compose start-up as under *Local runtime*. The Admin's local `.env` may still
+  hold `POSTGRES_TAG=17`; Compose ignores it (not read or edited).
+- Next: Admin review of `feat/pin-compose-postgres`, then commit, push and pull request on authorisation; the remaining slice 2 items (Ollama telemetry, per-request `num_ctx`, audio
   input of the Ollama build); exit criteria for the WeKnora spike (3b) before it starts; payload-bound approval after
   MVP-0.
 

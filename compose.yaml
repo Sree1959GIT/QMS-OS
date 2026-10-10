@@ -1,7 +1,8 @@
 # QMS OS - local PostgreSQL only (R-2 proposal). Synthetic/dev data only.
 services:
   postgres:
-    image: postgres:${POSTGRES_TAG:-17}
+    # PostgreSQL 17.11: the same pinned reference as the CI postgres service (R-21). The digest decides what is pulled.
+    image: postgres:17.11@sha256:d74eeac9a635390a49bc21bd49fccd973de707e2a53a76ac49b552b8712ec46f
     container_name: qmsos-postgres
     restart: unless-stopped
     environment:

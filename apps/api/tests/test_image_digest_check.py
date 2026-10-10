@@ -134,17 +134,16 @@ def test_file_selection(path, chosen):
 # ---------- this repository ----------
 
 @pytest.mark.skipif(shutil.which("git") is None or not (REPO / ".git").exists(), reason="needs a git checkout")
-def test_this_repository_passes_with_exactly_the_compose_baseline(capsys):
+def test_this_repository_passes_with_an_empty_baseline(capsys):
     files = CID.tracked_files(REPO)
     problems, scanned, used = CID.check(REPO, files, CID.BASELINE)
     assert problems == []
     found = {(r.path, r.reference) for r in scanned}
-    assert ("compose.yaml", "postgres:${POSTGRES_TAG:-17}") in found
-    assert (".github/workflows/ci.yml",
-            "postgres:17.11@sha256:d74eeac9a635390a49bc21bd49fccd973de707e2a53a76ac49b552b8712ec46f") in found
+    pinned = "postgres:17.11@sha256:d74eeac9a635390a49bc21bd49fccd973de707e2a53a76ac49b552b8712ec46f"
+    assert ("compose.yaml", pinned) in found and (".github/workflows/ci.yml", pinned) in found
     entries, baseline_problems = CID.read_baseline(CID.BASELINE)
-    assert baseline_problems == [] and entries == [("compose.yaml", "postgres:${POSTGRES_TAG:-17}")]
-    assert used == set(entries)
+    assert baseline_problems == [] and entries == []
+    assert used == set()
     assert CID.main([]) == 0
     out = capsys.readouterr().out
-    assert f"{len(scanned)} scanned in {len(files)} files, 1 baselined, 0 problems" in out and len(scanned) >= 2
+    assert f"{len(scanned)} scanned in {len(files)} files, 0 baselined, 0 problems" in out and len(scanned) >= 2
