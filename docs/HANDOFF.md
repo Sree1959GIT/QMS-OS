@@ -6,9 +6,9 @@
 
 - Repository: this repository (`QMS-OS`); confirm the remote with `git remote -v`.
 - Specification: `docs/SPECIFICATION.md`, v3.0 dated 29 September 2026. Verify title and version locally.
-- Baseline recorded here: `main` at `a7b90da` ("Add a CI image-digest check with a baseline (MVP-0 slice 3a)
-  (#24)"). Work in progress: branch `feat/pin-compose-postgres` from `a7b90da` (ROADMAP slice 1, PostgreSQL pin
-  only; local, not committed, not pushed).
+- Baseline recorded here: `main` at `e4ebfd3` ("Pin the compose PostgreSQL image by digest and empty the digest
+  baseline (MVP-0 slice 1, PostgreSQL) (#25)"). Work in progress: branch `docs/upstream-ollama-items` from `e4ebfd3`
+  (ROADMAP slice 2, the three Ollama items; documentation only; local, not committed, not pushed).
   Re-verify branch, HEAD and working tree with Git at session start; this file may be stale.
 - Stage: MVP-0 in progress. Of the eight items in the ROADMAP's MVP-0 table, five are done (Git scaffold, CI and
   protected `main`; synthetic fixtures; fixture startup as a server process; documentation reconciled; model-provider
@@ -22,14 +22,17 @@
 
 Each item says how it was verified.
 
-- **Git:** on 2026-10-10 local `main` was at `a7b90da…` with a clean working tree (`git rev-parse HEAD`, `git
-  status`; not fetched). Pull request #24 (`feat/ci-image-digest-check`, ROADMAP slice 3a) was merged as `a7b90da`:
+- **Git:** on 2026-10-10 `git fetch` showed `origin/main` and local `main` at `e4ebfd37…`, working tree clean. Pull
+  request #25 (`feat/pin-compose-postgres`, ROADMAP slice 1, PostgreSQL pin) was merged as `e4ebfd3`: pull request
+  run 38028183377 and `main` run 38033037362, as reported by the Admin, not read from GitHub. Branch
+  `docs/upstream-ollama-items` was created from `e4ebfd3` (local only). Earlier: on 2026-10-10 local `main` was at
+  `a7b90da…` with a clean working tree (`git rev-parse HEAD`, `git status`; not fetched). Pull request #24 (`feat/ci-image-digest-check`, ROADMAP slice 3a) was merged as `a7b90da`:
   pull request run 38024123786 and `main` run 38024289981, as reported by the Admin, not read from GitHub. Branch
-  `feat/pin-compose-postgres` was created from `a7b90da` (local only). Earlier: on 2026-10-09 `main` was at
+  `feat/pin-compose-postgres` was created from `a7b90da` (merged as `e4ebfd3`, pull request #25). Earlier: on 2026-10-09 `main` was at
   `53f6f23…` with a clean working tree (`git fetch`, then `git status -sb`:
   `main...origin/main`). Pull request #23 (`feat/provider-contract`, ROADMAP slice 3) was merged as `53f6f23`; `main`
   CI run 37939344103 green, as reported by the Admin, not read from GitHub. Branch `feat/ci-image-digest-check` was
-  created from `53f6f23` (local only). Earlier: on 2026-10-09 `main` was at `dae34ae…`. Pull request #22 (`docs/provider-decisions`) was merged as `dae34ae`: pull request run
+  created from `53f6f23` (merged as `a7b90da`, pull request #24). Earlier: on 2026-10-09 `main` was at `dae34ae…`. Pull request #22 (`docs/provider-decisions`) was merged as `dae34ae`: pull request run
   37883681486, six jobs green, and `main` run 37910850440 for `dae34ae`, six jobs green — both as reported by the
   Admin, not read from GitHub. Earlier: on
   2026-10-09 `main` was at `fe6eb05…`. Pull request #21 (`docs/upstream-matrix`) was merged as `fe6eb05`; the squash
@@ -110,7 +113,7 @@ Each item says how it was verified.
   gives `185 passed`). Required status checks on `main` (ruleset 24295033): since 2026-10-07 all six jobs, with
   branches required to be up to date (R-13; set by the Admin, as reported by the Admin, not re-read from GitHub).
 - **Layout:** application code lives in `apps/api/` (R-1; pull request #5). Verified by: `105 passed, 1 warning` run locally from `apps/api/`, and job `test` passing on pull request #5 and on the push to `main`.
-- **Local runtime:** PostgreSQL 17 runs through `compose.yaml` (R-2) and the Python venv and caches live inside the project folder. Verified on a local Windows machine on 2026-10-05 by: `scripts\start-db.bat` reaching a healthy container, `select version()` returning PostgreSQL 17.11, `scripts\backup-db.bat` writing a non-empty dump, and `scripts\run-tests.bat` giving `105 passed, 1 warning`. On 2026-10-10 (branch `feat/pin-compose-postgres`) the image is pinned to the CI reference, `postgres:17.11@sha256:d74eeac9…` (no `POSTGRES_TAG`): `scripts\backup-db.bat` wrote an 878-byte dump first; `docker compose config --images` printed the pinned reference; `scripts\start-db.bat` recreated the container on that image (exit 0), health `healthy`, and `select version()` returned `PostgreSQL 17.11 (Debian 17.11-1.pgdg13+2) on x86_64-pc-linux-gnu`. The named volume was kept; `scripts\run-pg-tests.bat` afterwards gave `22 passed, 261 deselected`.
+- **Local runtime:** PostgreSQL 17 runs through `compose.yaml` (R-2) and the Python venv and caches live inside the project folder. Verified on a local Windows machine on 2026-10-05 by: `scripts\start-db.bat` reaching a healthy container, `select version()` returning PostgreSQL 17.11, `scripts\backup-db.bat` writing a non-empty dump, and `scripts\run-tests.bat` giving `105 passed, 1 warning`. On 2026-10-10 (branch `feat/pin-compose-postgres`, merged as `e4ebfd3`) the image is pinned to the CI reference, `postgres:17.11@sha256:d74eeac9…` (no `POSTGRES_TAG`): `scripts\backup-db.bat` wrote an 878-byte dump first; `docker compose config --images` printed the pinned reference; `scripts\start-db.bat` recreated the container on that image (exit 0), health `healthy`, and `select version()` returned `PostgreSQL 17.11 (Debian 17.11-1.pgdg13+2) on x86_64-pc-linux-gnu`. The named volume was kept; `scripts\run-pg-tests.bat` afterwards gave `22 passed, 261 deselected`.
 - **Protection of `main`** (GitHub public API): an active ruleset on the default branch blocks deletion and
   force-pushes, requires pull requests and linear history, and (since 2026-10-07, per the Admin) the six status checks with the
   up-to-date rule. Bypass settings
@@ -180,16 +183,19 @@ Each item says how it was verified.
 - Any UI; end-to-end or browser tests.
 - Python 3.11 on PostgreSQL: CI job `test-py311` (Python 3.11.17) covers the SQLite suite only; no local 3.11
   interpreter is installed.
-- Upstream matrix (`docs/UPSTREAMS.md`; slice 2 stays in progress): Ollama telemetry and per-request `num_ctx`; whether the Ollama `gemma4:12b` build accepts audio; Tier C feature
+- Upstream matrix (`docs/UPSTREAMS.md`; slice 2 stays in progress): Ollama outbound calls in dependencies and at
+  runtime (only the source at `0d0720e5` was grepped); `gemma4:12b` audio (inferred from the code and a partial
+  projector metadata read, hash not verified; not run); Tier C feature
   claims (Hermes skills and gateway, Hindsight plugin and isolation, WeKnora retrieval and ACL); Digital-Secretary;
   Telegram terms; the licences of the images in WeKnora's compose file. Model fit on the 12 GB VRAM host is a
   measurement (slice 4).
 - All live integrations (mail, Telegram, model providers/Ollama, Hermes, WeKnora, Hindsight).
 - Model-provider contract (on `main` since `53f6f23`): simulated providers only. Not verified: Ollama's cloud-tag
   naming rule (`docs/cloud.mdx` at `28a9f8c…` gives one example and no rule; any name containing "cloud" is treated
-  as cloud), whether a local Ollama daemon contacts the network, any real endpoint, whether an `org_private` endpoint
+  as cloud), any real endpoint, whether an `org_private` endpoint
   is really private, error messages, keys, spend caps and speech providers. The gateway is an application-level
-  control only; Hermes and network-level egress are not covered.
+  control only; Hermes and network-level egress are not covered. A local Ollama daemon contacts `ollama.com` by
+  default unless cloud features are disabled (`docs/UPSTREAMS.md`, source read 2026-10-10).
 - Whether the pinned PostgreSQL digest (`d74eeac9…`) is a multi-arch index or an amd64-only manifest; only amd64
   hosts have used it (local Docker Desktop and the CI runner).
 - Image digest check (on `main` since `a7b90da`): CI runs as reported by the Admin; the job logs were not read. Known limits, listed in
@@ -359,7 +365,7 @@ See *Proposed MVP-0 order* in `docs/ROADMAP.md`. No dates or delivery commitment
   read-only WebFetch, no credentials; the first request (FastAPI `LICENSE` at `0.141.1`) succeeded, the second
   (that tag's commit) returned `404`, and no further request was made. On 2026-10-07: `scripts\run-tests.bat`
   `179 passed, 1 skipped, 1 warning` (exit 0); `scripts\run-lint.bat` ruff "All checks passed!", mypy "Success: no
-  issues found in 38 source files" (exit 0). Two local commits (`033b666`, `dd828a0`), not pushed. Synthetic mode.
+  issues found in 38 source files" (exit 0). Two local commits (`033b666`, `dd828a0`), later merged as `fe6eb05` (pull request #21). Synthetic mode.
 - Same branch, second pass (Admin's corrected stop rule, 2026-10-07: stop only on network-level failures; a 404 on a
   guessed URL form is retried once with a documented alternative): tag commits from the GitHub ref API and licence
   files at those commits. Tier A: 24 of 25 verified (pluggy names no repository); FastAPI's commit is
@@ -419,7 +425,8 @@ See *Proposed MVP-0 order* in `docs/ROADMAP.md`. No dates or delivery commitment
 - Pull request #24 (`feat/ci-image-digest-check`) merged as `a7b90da`; pull request run 38024123786 and `main` run
   38024289981 (as reported by the Admin).
 - Branch `feat/pin-compose-postgres` from `a7b90da` (2026-10-10; ROADMAP slice 1, PostgreSQL pin only; synthetic;
-  not committed): `compose.yaml` image `postgres:17.11@sha256:d74eeac9a635390a49bc21bd49fccd973de707e2a53a76ac49b552b8712ec46f`
+  merged as `e4ebfd3`, pull request #25; pull request run 38028183377, `main` run 38033037362, as reported by the
+  Admin): `compose.yaml` image `postgres:17.11@sha256:d74eeac9a635390a49bc21bd49fccd973de707e2a53a76ac49b552b8712ec46f`
   (the CI reference; Admin decision 2026-10-10), `POSTGRES_TAG=17` removed from `.env.example`, the baseline line
   removed (header kept), the real-repo test renamed `test_this_repository_passes_with_an_empty_baseline`. With
   compose pinned and the line still present the check gave "image-digest-baseline.txt: stale entry, remove it:
@@ -429,9 +436,28 @@ See *Proposed MVP-0 order* in `docs/ROADMAP.md`. No dates or delivery commitment
   check as above (exit 0); `scripts\run-pg-tests.bat full` `283 passed, 1 warning` (exit 0); `alembic check` "No new
   upgrade operations detected." (exit 0); compose start-up as under *Local runtime*. The Admin's local `.env` may still
   hold `POSTGRES_TAG=17`; Compose ignores it (not read or edited).
-- Next: Admin review of `feat/pin-compose-postgres`, then commit, push and pull request on authorisation; the remaining slice 2 items (Ollama telemetry, per-request `num_ctx`, audio
-  input of the Ollama build); exit criteria for the WeKnora spike (3b) before it starts; payload-bound approval after
-  MVP-0.
+- Stop rule amendments (Admin, 2026-10-10), added to the corrected rule of 2026-10-07: on a `403` or `429`, switch
+  once to `raw.githubusercontent.com` at the commit, then stop and report; a read-only source archive of a tag commit
+  may be downloaded into `D:\QMS-OS-TEMP\scratch` (outside the repository, uncommitted, never built, installed or run;
+  safe extraction; the top-level commit checked) and searched with local grep, citing `path:line` at the commit.
+- Branch `docs/upstream-ollama-items` from `e4ebfd3` (2026-10-10; ROADMAP slice 2, the three Ollama items;
+  documentation only; synthetic): `docs/UPSTREAMS.md` gains a tier legend (A to D) and rows read from the source of
+  Ollama `v0.40.0` (lightweight tag, commit `0d0720e5…`): the daemon contacts `ollama.com` by default (model
+  recommendations every 4 h, cloud-model cache at start; signed with the installation key) unless `OLLAMA_NO_CLOUD=1`
+  or `disable_ollama_cloud`; the desktop app checks for updates hourly (no setting found that disables the check);
+  per-request `num_ctx` on native `/api/generate` and `/api/chat` only; audio input in the code, and the `gemma4:12b`
+  projector metadata has `clip.has_audio_encoder = true` (HTTP Range read, partial read, hash not verified). Requests
+  (read-only, no credentials, all `200`/`206`, no `403`, `429` or `404`): `git fetch`; `git ls-remote` and the GitHub
+  ref and commit API for the tag; the codeload archive; the `gemma4:12b` manifest, config, params and template blobs;
+  the model page; one Range read of the projector blob (one `307` redirect to a `*.r2.cloudflarestorage.com` host).
+  ADR 0005, R-16, R-18 and R-21 were not edited; their effects were reported to the Admin. Commands run on Windows
+  (no code changed): `scripts\run-tests.bat` `261 passed, 1 skipped, 1 warning` (exit 0); `scripts\run-lint.bat` ruff
+  "All checks passed!", mypy "Success: no issues found in 46 source files", digest check "2 scanned in 2 files, 0
+  baselined, 0 problems" (exit 0).
+- Next: Admin review of `docs/upstream-ollama-items`, then commit, push and pull request on authorisation; decide
+  whether `OLLAMA_NO_CLOUD=1` is a required setting for any live Ollama adapter; decide container versus desktop
+  install for Ollama (R-16); the slice 4 plan (local-model benchmark, including audio); exit criteria for the WeKnora
+  spike (3b) before it starts; slice 6 ("no unverified feature claim" review); payload-bound approval after MVP-0.
 
 ## End-of-session update template
 
