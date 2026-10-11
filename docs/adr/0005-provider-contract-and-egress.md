@@ -50,6 +50,8 @@ classification.
   (committed 2026-09-16, read 2026-10-09 through https://docs.ollama.com/cloud and the raw file at that commit) gives
   one example, `gemma4:cloud`, for the app and CLI, and states no general naming rule. It also says API calls to
   ollama.com use names without "cloud" (`gemma4:31b`), so a live Ollama adapter must classify by endpoint host as
-  well as by model name. Whether a local Ollama daemon itself contacts the network is open in `docs/UPSTREAMS.md`.
+  well as by model name. A local Ollama daemon's network and update behaviour is recorded in `docs/UPSTREAMS.md`
+  (Ollama rows "Daemon network contact", "Turning cloud contact off", "Updates" and "Telemetry and other
+  outbound calls"; source read 2026-10-10); running a live Ollama adapter with cloud features off is proposal R-27.
 - Any real provider: endpoints, whether an `org_private` endpoint is private, real error messages, keys, spend caps,
   latency, token counts, speech providers (including edge-tts, R-20).
