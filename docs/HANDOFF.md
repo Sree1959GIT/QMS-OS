@@ -6,9 +6,9 @@
 
 - Repository: this repository (`QMS-OS`); confirm the remote with `git remote -v`.
 - Specification: `docs/SPECIFICATION.md`, v3.0 dated 29 September 2026. Verify title and version locally.
-- Baseline recorded here: `main` at `686b12b` ("Record Ollama v0.40.0 network contact, per-request context and audio
-  input from source (MVP-0 slice 2, partial) (#26)"). Work in progress: branch `docs/model-agnostic-providers` from
-  `686b12b` (R-26, R-27 and the R-16 note; documentation only; local, not committed, not pushed).
+- Baseline recorded here: `main` at `a49baee` (2026-10-11; "Record the model- and runtime-agnostic provider decision
+  (R-26) and Ollama proposals (R-27, R-16 note) (#27)"). Work in progress: branch `docs/handoff-after-pr27` from
+  `a49baee` (this handoff update only; local, not committed, not pushed).
   Re-verify branch, HEAD and working tree with Git at session start; this file may be stale.
 - Stage: MVP-0 in progress. Of the eight items in the ROADMAP's MVP-0 table, five are done (Git scaffold, CI and
   protected `main`; synthetic fixtures; fixture startup as a server process; documentation reconciled; model-provider
@@ -22,10 +22,18 @@
 
 Each item says how it was verified.
 
-- **Git:** on 2026-10-11 `git fetch` showed `origin/main` and local `main` at `686b12be…`, working tree clean. Pull
-  request #26 (`docs/upstream-ollama-items`, ROADMAP slice 2, the three Ollama items) was merged as `686b12b`: pull
-  request run 38035882422 and `main` run 38110041414, as reported by the Admin, not read from GitHub. Branch
-  `docs/model-agnostic-providers` was created from `686b12b` (local only). Earlier: on 2026-10-10 `git fetch`
+- **Git:** on 2026-10-11 `git pull --ff-only` brought local `main` to `a49baee8…` (= `origin/main`), working tree
+  clean. Pull request #27 (head `feabb403…`; R-26 decided, R-27 and the R-16 note proposals) was merged as
+  `a49baee` at 2026-10-11 05:41 UTC: pull request run 38115212746 (six jobs green, read from GitHub via the
+  Perplexity GitHub connector, 2026-10-11) and `main` run 38115607032 (push on `main`; six jobs green, run page
+  checked by the Admin (screenshot, 2026-10-11); commit a49baee8e46bb8ddc70e46968060741c5340c8f5 confirmed via
+  GitHub); not read in this session. Branch `docs/handoff-after-pr27` was created from `a49baee` (local only).
+  Earlier: on 2026-10-11 `git fetch` showed `origin/main` and local `main` at
+  `686b12be…`, working tree clean. Pull request #26 (`docs/upstream-ollama-items`, ROADMAP slice 2, the three
+  Ollama items) was merged as `686b12b`: pull request run 38035882422 (six jobs green, read from GitHub via the
+  Perplexity GitHub connector, 2026-10-11) and `main` run 38110041414 (as reported by the Admin, not verified).
+  Branch `docs/model-agnostic-providers` was created from `686b12b` (merged as `a49baee`, pull request #27).
+  Earlier: on 2026-10-10 `git fetch`
   showed `origin/main` and local `main` at `e4ebfd37…`, working tree clean. Pull
   request #25 (`feat/pin-compose-postgres`, ROADMAP slice 1, PostgreSQL pin) was merged as `e4ebfd3`: pull request
   run 38028183377 and `main` run 38033037362, as reported by the Admin, not read from GitHub. Branch
@@ -445,8 +453,10 @@ See *Proposed MVP-0 order* in `docs/ROADMAP.md`. No dates or delivery commitment
   may be downloaded into `D:\QMS-OS-TEMP\scratch` (outside the repository, uncommitted, never built, installed or run;
   safe extraction; the top-level commit checked) and searched with local grep, citing `path:line` at the commit.
 - Branch `docs/upstream-ollama-items` from `e4ebfd3` (2026-10-10; ROADMAP slice 2, the three Ollama items;
-  documentation only; synthetic; merged as `686b12b`, pull request #26; pull request run 38035882422, `main` run
-  38110041414, as reported by the Admin): `docs/UPSTREAMS.md` gains a tier legend (A to D) and rows read from the source of
+  documentation only; synthetic; merged as `686b12b`, pull request #26; pull request run 38035882422 (six jobs green,
+  read from GitHub via the Perplexity GitHub connector, 2026-10-11) and `main` run 38110041414 (as reported by the
+  Admin, not verified)):
+  `docs/UPSTREAMS.md` gains a tier legend (A to D) and rows read from the source of
   Ollama `v0.40.0` (lightweight tag, commit `0d0720e5…`): the daemon contacts `ollama.com` by default (model
   recommendations every 4 h, cloud-model cache at start; signed with the installation key) unless `OLLAMA_NO_CLOUD=1`
   or `disable_ollama_cloud`; the desktop app checks for updates hourly (no setting found that disables the check);
@@ -459,7 +469,10 @@ See *Proposed MVP-0 order* in `docs/ROADMAP.md`. No dates or delivery commitment
   (no code changed): `scripts\run-tests.bat` `261 passed, 1 skipped, 1 warning` (exit 0); `scripts\run-lint.bat` ruff
   "All checks passed!", mypy "Success: no issues found in 46 source files", digest check "2 scanned in 2 files, 0
   baselined, 0 problems" (exit 0).
-- Branch `docs/model-agnostic-providers` from `686b12b` (2026-10-11; documentation only; synthetic): Admin decision
+- Branch `docs/model-agnostic-providers` from `686b12b` (2026-10-11; documentation only; synthetic; merged as
+  `a49baee`, pull request #27; pull request run 38115212746, six jobs green, read from GitHub via the Perplexity
+  GitHub connector, 2026-10-11; `main` run 38115607032, six jobs green, run page checked by the Admin (screenshot,
+  2026-10-11); commit a49baee8e46bb8ddc70e46968060741c5340c8f5 confirmed via GitHub): Admin decision
   R-26 (decided 2026-10-11): the architecture does not fix a model or runtime; models, runtimes and endpoints are
   provider entries; the three egress classes are unchanged; Gemma4 on Ollama is the first evaluated candidate; a new
   runtime or provider family needs its own `docs/UPSTREAMS.md` entry and an egress classification rule before its
@@ -472,9 +485,8 @@ See *Proposed MVP-0 order* in `docs/ROADMAP.md`. No dates or delivery commitment
   `scripts\run-tests.bat` `261 passed, 1 skipped, 1 warning` (exit 0); `scripts\run-lint.bat` ruff "All checks
   passed!", mypy "Success: no issues found in 46 source files", digest check "2 scanned in 2 files, 0 baselined,
   0 problems" (exit 0).
-- Next: Admin review of `docs/model-agnostic-providers`, then commit, push and pull request on authorisation;
-  confirm or reject R-27 (Ollama cloud features off) and the R-16 note (container or server-only Ollama for a shared
-  deployment); the slice 4 plan (runtime-neutral local-model benchmark, Ollama and `gemma4:12b` first, including
+- Next: confirm or reject R-27 (Ollama cloud features off) and the R-16 note (container or server-only Ollama for a
+  shared deployment); the slice 4 plan (runtime-neutral local-model benchmark, Ollama and `gemma4:12b` first, including
   audio); exit criteria for the WeKnora spike (3b) before it starts; slice 6 ("no unverified feature claim"
   review); payload-bound approval after MVP-0.
 
