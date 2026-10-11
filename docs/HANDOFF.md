@@ -6,9 +6,9 @@
 
 - Repository: this repository (`QMS-OS`); confirm the remote with `git remote -v`.
 - Specification: `docs/SPECIFICATION.md`, v3.0 dated 29 September 2026. Verify title and version locally.
-- Baseline recorded here: `main` at `a49baee` (2026-10-11; "Record the model- and runtime-agnostic provider decision
-  (R-26) and Ollama proposals (R-27, R-16 note) (#27)"). Work in progress: branch `docs/handoff-after-pr27` from
-  `a49baee` (this handoff update only; local, not committed, not pushed).
+- Baseline recorded here: `main` at `fed244f` (2026-10-11; "Update the handoff after the merge of pull request #27
+  (#28)"). Work in progress: branch `docs/benchmark-plan` from `fed244f` (ROADMAP slice 4, the benchmark plan;
+  documentation only; local, not committed, not pushed).
   Re-verify branch, HEAD and working tree with Git at session start; this file may be stale.
 - Stage: MVP-0 in progress. Of the eight items in the ROADMAP's MVP-0 table, five are done (Git scaffold, CI and
   protected `main`; synthetic fixtures; fixture startup as a server process; documentation reconciled; model-provider
@@ -22,12 +22,18 @@
 
 Each item says how it was verified.
 
-- **Git:** on 2026-10-11 `git pull --ff-only` brought local `main` to `a49baee8…` (= `origin/main`), working tree
+- **Git:** on 2026-10-11 `git pull --ff-only` brought local `main` to `fed244fa…` (= `origin/main`), working tree
+  clean. Pull request #28 (`docs/handoff-after-pr27`, head `42f06ae8…`, `docs/HANDOFF.md` only) was merged as
+  `fed244f`: pull request run 38118188007 (six jobs green, read from GitHub via the Perplexity GitHub connector,
+  2026-10-11) and `main` run 38118371953 (six jobs green, run page checked by the Admin, screenshot, 2026-10-11);
+  not read in this session. Branch `docs/benchmark-plan` was created from `fed244f` (local only).
+  Earlier: on 2026-10-11 `git pull --ff-only` brought local `main` to `a49baee8…` (= `origin/main`), working tree
   clean. Pull request #27 (head `feabb403…`; R-26 decided, R-27 and the R-16 note proposals) was merged as
   `a49baee` at 2026-10-11 05:41 UTC: pull request run 38115212746 (six jobs green, read from GitHub via the
   Perplexity GitHub connector, 2026-10-11) and `main` run 38115607032 (push on `main`; six jobs green, run page
   checked by the Admin (screenshot, 2026-10-11); commit a49baee8e46bb8ddc70e46968060741c5340c8f5 confirmed via
-  GitHub); not read in this session. Branch `docs/handoff-after-pr27` was created from `a49baee` (local only).
+  GitHub); not read in this session. Branch `docs/handoff-after-pr27` was created from `a49baee` (merged as
+  `fed244f`, pull request #28).
   Earlier: on 2026-10-11 `git fetch` showed `origin/main` and local `main` at
   `686b12be…`, working tree clean. Pull request #26 (`docs/upstream-ollama-items`, ROADMAP slice 2, the three
   Ollama items) was merged as `686b12b`: pull request run 38035882422 (six jobs green, read from GitHub via the
@@ -485,10 +491,24 @@ See *Proposed MVP-0 order* in `docs/ROADMAP.md`. No dates or delivery commitment
   `scripts\run-tests.bat` `261 passed, 1 skipped, 1 warning` (exit 0); `scripts\run-lint.bat` ruff "All checks
   passed!", mypy "Success: no issues found in 46 source files", digest check "2 scanned in 2 files, 0 baselined,
   0 problems" (exit 0).
-- Next: confirm or reject R-27 (Ollama cloud features off) and the R-16 note (container or server-only Ollama for a
-  shared deployment); the slice 4 plan (runtime-neutral local-model benchmark, Ollama and `gemma4:12b` first, including
-  audio); exit criteria for the WeKnora spike (3b) before it starts; slice 6 ("no unverified feature claim"
-  review); payload-bound approval after MVP-0.
+- Branch `docs/benchmark-plan` from `fed244f` (2026-10-11; ROADMAP slice 4; documentation only; synthetic):
+  `docs/BENCHMARK-PLAN.md`, the plan only, with no measurement, recording, harness or adapter. Runtime-neutral
+  (R-26), Ollama `v0.40.0` and `gemma4:12b` first, measured through the provider contract (ADR 0005); covers
+  `docs/SPECIFICATION.md` section 7 (lines 99 to 103) and section 12 (line 158), which is not edited. Dimensions:
+  context 8K to 256K, concurrency one then two, memory on the 12 GB host (no assumed co-running), JSON tool calls,
+  latency, citation accuracy, an audio-input probe (the Ollama audio question stays open in `docs/UPSTREAMS.md`)
+  and speech recognition. Every threshold is "proposed, Admin to set" unless the specification states it (it
+  states test points and a measured cap, no numbers); data rules per R-23; a results template, the run order, the
+  meaning of "not run" and the gates before a live adapter (R-25; R-27 a proposal); ten open questions for the
+  Admin. ROADMAP: slice 4 and the MVP-0 benchmark row read "Plan written
+  (`docs/BENCHMARK-PLAN.md`); thresholds proposed, measurements not started"; "as of" moved to `fed244f`. Dimensions
+  are numbered B1 to B8 (not D-, to avoid a clash with decision IDs such as D-07). Admin's leans (not decided) on
+  open items 1, 8, 9 and 10 are recorded in the plan; the rest stay open.
+- Next: Admin review of `docs/benchmark-plan`, then commit, push and pull request on authorisation; answer the plan's
+  open items (thresholds, host, audio set size); confirm or reject R-27 (Ollama cloud features off) and the R-16 note
+  (container or server-only Ollama for a shared deployment); the benchmark harness and a `test`-mode adapter (proposed
+  slice 4b, Admin's lean, not decided); exit criteria for the WeKnora spike (3b) before it starts; slice 6 ("no
+  unverified feature claim" review); payload-bound approval after MVP-0.
 
 ## End-of-session update template
 
