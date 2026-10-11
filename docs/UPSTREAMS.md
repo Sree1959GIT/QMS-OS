@@ -186,6 +186,10 @@ Used by `scripts\run-lint.bat` and the CI jobs `lint` (ruff only) and `types` (m
 
 ## Model runtime and local models (Tier B; not adopted; added 2026-10-07)
 
+Ollama and `gemma4:12b` are the first evaluated candidate, not a fixed choice: the architecture does not fix a
+model or runtime (R-26), and another runtime or provider family gets its own entry here before its adapter is
+enabled.
+
 Nothing below is installed, configured or tested on this machine. Sources were read on 2026-10-07 with read-only
 WebFetch and no credentials.
 
