@@ -6,9 +6,9 @@
 
 - Repository: this repository (`QMS-OS`); confirm the remote with `git remote -v`.
 - Specification: `docs/SPECIFICATION.md`, v3.0 dated 29 September 2026. Verify title and version locally.
-- Baseline recorded here: `main` at `fed244f` (2026-10-11; "Update the handoff after the merge of pull request #27
-  (#28)"). Work in progress: branch `docs/benchmark-plan` from `fed244f` (ROADMAP slice 4, the benchmark plan;
-  documentation only; local, not committed, not pushed).
+- Baseline recorded here: `main` at `b2c74ae` (2026-10-11; "Add the runtime-neutral local-model benchmark plan
+  (MVP-0 slice 4, plan only) (#29)"). Work in progress: branch `docs/benchmark-host` from `b2c74ae` (the benchmark
+  host, Docker facts and answered open items; documentation only; local, not committed, not pushed).
   Re-verify branch, HEAD and working tree with Git at session start; this file may be stale.
 - Stage: MVP-0 in progress. Of the eight items in the ROADMAP's MVP-0 table, five are done (Git scaffold, CI and
   protected `main`; synthetic fixtures; fixture startup as a server process; documentation reconciled; model-provider
@@ -22,11 +22,17 @@
 
 Each item says how it was verified.
 
-- **Git:** on 2026-10-11 `git pull --ff-only` brought local `main` to `fed244fa…` (= `origin/main`), working tree
+- **Git:** on 2026-10-11 `git pull --ff-only` brought local `main` to `b2c74ae1…` (= `origin/main`), working tree
+  clean. Pull request #29 (`docs/benchmark-plan`, head `29474235…`, ROADMAP slice 4, plan only) was merged as
+  `b2c74ae`: pull request run 38146662152 (read from GitHub via the Perplexity GitHub connector, 2026-10-11) and
+  `main` run 38147116486 (run page checked by the Admin, screenshot, 2026-10-11); not read in this session. Branch
+  `docs/benchmark-host` was created from `b2c74ae` (local only).
+  Earlier: on 2026-10-11 `git pull --ff-only` brought local `main` to `fed244fa…` (= `origin/main`), working tree
   clean. Pull request #28 (`docs/handoff-after-pr27`, head `42f06ae8…`, `docs/HANDOFF.md` only) was merged as
   `fed244f`: pull request run 38118188007 (six jobs green, read from GitHub via the Perplexity GitHub connector,
   2026-10-11) and `main` run 38118371953 (six jobs green, run page checked by the Admin, screenshot, 2026-10-11);
-  not read in this session. Branch `docs/benchmark-plan` was created from `fed244f` (local only).
+  not read in this session. Branch `docs/benchmark-plan` was created from `fed244f` (merged as `b2c74ae`, pull
+  request #29).
   Earlier: on 2026-10-11 `git pull --ff-only` brought local `main` to `a49baee8…` (= `origin/main`), working tree
   clean. Pull request #27 (head `feabb403…`; R-26 decided, R-27 and the R-16 note proposals) was merged as
   `a49baee` at 2026-10-11 05:41 UTC: pull request run 38115212746 (six jobs green, read from GitHub via the
@@ -491,7 +497,9 @@ See *Proposed MVP-0 order* in `docs/ROADMAP.md`. No dates or delivery commitment
   `scripts\run-tests.bat` `261 passed, 1 skipped, 1 warning` (exit 0); `scripts\run-lint.bat` ruff "All checks
   passed!", mypy "Success: no issues found in 46 source files", digest check "2 scanned in 2 files, 0 baselined,
   0 problems" (exit 0).
-- Branch `docs/benchmark-plan` from `fed244f` (2026-10-11; ROADMAP slice 4; documentation only; synthetic):
+- Branch `docs/benchmark-plan` from `fed244f` (2026-10-11; ROADMAP slice 4; documentation only; synthetic; merged as
+  `b2c74ae`, pull request #29; pull request run 38146662152, read from GitHub via the Perplexity GitHub connector;
+  `main` run 38147116486, run page checked by the Admin, screenshot):
   `docs/BENCHMARK-PLAN.md`, the plan only, with no measurement, recording, harness or adapter. Runtime-neutral
   (R-26), Ollama `v0.40.0` and `gemma4:12b` first, measured through the provider contract (ADR 0005); covers
   `docs/SPECIFICATION.md` section 7 (lines 99 to 103) and section 12 (line 158), which is not edited. Dimensions:
@@ -504,11 +512,26 @@ See *Proposed MVP-0 order* in `docs/ROADMAP.md`. No dates or delivery commitment
   (`docs/BENCHMARK-PLAN.md`); thresholds proposed, measurements not started"; "as of" moved to `fed244f`. Dimensions
   are numbered B1 to B8 (not D-, to avoid a clash with decision IDs such as D-07). Admin's leans (not decided) on
   open items 1, 8, 9 and 10 are recorded in the plan; the rest stay open.
-- Next: Admin review of `docs/benchmark-plan`, then commit, push and pull request on authorisation; answer the plan's
-  open items (thresholds, host, audio set size); confirm or reject R-27 (Ollama cloud features off) and the R-16 note
-  (container or server-only Ollama for a shared deployment); the benchmark harness and a `test`-mode adapter (proposed
-  slice 4b, Admin's lean, not decided); exit criteria for the WeKnora spike (3b) before it starts; slice 6 ("no
-  unverified feature claim" review); payload-bound approval after MVP-0.
+- Branch `docs/benchmark-host` from `b2c74ae` (2026-10-11; documentation only; synthetic): `docs/BENCHMARK-PLAN.md`
+  gains the benchmark host and Docker facts supplied by the Admin (not measured by Claude Code): i9-13900HX, 96 GB
+  (95.7 GB usable), RTX 4080 Laptop GPU with 12,282 MiB, Windows 11 Home 10.0.26200, driver 617.14; Docker Desktop
+  v4.94.0 on WSL2 with 45.82 GB and 32 CPUs for containers. The existing Ollama container (`ollama/ollama:0.32.1`,
+  in the `n8n-services` stack with `cloudflare-tunnel`, `0.0.0.0:11434`, no `OLLAMA_NO_CLOUD`) is not the benchmark
+  target. A pre-run checklist (dedicated container, Ollama `v0.40.0` pinned by digest, `127.0.0.1` only,
+  `OLLAMA_NO_CLOUD=1`, RTX 4080 visible in the container, plugged in); the VRAM threshold in MiB (11,264 MiB,
+  proposed) with MiB, GiB and GB defined; open item 2 answered, 3 decided by the Admin (80 clips), 4 proposed (10
+  repetitions, 512 tokens), 11 added (slice 1b). The 48 GB peak-DRAM threshold stays proposed, with the caveat that
+  container memory is capped by the Docker allocation (45.82 GB); each run records container and host peak memory.
+  A tunnel hostname exists in the local Cloudflare configuration (Admin-supplied; not recorded); the dashboard route
+  and any Access policy are not checked. ROADMAP: "as of" `b2c74ae`; slice 1b (dedicated benchmark container) added
+  as not started.
+- Next: Admin review of the `docs/benchmark-host` pull request (pushed on authorisation; not merged); slice 1b (the
+  dedicated benchmark container); the remaining open items of the plan (thresholds, speech provider, citation corpus,
+  co-running); whether the existing Ollama container is reachable through `cloudflare-tunnel` (dashboard route and
+  any Access policy not checked); confirm or reject R-27 (Ollama cloud features off) and the R-16 note (container
+  or server-only Ollama for a shared deployment); the benchmark harness and a `test`-mode adapter (proposed slice
+  4b, Admin's lean, not decided); exit criteria for the WeKnora spike (3b) before it starts; slice 6 ("no unverified
+  feature claim" review); payload-bound approval after MVP-0.
 
 ## End-of-session update template
 

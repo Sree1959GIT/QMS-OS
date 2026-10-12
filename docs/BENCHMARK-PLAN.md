@@ -2,7 +2,8 @@
 
 Status: **plan only.** Nothing in this file has been measured. No benchmark harness, adapter, recording or result
 exists. Every number in *Pass criteria* is **proposed, Admin to set** unless the row names the specification or a
-decision that states it. Results, when they exist, are added under *Results* by a later pull request.
+decision that states it. Results, when they exist, are added under *Results* by a later pull request. The host and
+Docker facts in section 1 were supplied by the Admin on 2026-10-11; they were not measured by Claude Code.
 
 ## 1. Scope and rules
 
@@ -27,6 +28,33 @@ decision that states it. Results, when they exist, are added under *Results* by 
 - **Not covered:** cloud providers, routing (Laya), ranking (CLM), embeddings, OCR and text to speech. They get their
   own rows only when an Admin adds them as provider entries.
 
+### Benchmark host (Admin-supplied facts, 2026-10-11; not measured by Claude Code)
+
+- CPU Intel Core i9-13900HX; memory 96 GB installed, 95.7 GB usable (as reported by Windows); GPU NVIDIA GeForce
+  RTX 4080 Laptop GPU with 12,282 MiB, and an Intel UHD integrated GPU; Windows 11 Home 10.0.26200.
+- NVIDIA software: `nvidia-smi` 617.14, kernel-mode driver 617.14, CUDA user-mode driver 13.4; driver model WDDM.
+  At idle: 0 MiB used, performance state P8, 2 W of an 80 W power cap, 49 C.
+- No device or product IDs are recorded.
+- The specification's target is 64 GB DRAM (`docs/SPECIFICATION.md`, line 5); this host has 96 GB, so results from
+  it do not show that a 64 GB machine passes.
+- The host runs plugged in. Each run records the power mode, the plugged-in state, the GPU temperature and the GPU
+  in use (the RTX 4080, not the integrated GPU).
+
+### Docker on the host (Admin-supplied facts, 2026-10-11; not measured by Claude Code)
+
+- Docker Desktop v4.94.0 on WSL2 (`wsl -l -v`: `docker-desktop`, version 2); 45.82 GB of memory and 32 CPUs
+  available to containers.
+- An Ollama container already exists on the host: image `ollama/ollama:0.32.1`, digest
+  `sha256:6345fbc18bd73a1e16404be681dbc6fd291a027cab43ed541abe78c4c81051b0`. It requests one NVIDIA GPU
+  (configuration only; the container is stopped, so GPU use is not shown to work); it has no `OLLAMA_NO_CLOUD`;
+  `OLLAMA_HOST=0.0.0.0:11434`; port published as `11434:11434`; it is in the `n8n-services` stack together with
+  `cloudflare-tunnel`. A tunnel hostname exists in the local Cloudflare configuration (Admin-supplied; the hostname
+  and path are not recorded here); the dashboard route and any Access policy are not checked, so whether the tunnel
+  exposes this container is not checked (the specification, line 119, says the tunnel must not publish Ollama).
+- **That container is not the benchmark target:** Ollama 0.32.1 is not researched in `docs/UPSTREAMS.md` (`v0.40.0`
+  is), and the image is referenced by tag, not by a digest-pinned reference (R-21). Benchmark runs use the dedicated
+  container in the pre-run checklist (section 5).
+
 ## 2. Test dimensions
 
 - **B1 Context length.** Method: synthetic prompts filled to 8K, 16K, 32K, 64K, 128K and 256K tokens (spec line 103);
@@ -38,8 +66,8 @@ decision that states it. Results, when they exist, are added under *Results* by 
   Recorded: per-request latency at 1 and 2; errors; whether the runtime queued or ran both.
 - **B3 Memory on the 12 GB host.** Method: peak VRAM and peak DRAM sampled during B1 and B2; the model alone, then
   with the API stack running. A second model is never assumed to fit alongside (spec line 101): co-running is a
-  separate run, `not run` until an Admin adds it. Recorded: peak VRAM; peak DRAM; offload; out-of-memory events and
-  what the system did after one (the **safe fallback**, spec line 103).
+  separate run, `not run` until an Admin adds it. Recorded: peak VRAM; container and host peak memory; offload;
+  out-of-memory events and what the system did after one (the **safe fallback**, spec line 103).
 - **B4 JSON tool calls.** Method: a fixed set of synthetic prompts, each offering tools with a JSON schema; the reply
   is validated against the schema. Recorded: share of schema-valid calls; calls to tools not offered; malformed JSON.
 - **B5 Latency.** Method: fixed synthetic prompts with a capped output length, repeated per cell. Recorded: p50 and
@@ -58,6 +86,9 @@ decision that states it. Results, when they exist, are added under *Results* by 
 
 ## 3. Pass criteria
 
+Units: **MiB** = 2^20 bytes and **GiB** = 2^30 bytes (as `nvidia-smi` reports GPU memory); **GB** = 10^9 bytes.
+The specification's "12 GB VRAM" and "64 GB DRAM" and Windows' memory figures are quoted as written there.
+
 No threshold below has been measured or approved. "Proposed, Admin to set" means a starting value for discussion,
 not a decision. The specification states test points (context lengths, concurrency one then two) and asks for a
 measured cap, but no numeric targets; section 14 ("Decision log and open inputs", line 187) lists "required actual
@@ -69,8 +100,12 @@ measured cap, but no numeric targets; section 14 ("Decision log and open inputs"
 - **Required context:** a minimum cap the entry must reach (for example 32K). *organisation to supply (spec section
   14, line 187); none proposed here.*
 - **Concurrency 2:** no errors; p95 at concurrency 2 at most twice the p95 at concurrency 1. *proposed, Admin to set.*
-- **Peak VRAM:** no out-of-memory event; peak at or below 11.0 GB of 12 GB. *proposed, Admin to set.*
-- **Peak DRAM:** at or below 48 GB of 64 GB with the API stack running. *proposed, Admin to set.*
+- **Peak VRAM:** no out-of-memory event; peak at or below 11,264 MiB (11 GiB) of the host GPU's 12,282 MiB.
+  *proposed, Admin to set.*
+- **Peak DRAM:** at or below 48 GB of 64 GB with the API stack running, measured on the host. *proposed, Admin to
+  set.* Caveat: memory inside the benchmark container is capped by the Docker allocation (45.82 GB at present,
+  section 1), so the container alone cannot reach 48 GB; each run records the container's peak memory and the
+  host's peak DRAM separately.
 - **Safe fallback:** after an out-of-memory event, the call fails with a recorded error and no partial answer is used.
   *proposed, Admin to set.*
 - **JSON tool calls:** at least 98 % schema-valid; 0 calls to tools not offered. *proposed, Admin to set.*
@@ -96,9 +131,20 @@ measured cap, but no numeric targets; section 14 ("Decision log and open inputs"
 
 ## 5. Outputs and gates
 
+**Pre-run checklist** (every item true before step 1; otherwise every cell stays `not run`):
+
+- a dedicated benchmark container, not the existing one in section 1, built in slice 1b (open item 11);
+- Ollama `v0.40.0`, image pinned by digest (R-21; `docs/UPSTREAMS.md` records the `ollama/ollama:0.40.0` digests);
+- outside the `n8n-services` stack;
+- port published on `127.0.0.1` only;
+- `OLLAMA_NO_CLOUD=1` set (R-27 is a proposal; this is the Admin's lean on open item 9);
+- `nvidia-smi` inside the container shows the RTX 4080;
+- the host plugged in.
+
 **Order of runs** (each step only after the previous one is recorded):
 
-1. Environment record: host profile, runtime version, model digest, settings (section 1), cloud setting (R-27).
+1. Environment record: host profile, runtime version, model digest, settings (section 1), cloud setting (R-27),
+   power mode, plugged-in state, GPU temperature and the GPU in use.
 2. B7 audio probe (one synthetic clip), so that B8 knows which provider entry to use.
 3. B1 context ladder at concurrency 1, with B3 memory sampling and B5 latency.
 4. B2 concurrency 2 at each passing length.
@@ -114,9 +160,9 @@ length or host.
 **Results table template** (one row per provider entry, length and concurrency; aggregates only):
 
 Columns, in order: run date; provider entry; model digest; runtime version; host profile; cloud off (R-27);
-context requested and actual; concurrency; runs; p50 and p95 (s); peak VRAM and DRAM (GB); GPU/CPU split;
-out-of-memory events; JSON valid (%); citation accuracy middle and end (%); status (`pass`, `fail` or
-`not run`). Until a run is recorded, every row reads `not run`.
+context requested and actual; concurrency; runs; p50 and p95 (s); peak VRAM (MiB); peak container memory (GB);
+peak host DRAM (GB); GPU/CPU split; out-of-memory events; JSON valid (%); citation accuracy middle and end (%);
+status (`pass`, `fail` or `not run`). Until a run is recorded, every row reads `not run`.
 
 Speech results use a separate table: provider entry, model digest, accent group, noise condition, recordings,
 total minutes, word error rate, QMS term error rate, values misrecognised and flagged, real-time factor, status.
@@ -135,13 +181,15 @@ total minutes, word error rate, QMS term error rate, values misrecognised and fl
 1. **Thresholds:** confirm, change or reject each "proposed, Admin to set" value in section 3, and supply the required
    context and latency targets (spec section 14, "Decision log and open inputs", line 187).
    *Admin's lean (not decided): accept the proposed values as starting values.*
-2. **Host:** which machine runs the benchmark, and is it the specification's target (i9, 12 GB VRAM, 64 GB DRAM)?
-   Its GPU model, driver and actual memory are not measured. Ollama on the Windows host or in a WSL2 container
-   (R-16 note, a proposal)?
-3. **Audio set size:** how many recordings per accent group and noise condition, of what length, recorded by whom and
-   with what consent; which accents beyond Indian and American, and which working languages (spec section 14,
-   "Decision log and open inputs", line 187: voice languages to be supplied).
-4. **Repetitions:** runs per cell (10 is assumed in section 3) and the output-length cap.
+2. **Host:** *answered by the Admin (2026-10-11):* the host in section 1 (Admin-supplied facts, not measured by
+   Claude Code), running a dedicated WSL2 container (pre-run checklist, section 5). It has 96 GB of memory against the
+   specification's 64 GB, so results do not show a 64 GB machine passing. The R-16 note on shared deployments stays
+   a proposal.
+3. **Audio set:** *decided by the Admin (2026-10-11):* four cells (Indian and American accents, each quiet and with
+   shop-floor noise), 20 clips per cell (80 in all), 15 to 30 seconds each, scripted from synthetic QMS text; the
+   speakers are the Admin and willing colleagues, whose written consent is kept off the repository (R-23); English
+   only for now (spec section 14, "Decision log and open inputs", line 187: voice languages to be supplied).
+4. **Repetitions:** 10 repetitions per cell and a fixed output cap of 512 tokens. *Proposed, Admin to set.*
 5. **Speech provider:** if the B7 probe shows that the first entry does not accept audio, which provider entry the
    Admin adds for speech recognition (each needs its own UPSTREAMS entry, R-26).
 6. **Citation corpus:** size of the synthetic corpus and how facts are placed for B6.
@@ -153,6 +201,8 @@ total minutes, word error rate, QMS term error rate, values misrecognised and fl
 10. **Where results go:** this file's *Results* section or a separate results file, and the approval of each results
     pull request.
     *Admin's lean (not decided): a separate results file, with one results pull request per run set.*
+11. **Dedicated benchmark container:** built in a new slice, 1b, before any run, to the pre-run checklist in
+    section 5 (ROADMAP slice 1b, not started).
 
 ## Results
 
