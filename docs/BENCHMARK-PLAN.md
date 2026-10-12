@@ -133,13 +133,30 @@ measured cap, but no numeric targets; section 14 ("Decision log and open inputs"
 
 **Pre-run checklist** (every item true before step 1; otherwise every cell stays `not run`):
 
-- a dedicated benchmark container, not the existing one in section 1, built in slice 1b (open item 11);
-- Ollama `v0.40.0`, image pinned by digest (R-21; `docs/UPSTREAMS.md` records the `ollama/ollama:0.40.0` digests);
+- a dedicated benchmark container, not the existing one in section 1: service `ollama-bench` in `compose.yaml`,
+  profile `benchmark` (never started by default or in CI), host port `11435` (slice 1b; open item 11);
+- Ollama `v0.40.0`, image pinned by digest (R-21): `ollama/ollama:0.40.0`, index digest
+  `sha256:1bef639749741b375e9a1eb2c1346fb57ce52f5432de1f74846e44ccc18e1687`, read from the registry with
+  `docker buildx imagetools inspect` on 2026-10-12 (the same digest `docs/UPSTREAMS.md` records; no `v0.40.0` tag);
 - outside the `n8n-services` stack;
-- port published on `127.0.0.1` only;
+- port published on `127.0.0.1` only (`127.0.0.1:11435:11434`);
 - `OLLAMA_NO_CLOUD=1` set (R-27 is a proposal; this is the Admin's lean on open item 9);
 - `nvidia-smi` inside the container shows the RTX 4080;
 - the host plugged in.
+
+The service implements the proposals R-27 (Ollama cloud features off) and the R-16 note (Ollama in a container) for
+this benchmark-only container; both remain proposals. The configuration is written; the container has not been
+started and the GPU inside it has not been checked. The checklist stays `not run` until the Admin has run these
+commands from the repository root and recorded their output:
+
+1. `docker compose --profile benchmark up -d ollama-bench`
+2. `docker exec ollama-bench ollama --version` (expected: 0.40.0)
+3. `docker exec ollama-bench nvidia-smi` (expected: the RTX 4080)
+4. `docker exec ollama-bench printenv OLLAMA_NO_CLOUD` (expected: `1`)
+
+The start command needs `POSTGRES_PASSWORD` set (normally from the Admin's `.env`; no value is recorded here),
+because Compose resolves variables for the whole file. `scripts\reset-db.bat` runs `docker compose down -v` and may
+delete the benchmark models volume (not tested); models would have to be pulled again.
 
 **Order of runs** (each step only after the previous one is recorded):
 
@@ -202,7 +219,8 @@ total minutes, word error rate, QMS term error rate, values misrecognised and fl
     pull request.
     *Admin's lean (not decided): a separate results file, with one results pull request per run set.*
 11. **Dedicated benchmark container:** built in a new slice, 1b, before any run, to the pre-run checklist in
-    section 5 (ROADMAP slice 1b, not started).
+    section 5. Configuration written (service `ollama-bench`, `compose.yaml`); container not started; GPU not
+    checked (ROADMAP slice 1b).
 
 ## Results
 

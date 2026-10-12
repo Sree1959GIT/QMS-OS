@@ -1,4 +1,5 @@
-# QMS OS - local PostgreSQL only (R-2 proposal). Synthetic/dev data only.
+# QMS OS - local PostgreSQL (R-2 proposal) and, under the profile "benchmark" only, the benchmark Ollama container
+# (MVP-0 slice 1b). Synthetic/dev data only.
 services:
   postgres:
     # PostgreSQL 17.11: the same pinned reference as the CI postgres service (R-21). The digest decides what is pulled.
@@ -18,5 +19,29 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+  ollama-bench:
+    # MVP-0 slice 1b: the dedicated benchmark container (docs/BENCHMARK-PLAN.md, pre-run checklist). Profile
+    # "benchmark" only, so it never starts by default, from scripts/start-db.bat or in CI. Ollama 0.40.0, the version
+    # researched in docs/UPSTREAMS.md, pinned by its registry index digest (R-21), read with
+    # `docker buildx imagetools inspect ollama/ollama:0.40.0` on 2026-10-12. Host port 11435, loopback only, so it never
+    # clashes with another Ollama on 11434. OLLAMA_NO_CLOUD=1 implements the R-27 proposal for this container only.
+    image: ollama/ollama:0.40.0@sha256:1bef639749741b375e9a1eb2c1346fb57ce52f5432de1f74846e44ccc18e1687
+    container_name: ollama-bench
+    profiles: ["benchmark"]
+    restart: "no"
+    environment:
+      OLLAMA_NO_CLOUD: "1"
+    ports:
+      - "127.0.0.1:11435:11434"
+    volumes:
+      - qmsos_ollama_bench_models:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
 volumes:
   qmsos_pgdata:
+  qmsos_ollama_bench_models:
