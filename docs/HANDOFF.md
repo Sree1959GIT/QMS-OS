@@ -6,9 +6,9 @@
 
 - Repository: this repository (`QMS-OS`); confirm the remote with `git remote -v`.
 - Specification: `docs/SPECIFICATION.md`, v3.0 dated 29 September 2026. Verify title and version locally.
-- Baseline recorded here: `main` at `5a3e3e3` (2026-10-12; "Record the benchmark host and Docker facts and add
-  slice 1b (MVP-0 slice 4, plan update) (#30)"). Work in progress: branch `feat/benchmark-container` from `5a3e3e3`
-  (slice 1b: compose configuration, a test and documentation; local, not committed, not pushed).
+- Baseline recorded here: `main` at `9e57e8b` (2026-10-12; "Add the dedicated benchmark container configuration
+  (MVP-0 slice 1b) (#31)"). Work in progress: branch `docs/benchmark-checks` from `9e57e8b` (the Admin's container
+  checks and smoke test recorded; documentation only; local, not committed, not pushed).
   Re-verify branch, HEAD and working tree with Git at session start; this file may be stale.
 - Stage: MVP-0 in progress. Of the eight items in the ROADMAP's MVP-0 table, five are done (Git scaffold, CI and
   protected `main`; synthetic fixtures; fixture startup as a server process; documentation reconciled; model-provider
@@ -22,12 +22,17 @@
 
 Each item says how it was verified.
 
-- **Git:** on 2026-10-12 `git pull --ff-only` brought local `main` to `5a3e3e31…` (= `origin/main`), working tree
+- **Git:** on 2026-10-12 `git pull --ff-only` brought local `main` to `9e57e8be…` (= `origin/main`), working tree
+  clean. Pull request #31 (`feat/benchmark-container`, head `c6cac876…`, slice 1b) was merged as `9e57e8b` on
+  2026-10-12 at 16:09 UTC: pull request run 38267172919 (checks about 15:01 UTC on 2026-10-12, read from GitHub via
+  the Perplexity GitHub connector) and `main` run 38275404315 (run page checked by the Admin, screenshot); not read
+  in this session. Branch `docs/benchmark-checks` was created from `9e57e8b` (local only).
+  Earlier: on 2026-10-12 `git pull --ff-only` brought local `main` to `5a3e3e31…` (= `origin/main`), working tree
   clean. Pull request #30 (`docs/benchmark-host`, head `34da1bff…`, plan update and slice 1b added) was merged as
   `5a3e3e3` on 2026-10-12 at 14:26 UTC: pull request run 38261346033 (checks about 14:13 to 14:15 UTC on
   2026-10-12, read from GitHub via the Perplexity GitHub connector) and `main` run 38262886157 (run page checked by
   the Admin, screenshot); not read in this session. Branch `feat/benchmark-container` was created from `5a3e3e3`
-  (local only).
+  (merged as `9e57e8b`, pull request #31).
   Earlier: on 2026-10-11 `git pull --ff-only` brought local `main` to `b2c74ae1…` (= `origin/main`), working tree
   clean. Pull request #29 (`docs/benchmark-plan`, head `29474235…`, ROADMAP slice 4, plan only) was merged as
   `b2c74ae`: pull request run 38146662152 (read from GitHub via the Perplexity GitHub connector, 2026-10-11) and
@@ -206,10 +211,11 @@ Each item says how it was verified.
   append-only enforcement (trigger or revoked privileges on `audit_events`) does not exist; append-only is enforced
   by application code and `tests/test_no_retention.py`. TLS to a non-local database is not configured.
 - Docker Compose beyond the PostgreSQL service: no other service has been run. A PostgreSQL restore drill has not been run.
-- Benchmark container `ollama-bench` (slice 1b): the image was not pulled and the container was not started; the GPU
-  inside it is not checked. `scripts\reset-db.bat` runs `docker compose down -v` and may delete the benchmark models
-  volume (not tested); models would have to be pulled again. The start command needs `POSTGRES_PASSWORD` set
-  (normally from the Admin's `.env`; no value is recorded).
+- Benchmark container `ollama-bench` (slice 1b): started, checked and smoke-tested by the Admin on 2026-10-12
+  (Admin-supplied output; not run by Claude Code); no benchmark cell has been run. Whether Ollama `v0.40.0` has a
+  per-request control for `gemma4:12b` thinking output (plan open item 12). `scripts\reset-db.bat` runs
+  `docker compose down -v` and may delete the benchmark models volume (not tested); models would have to be pulled
+  again. The start command needs `POSTGRES_PASSWORD` set (normally from the Admin's `.env`; no value is recorded).
 - Authentication (R-3): the CI install log for the compiled dependencies (not readable without a token; the
   install and test steps passed); payload-bound approval (later slice); OIDC sign-in; a breached-password lookup; demo-mode accounts for the fixture
   people; the CLI commands (`bootstrap-admin`, `grant-account-admin`, `revoke-account-admin`) run in a real terminal
@@ -536,7 +542,8 @@ See *Proposed MVP-0 order* in `docs/ROADMAP.md`. No dates or delivery commitment
   A tunnel hostname exists in the local Cloudflare configuration (Admin-supplied; not recorded); the dashboard route
   and any Access policy are not checked. ROADMAP: "as of" `b2c74ae`; slice 1b (dedicated benchmark container) added
   as not started.
-- Branch `feat/benchmark-container` from `5a3e3e3` (2026-10-12; ROADMAP slice 1b; configuration only; synthetic):
+- Branch `feat/benchmark-container` from `5a3e3e3` (2026-10-12; merged as `9e57e8b`, pull request #31; ROADMAP
+  slice 1b; configuration only; synthetic):
   `compose.yaml` gains the service `ollama-bench` under the profile `benchmark` (never started by default, by
   `scripts/start-db.bat` or in CI): `ollama/ollama:0.40.0` pinned by the index digest
   `sha256:1bef6397…c18e1687` (R-21; read from the registry with `docker buildx imagetools inspect` on 2026-10-12;
@@ -546,14 +553,20 @@ See *Proposed MVP-0 order* in `docs/ROADMAP.md`. No dates or delivery commitment
   digest pin, the loopback-only port, `OLLAMA_NO_CLOUD` and the profile. This implements the proposals R-27 and
   the R-16 note for this benchmark-only container; both remain proposals. `docs/BENCHMARK-PLAN.md` lists the
   Admin's check commands; the container has not been started and the GPU inside it is not checked.
-- Next: Admin review of `feat/benchmark-container`, then commit, push and pull request on authorisation; the Admin
-  runs the plan's container checks (start, `ollama --version`, `nvidia-smi`, `OLLAMA_NO_CLOUD`); the remaining open
-  items of the plan (thresholds, speech provider, citation corpus, co-running); whether the existing Ollama
-  container is reachable through `cloudflare-tunnel` (dashboard route and any Access policy not checked); confirm
-  or reject R-27 (Ollama cloud features off) and the R-16 note (container or server-only Ollama for a shared
-  deployment); the benchmark harness and a `test`-mode adapter (proposed slice 4b, Admin's lean, not decided); exit
-  criteria for the WeKnora spike (3b) before it starts; slice 6 ("no unverified feature claim" review);
-  payload-bound approval after MVP-0.
+- Branch `docs/benchmark-checks` from `9e57e8b` (2026-10-12; documentation only; synthetic): `docs/BENCHMARK-PLAN.md`
+  records the Admin's container checks (2026-10-12; Admin-supplied output, not run by Claude Code): version 0.40.0, the
+  digest-pinned image, `127.0.0.1:11435`, `OLLAMA_NO_CLOUD=1`, the RTX 4080 visible in the container, plugged in, compose
+  project `qms-os` (outside `n8n-services`). A smoke test (not a benchmark result): `gemma4:12b` pulled (layer prefixes
+  match `docs/UPSTREAMS.md`; the model ID is not comparable), one-word reply with visible thinking text, `ollama ps` 1.1
+  GB and 100% GPU at context 4096, `nvidia-smi` 8,786 MiB of 12,282 MiB (one sample). Findings: thinking tokens count
+  toward the cap and latency (open item 12; no per-request control verified); larger contexts may not fit on the GPU
+  alone (to be measured). ROADMAP slice 1b: done (#31). Every benchmark cell stays `not run`.
+- Next: Admin review of `docs/benchmark-checks`, then commit, push and pull request on authorisation; slice 4b (the
+  benchmark harness and a `test`-mode adapter); the thresholds (plan open items 1, 4 and 12); audio (the B7 probe
+  and B8); the Cloudflare route on the existing Ollama container (open: dashboard route and any Access policy not
+  checked); confirm or reject R-27 (Ollama cloud features off) and the R-16 note (container or server-only Ollama
+  for a shared deployment); slice 2 (upstream matrix); exit criteria for the WeKnora spike (3b) before it starts;
+  slice 6 ("no unverified feature claim" review); payload-bound approval after MVP-0.
 
 ## End-of-session update template
 

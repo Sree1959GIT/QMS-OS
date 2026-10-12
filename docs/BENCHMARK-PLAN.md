@@ -1,9 +1,11 @@
 # QMS OS — Local-model benchmark plan (MVP-0 slice 4)
 
-Status: **plan only.** Nothing in this file has been measured. No benchmark harness, adapter, recording or result
-exists. Every number in *Pass criteria* is **proposed, Admin to set** unless the row names the specification or a
-decision that states it. Results, when they exist, are added under *Results* by a later pull request. The host and
-Docker facts in section 1 were supplied by the Admin on 2026-10-11; they were not measured by Claude Code.
+Status: **plan only.** No benchmark cell in this file has been measured. No benchmark harness, adapter, recording or
+result exists. Every number in *Pass criteria* is **proposed, Admin to set** unless the row names the specification or a
+decision that states it. Results, when they exist, are added under *Results* by a later pull request. The host and Docker
+facts in section 1 were supplied by the Admin on 2026-10-11; they were not measured by Claude Code. The container checks
+and the smoke test in section 5 were run by the Admin on 2026-10-12 (Admin-supplied output, not measured by Claude Code);
+they are not benchmark results.
 
 ## 1. Scope and rules
 
@@ -134,20 +136,26 @@ measured cap, but no numeric targets; section 14 ("Decision log and open inputs"
 **Pre-run checklist** (every item true before step 1; otherwise every cell stays `not run`):
 
 - a dedicated benchmark container, not the existing one in section 1: service `ollama-bench` in `compose.yaml`,
-  profile `benchmark` (never started by default or in CI), host port `11435` (slice 1b; open item 11);
+  profile `benchmark` (never started by default or in CI), host port `11435` (slice 1b; open item 11). *Started by
+  the Admin on 2026-10-12:* image pulled, volume `qms-os_qmsos_ollama_bench_models` created, container started;
 - Ollama `v0.40.0`, image pinned by digest (R-21): `ollama/ollama:0.40.0`, index digest
   `sha256:1bef639749741b375e9a1eb2c1346fb57ce52f5432de1f74846e44ccc18e1687`, read from the registry with
-  `docker buildx imagetools inspect` on 2026-10-12 (the same digest `docs/UPSTREAMS.md` records; no `v0.40.0` tag);
-- outside the `n8n-services` stack;
-- port published on `127.0.0.1` only (`127.0.0.1:11435:11434`);
-- `OLLAMA_NO_CLOUD=1` set (R-27 is a proposal; this is the Admin's lean on open item 9);
-- `nvidia-smi` inside the container shows the RTX 4080;
-- the host plugged in.
+  `docker buildx imagetools inspect` on 2026-10-12 (the same digest `docs/UPSTREAMS.md` records; no `v0.40.0` tag).
+  *Checked by the Admin, 2026-10-12:* the digest-pinned image was pulled; `ollama --version` reports 0.40.0;
+- outside the `n8n-services` stack. *Checked by the Admin, 2026-10-12:* compose project `qms-os` (config file the
+  repository's `compose.yaml`), service `ollama-bench`; the image ID `sha256:2b28812c…2746` is the linux/amd64
+  digest of the pinned index;
+- port published on `127.0.0.1` only (`127.0.0.1:11435:11434`). *Checked by the Admin, 2026-10-12:* `docker port`
+  shows `11434/tcp -> 127.0.0.1:11435`;
+- `OLLAMA_NO_CLOUD=1` set (R-27 is a proposal; this is the Admin's lean on open item 9). *Checked by the Admin,
+  2026-10-12:* `printenv OLLAMA_NO_CLOUD` returns `1`;
+- `nvidia-smi` inside the container shows the RTX 4080. *Checked by the Admin, 2026-10-12:* RTX 4080 Laptop,
+  12,282 MiB, 0 MiB used idle, 53 C, P3; NVIDIA-SMI tool 615.78.02, kernel-mode driver 617.14, CUDA UMD 13.4;
+- the host plugged in. *Stated by the Admin, 2026-10-12.*
 
 The service implements the proposals R-27 (Ollama cloud features off) and the R-16 note (Ollama in a container) for
-this benchmark-only container; both remain proposals. The configuration is written; the container has not been
-started and the GPU inside it has not been checked. The checklist stays `not run` until the Admin has run these
-commands from the repository root and recorded their output:
+this benchmark-only container; both remain proposals. The Admin ran these commands from the repository root on
+2026-10-12 (output supplied by the Admin, not run by Claude Code; results marked above):
 
 1. `docker compose --profile benchmark up -d ollama-bench`
 2. `docker exec ollama-bench ollama --version` (expected: 0.40.0)
@@ -157,6 +165,38 @@ commands from the repository root and recorded their output:
 The start command needs `POSTGRES_PASSWORD` set (normally from the Admin's `.env`; no value is recorded here),
 because Compose resolves variables for the whole file. `scripts\reset-db.bat` runs `docker compose down -v` and may
 delete the benchmark models volume (not tested); models would have to be pulled again.
+
+**Smoke test (not a benchmark result).** Run by the Admin on 2026-10-12 in `ollama-bench`; output supplied by the
+Admin, not measured by Claude Code; one run and one sample. Every benchmark cell stays `not run`.
+
+- `ollama pull gemma4:12b`: layers `0cb0cd0a5c49` (175 MB), `bb722270d543` (7.4 GB), `7008a656050b` (465 MB) and
+  `e5ca99f91896` (242 B); digest verified; model ID `6114515d63c1`.
+- `ollama run gemma4:12b "Reply with one word: ready"`: the reply was "ready", preceded by visible "Thinking..."
+  text.
+- `ollama ps`: SIZE 1.1 GB, 100% GPU, CONTEXT 4096, runner llamacpp.
+- `nvidia-smi` after the run: 8,786 MiB of 12,282 MiB used, process `/llama-server`, 53 C, P4, 37 W of 80 W (one
+  sample). The `ollama ps` SIZE and the `nvidia-smi` figure differ; both are recorded as reported.
+- The container was stopped afterwards; the models volume holds the model.
+
+Comparison with `docs/UPSTREAMS.md` (`gemma4:12b`, registry manifest pin):
+
+- **Layers match** (12-character prefixes only): `0cb0cd0a5c49` is the projector (175,115,616 bytes in
+  UPSTREAMS), `bb722270d543` the model layer (7,381,383,680 bytes), `7008a656050b` the draft and `e5ca99f91896` the
+  config. The licence layer `0d542e0c…` recorded in UPSTREAMS is not in the supplied pull output.
+- **Model ID not comparable:** UPSTREAMS records layer digests and two conflicting short IDs from the Ollama pages
+  (`c7597fc90b86`, `312246b09fab`), not a manifest digest. `6114515d63c1` matches neither short ID; what Ollama
+  derives the model ID from is not verified here.
+
+Findings from the smoke test (Admin-supplied output; not measurements):
+
+- **Thinking text.** `gemma4:12b` emitted visible thinking text before its answer. Thinking tokens count toward the
+  512-token output cap (open item 4) and toward latency (B5), and may truncate JSON output (B4).
+  `docs/UPSTREAMS.md` records no per-request control for thinking; whether Ollama `v0.40.0` offers one for this
+  model is **not verified**. Open item 12.
+- **VRAM at the default context.** At the default context of 4096, 8,786 MiB of 12,282 MiB were in use after one
+  run (one sample), so larger contexts may not fit on the GPU alone. This is measured in B1 and B3, not assumed
+  (spec line 103: inspect actual allocation and GPU/CPU offload; spec line 101: never assume co-running at 256K on
+  12 GB VRAM).
 
 **Order of runs** (each step only after the previous one is recorded):
 
@@ -219,8 +259,11 @@ total minutes, word error rate, QMS term error rate, values misrecognised and fl
     pull request.
     *Admin's lean (not decided): a separate results file, with one results pull request per run set.*
 11. **Dedicated benchmark container:** built in a new slice, 1b, before any run, to the pre-run checklist in
-    section 5. Configuration written (service `ollama-bench`, `compose.yaml`); container not started; GPU not
-    checked (ROADMAP slice 1b).
+    section 5. Done: merged as `9e57e8b` (pull request #31); container checks and a smoke test run by the Admin on
+    2026-10-12 (section 5).
+12. **Thinking output:** how thinking text from `gemma4:12b` is treated in runs: counted toward the 512-token cap,
+    capped separately, or disabled. A per-request control is not verified (`docs/UPSTREAMS.md` records none).
+    *Admin to decide.*
 
 ## Results
 
