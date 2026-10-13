@@ -6,19 +6,16 @@
 
 - Repository: this repository (`QMS-OS`); confirm the remote with `git remote -v`.
 - Specification: `docs/SPECIFICATION.md`, v3.0 dated 29 September 2026. Verify title and version locally.
-- Baseline recorded here: `main` at `fa5c5f239f2d390e672d819e125996117b2f5c28` (2026-10-13; "docs: close MVP-0 on
-  the narrow exit reading (R-28), claims register (#34)"). Work in progress: branch `docs/mvp0-review` from
-  `fa5c5f2` (slice 6, the MVP-0 exit review and evidence table; documentation only; local, not committed, not
-  pushed).
+- Baseline recorded here: `main` at `e1b5276d1c114b50fba51e05f937d535a4707d01` (2026-10-13; "docs: slice 6 MVP-0
+  exit review and evidence table (#35)"). Work in progress: branch `docs/mvp0-declaration` from `e1b5276` (R-29,
+  the Admin's declaration that the MVP-0 exit is met; documentation only; local, not committed, not pushed).
   Re-verify branch, HEAD and working tree with Git at session start; this file may be stale.
-- Stage: MVP-0 in progress. The exit is read as written in the specification (R-28). Of the eight items in the
-  ROADMAP's MVP-0 table, five are done (Git scaffold, CI and protected `main`; synthetic fixtures; fixture startup as
-  a server process; documentation reconciled; model-provider contract), the benchmark plan is written (measurements
-  are not an exit item), the upstream matrix is done for the exit (the labelling pass; 9 flagged claims, kept as
-  labelled by the Admin on 2026-10-13, 2 of them, C-129 and C-130, found in the slice 6 review) and container
-  configuration beyond PostgreSQL is descoped for the exit. Slice 6, the last exit slice, is in review on branch
-  `docs/mvp0-review`; the evidence is in *MVP-0 exit evidence* in `docs/ROADMAP.md`. Whether MVP-0 is complete is
-  the Admin's decision; it is not declared here.
+- Stage: MVP-0 declared met (R-29), by the Admin on 2026-10-13, on the narrow reading of the exit (R-28). Of the
+  eight items in the ROADMAP's MVP-0 table, five are done (Git scaffold, CI and protected `main`; synthetic fixtures;
+  fixture startup as a server process; documentation reconciled; model-provider contract), the benchmark plan and
+  the upstream matrix are done for the exit (9 flagged claims, kept as labelled by the Admin on 2026-10-13) and
+  container configuration beyond PostgreSQL is descoped for the exit. No slices remain for the exit; the evidence
+  and the accepted gaps are in *MVP-0 exit evidence* in `docs/ROADMAP.md`. MVP-1 has not started.
 - Mode: synthetic only. No live connectors, staff accounts or model credentials are configured in this repository,
   and none has been verified; do not claim they are configured.
 
@@ -26,7 +23,14 @@
 
 Each item says how it was verified.
 
-- **Git:** on 2026-10-13 `git pull --ff-only` brought local `main` to `fa5c5f239f2d390e672d819e125996117b2f5c28`
+- **Git:** on 2026-10-13 `git pull --ff-only` brought local `main` to `e1b5276d1c114b50fba51e05f937d535a4707d01`
+  (= `origin/main`), working tree clean; its tree is identical to the tip of `docs/mvp0-review` (`1151373`; `git
+  diff` empty). Pull request #35 (`docs/mvp0-review`, head `1151373`, the slice 6 review and evidence table) was
+  merged as `e1b5276` (committer time 2026-10-13 16:55 UTC, from Git). `main` run 38434451817 on `e1b5276`:
+  conclusion Success, total 1m 37s; jobs `test` (50s), `test-py311` (55s), `lint` (13s), `types` (35s), `postgres`
+  (1m 33s) and `secret-scan` (5s), all passed — from the Admin's screenshot of the run page, 2026-10-13, not read
+  from GitHub by Claude Code. Branch `docs/mvp0-declaration` was created from `e1b5276` (local only).
+  Earlier: on 2026-10-13 `git pull --ff-only` brought local `main` to `fa5c5f239f2d390e672d819e125996117b2f5c28`
   (= `origin/main`), working tree clean; its tree is identical to the tip of `docs/mvp0-closure` (`7eed4da`; `git
   diff` empty). Pull request #34 (`docs/mvp0-closure`, head `7eed4da`, R-28 and the claims register) was merged as
   `fa5c5f2` (committer time 2026-10-13 14:19 UTC, from Git). `main` run 38412392880 (shown as #72) on `fa5c5f2`:
@@ -155,6 +159,8 @@ Each item says how it was verified.
     passed`; `alembic check` "No new upgrade operations detected."; `alembic heads` `44bca21ba248 (head)` (single
     head); ruff "All checks passed!"; mypy "Success: no issues found in 46 source files". Nine deliberate breaks
     (M1–M9) each made their tests fail (see *Last sessions*);
+  - `main` at `e1b5276…` (slice 6 merged), local Windows (Python 3.12.7) on 2026-10-13: `scripts\run-tests.bat`
+    `324 passed, 1 skipped, 1 warning` (exit 0); `scripts\run-pg-tests.bat full` `346 passed, 1 warning` (exit 0);
   - `main` at `fa5c5f2…` (R-28 merged), local Windows (Python 3.12.7) on 2026-10-13: `scripts\run-tests.bat` `324
     passed, 1 skipped, 1 warning` (exit 0; the skip is the PostgreSQL module); `scripts\run-pg-tests.bat full` `346
     passed, 1 warning` (exit 0);
@@ -635,14 +641,28 @@ See *Proposed MVP-0 order* in `docs/ROADMAP.md`. No dates or delivery commitment
   restatements (added to their rows); now 130 claims: 67 verified, 54 not verified, 9 flagged, kept as labelled by
   the Admin on 2026-10-13 (including C-129 the psycopg LGPL note and C-130 "pg8000 is BSD-licensed"). Admin
   decisions (2026-10-13): C-129 and C-130 kept as labelled; the screenshot-based CI evidence for run 38412392880
-  accepted. MVP-0 is not declared complete; the Admin decides.
-- Next: the Admin's review of slice 6 (`docs/mvp0-review`; slice 6 is done once reviewed) and the decision whether
-  the MVP-0 exit is met; the Admin's decisions — benchmark thresholds
-  (plan open items 1, 4 and 12), R-27 (Ollama cloud features off) and the R-16 note (container or server-only Ollama
-  for a shared deployment); the Cloudflare route on the existing `ollama` container (open: dashboard route and any
-  Access policy not checked); exit criteria for the WeKnora spike (3b) before it starts; payload-bound approval;
-  harness extensions for B1 to B3 and tokens per second in the aggregate; the first benchmark results (the Admin's
-  trial run of 2026-10-13 exists, untracked; no numbers are recorded).
+  accepted. MVP-0 is not declared complete; the Admin decides. Merged as `e1b5276` (pull request #35; see
+  *Verified state*, Git).
+- Branch `docs/mvp0-declaration` from `e1b5276` (2026-10-13; documentation only; synthetic): `docs/DECISIONS.md`
+  gains R-29 (decided, Admin, 2026-10-13): the MVP-0 exit is declared met on the narrow reading (R-28), with its
+  evidence (*MVP-0 exit evidence* in `docs/ROADMAP.md` and the claims register: 130 claims, 67 verified, 54 not
+  verified, 9 flagged and kept as labelled) and its accepted gaps (startup on SQLite only, "safe" by the test's
+  design, keyword-based completeness search, CI evidence from screenshots); R-15, R-16, R-22, R-27 and the benchmark
+  thresholds unchanged. `docs/ROADMAP.md`: MVP-0 status "Declared met (R-29)" (status line, item table,
+  remaining-slices section with no slices remaining, slice 6 done); baseline and "as of" `e1b5276` with counts from
+  runs at `e1b5276` (unchanged: `324 passed, 1 skipped`; `346 passed`); post-merge check CI run 38434451817 added to
+  the evidence section (Admin's screenshot); the `fa5c5f2` evidence rows unchanged.
+- Next: MVP-1 (not started). Its scope as `docs/SPECIFICATION.md` line 160 and the ROADMAP *Later stages* table
+  state it: authentication and the organisation Admin UI (departments, people, role and grant preview, selective
+  agent enablement); PostgreSQL and an object store; an auditable, versioned workflow and template engine with
+  human approvals; an admin workflow proposal form using a local model or rules. Exit: no self-approval; a proposed
+  audit workflow fails completeness until the missing control is fixed. Then the Admin's decisions — benchmark
+  thresholds (plan open items 1, 4 and 12), R-27 (Ollama cloud features off), the R-16 note (container or
+  server-only Ollama for a shared deployment) and R-15 (object store); the Cloudflare route on the existing
+  `ollama` container (open: dashboard route and any Access policy not checked); exit criteria for the WeKnora spike
+  (3b) before it starts; payload-bound approval; harness extensions for B1 to B3 and tokens per second in the
+  aggregate; the first benchmark results (the Admin's trial run of 2026-10-13 exists, untracked; no numbers are
+  recorded); running the API server process against PostgreSQL.
 
 ## End-of-session update template
 
