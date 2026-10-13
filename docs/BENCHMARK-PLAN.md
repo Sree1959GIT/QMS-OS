@@ -163,8 +163,9 @@ this benchmark-only container; both remain proposals. The Admin ran these comman
 4. `docker exec ollama-bench printenv OLLAMA_NO_CLOUD` (expected: `1`)
 
 The start command needs `POSTGRES_PASSWORD` set (normally from the Admin's `.env`; no value is recorded here),
-because Compose resolves variables for the whole file. `scripts\reset-db.bat` runs `docker compose down -v` and may
-delete the benchmark models volume (not tested); models would have to be pulled again.
+because Compose resolves variables for the whole file (Compose behaviour as stated; not verified).
+`scripts\reset-db.bat` runs `docker compose down -v` and may delete the benchmark models volume (not tested); models
+would have to be pulled again.
 
 **Smoke test (not a benchmark result).** Run by the Admin on 2026-10-12 in `ollama-bench`; output supplied by the
 Admin, not measured by Claude Code; one run and one sample. Every benchmark cell stays `not run`.

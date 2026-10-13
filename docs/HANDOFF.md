@@ -6,15 +6,17 @@
 
 - Repository: this repository (`QMS-OS`); confirm the remote with `git remote -v`.
 - Specification: `docs/SPECIFICATION.md`, v3.0 dated 29 September 2026. Verify title and version locally.
-- Baseline recorded here: `main` at `2a385a9` (2026-10-12; "Record the benchmark container checks and the first
-  smoke test (MVP-0 slice 1b) (#32)"). Work in progress: branch `feat/benchmark-harness` from `2a385a9` (slice 4b:
-  the benchmark harness and a `test`-mode adapter, code, tests and documentation; local, not committed, not
-  pushed).
+- Baseline recorded here: `main` at `d7f1127ef09c0075dbe5cfcc24ae3febeba840b5` (2026-10-13; "Add the benchmark
+  harness and test-mode adapter (MVP-0 slice 4b) (#33)"). Work in progress: branch `docs/mvp0-closure` from
+  `d7f1127` (R-28, the MVP-0 exit reading, and the slice 2 labelling pass; documentation only; local, not
+  committed, not pushed).
   Re-verify branch, HEAD and working tree with Git at session start; this file may be stale.
-- Stage: MVP-0 in progress. Of the eight items in the ROADMAP's MVP-0 table, five are done (Git scaffold, CI and
-  protected `main`; synthetic fixtures; fixture startup as a server process; documentation reconciled; model-provider
-  contract), two are in progress (upstream, licence and version matrix; container or local runtime configuration) and
-  one is not started (local-model benchmark plan). Four slices remain before the MVP-0 exit — see *Remaining
+- Stage: MVP-0 in progress. The exit is read as written in the specification (R-28). Of the eight items in the
+  ROADMAP's MVP-0 table, five are done (Git scaffold, CI and protected `main`; synthetic fixtures; fixture startup as
+  a server process; documentation reconciled; model-provider contract), the benchmark plan is written (measurements
+  are not an exit item), the upstream matrix is done for the exit (the labelling pass; the 7 flagged claims kept as
+  labelled) and container configuration beyond PostgreSQL is descoped for the exit. One slice remains before the
+  MVP-0 exit (6, which also fixes the stale *Current baseline* paragraph in `docs/ROADMAP.md`) — see *Remaining
   before the MVP-0 exit* in `docs/ROADMAP.md`.
 - Mode: synthetic only. No live connectors, staff accounts or model credentials are configured in this repository,
   and none has been verified; do not claim they are configured.
@@ -23,7 +25,14 @@
 
 Each item says how it was verified.
 
-- **Git:** on 2026-10-13 `git pull --ff-only` brought local `main` to `2a385a94…` (= `origin/main`), working tree
+- **Git:** on 2026-10-13, after a restart of the laptop, `git pull --ff-only` brought local `main` from `2a385a9`
+  to `d7f1127ef09c0075dbe5cfcc24ae3febeba840b5` (= `origin/main`), working tree clean; the merged tree is identical
+  to the tip of `feat/benchmark-harness` (`git diff` empty). Pull request #33 (`feat/benchmark-harness`, slice 4b)
+  was merged as `d7f1127` on 2026-10-13 at 04:05 UTC: pull request run 38344515431 (checks about 04:02 to 04:03 UTC
+  on 2026-10-13, read from GitHub via the Perplexity GitHub connector) and `main` run 38344797527 (run page checked
+  by the Admin, screenshot); not read in this session. Branch `docs/mvp0-closure` was created from `d7f1127`
+  (local only).
+  Earlier: on 2026-10-13 `git pull --ff-only` brought local `main` to `2a385a94…` (= `origin/main`), working tree
   clean. Pull request #32 (`docs/benchmark-checks`, head `b74530b3…`, the container checks and smoke test) was
   merged as `2a385a9` on 2026-10-12 at 17:22 UTC: pull request run 38283632219 (checks about 17:21 to 17:22 UTC on
   2026-10-12, read from GitHub via the Perplexity GitHub connector) and `main` run 38283810827 (run page checked by
@@ -219,8 +228,9 @@ Each item says how it was verified.
   append-only enforcement (trigger or revoked privileges on `audit_events`) does not exist; append-only is enforced
   by application code and `tests/test_no_retention.py`. TLS to a non-local database is not configured.
 - Docker Compose beyond the PostgreSQL service: no other service has been run. A PostgreSQL restore drill has not been run.
-- Benchmark harness (slice 4b, branch `feat/benchmark-harness`): tested only against a fake server on 127.0.0.1; no
-  live run. Response field names come from the Ollama `v0.40.0` source at `0d0720e5`; whether `eval_count`
+- Benchmark harness (slice 4b, on `main` since `d7f1127`): tested only against a fake server on 127.0.0.1; no live
+  run is recorded. The Admin made a trial run on 2026-10-13; it exists, untracked, and no numbers from it are
+  recorded here. Response field names come from the Ollama `v0.40.0` source at `0d0720e5`; whether `eval_count`
   includes thinking tokens and the effect of the request field `think` on `gemma4:12b` are not verified
   (`docs/BENCHMARK-PLAN.md`, section 7).
 - Benchmark container `ollama-bench` (slice 1b): started, checked and smoke-tested by the Admin on 2026-10-12
@@ -235,9 +245,9 @@ Each item says how it was verified.
 - Any UI; end-to-end or browser tests.
 - Python 3.11 on PostgreSQL: CI job `test-py311` (Python 3.11.17) covers the SQLite suite only; no local 3.11
   interpreter is installed.
-- Upstream matrix (`docs/UPSTREAMS.md`; slice 2 stays in progress): Ollama outbound calls in dependencies and at
-  runtime (only the source at `0d0720e5` was grepped); `gemma4:12b` audio (inferred from the code and a partial
-  projector metadata read, hash not verified; not run); Tier C feature
+- Upstream matrix (`docs/UPSTREAMS.md`, *Claims register*; slice 2 done for the exit, R-28): Ollama outbound calls
+  in dependencies and at runtime (only the source at `0d0720e5` was grepped); `gemma4:12b` audio (inferred from the
+  code and a partial projector metadata read, hash not verified; not run); Tier C feature
   claims (Hermes skills and gateway, Hindsight plugin and isolation, WeKnora retrieval and ACL); Digital-Secretary;
   Telegram terms; the licences of the images in WeKnora's compose file. Model fit on the 12 GB VRAM host is a
   measurement (slice 4).
@@ -587,13 +597,28 @@ See *Proposed MVP-0 order* in `docs/ROADMAP.md`. No dates or delivery commitment
   from the repository root. The registry's refusal of `live` adapters (R-25) is unchanged and tested; no default registry
   registers the adapter. New `apps/api/tests/test_benchmark_harness.py` uses a fake server on 127.0.0.1.
   `docs/BENCHMARK-PLAN.md` section 7 "Harness"; ROADMAP slice 4b. No live run; every benchmark cell stays `not run`.
-- Next: Admin review of `feat/benchmark-harness`, then commit, push and pull request on authorisation; the Admin's first
-  live run of B4 and B5 (`docs/BENCHMARK-PLAN.md`, section 7); harness extensions for B1, B2 and B3; the thresholds (plan
-  open items 1, 4 and 12); audio (the B7 probe and B8); the Cloudflare route on the existing Ollama container (open:
-  dashboard route and any Access policy not checked); confirm or reject R-27 (Ollama cloud features off) and the R-16
-  note (container or server-only Ollama for a shared deployment); slice 2 (upstream matrix); exit criteria for the
-  WeKnora spike (3b) before it starts; slice 6 ("no unverified feature claim" review); payload-bound approval after
-  MVP-0.
+  Merged as `d7f1127` (pull request #33; see *Verified state*, Git).
+- Branch `docs/mvp0-closure` from `d7f1127` (2026-10-13; documentation only; synthetic): `docs/DECISIONS.md` gains
+  R-28 (decided, Admin, 2026-10-13): the MVP-0 exit is read as written in the specification; benchmark measurements
+  are not an exit item; slice 2 closes when every feature claim is verified with source and date or labelled "not
+  verified"; slice 1 is descoped for the exit; R-15, R-16, R-22, R-27 and the benchmark thresholds are unchanged.
+  `docs/ROADMAP.md`: the remaining-slices table as of `d7f1127` (one exit slice remains: 6). Slice 2 labelling
+  pass, done for the exit: `docs/UPSTREAMS.md` gains a *Claims register* (126 claims: 67 verified with source and
+  date, 52 not verified, 7 flagged as not verified with no stage needing them, which the Admin kept as labelled on
+  2026-10-13, none removed or researched); unsourced claims labelled
+  "not verified" in place in `docs/UPSTREAMS.md`, `docs/adr/0003-auth-dev-identity.md`,
+  `docs/adr/0005-provider-contract-and-egress.md`, `docs/LOCAL-RUNTIME.md` and `docs/BENCHMARK-PLAN.md`; the
+  UPSTREAMS GPU-in-container row now cites the Admin's 2026-10-12 check; a stale LOCAL-RUNTIME line (Postgres
+  image "pinned by tag") marked resolved. No new research, no code, tests, CI or migration changes;
+  `docs/SPECIFICATION.md` not edited.
+- Next: slice 6 ("no unverified feature claim" review, the last MVP-0 exit slice; it also fixes the stale *Current
+  baseline* paragraph in `docs/ROADMAP.md`); the Admin's decisions — benchmark thresholds (plan open items 1, 4 and
+  12), R-27 (Ollama cloud features off) and the R-16 note (container or server-only Ollama for a shared
+  deployment); the Cloudflare route
+  on the existing `ollama` container (open: dashboard route and any Access policy not checked); exit criteria for the
+  WeKnora spike (3b) before it starts; payload-bound approval; harness extensions for B1 to B3 and tokens per second
+  in the aggregate; the first benchmark results (the Admin's trial run of 2026-10-13 exists, untracked; no numbers
+  are recorded).
 
 ## End-of-session update template
 
