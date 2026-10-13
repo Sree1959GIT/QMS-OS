@@ -66,8 +66,8 @@ The licence column names the licence the file states; it is not a legal opinion.
 ## PostgreSQL driver and migrations (`apps/api`, optional extra `postgres`)
 
 Checked 2026-10-05 on Windows 11, Python 3.12.7, against PostgreSQL 17.11 in the local `compose.yaml` container
-(R-2). Installed from PyPI wheels; exact versions are pinned in `apps/api/constraints-ci.txt`. CI does not install
-this extra.
+(R-2). Installed from PyPI wheels; exact versions are pinned in `apps/api/constraints-ci.txt`. CI did not install
+this extra then; since pull request #15 the CI job `postgres` installs it (`.github/workflows/ci.yml`).
 
 | Package | Version | Licence (package metadata) | Used for |
 |---|---|---|---|
@@ -113,7 +113,8 @@ this extra.
 ## Authentication (`apps/api`, core dependencies; R-3)
 
 Checked 2026-10-06 on Windows 11, Python 3.12.7. Installed from PyPI wheels; exact versions are pinned in
-`apps/api/constraints-ci.txt`. These are core dependencies, so CI installs them; the first CI run with them is pending.
+`apps/api/constraints-ci.txt`. These are core dependencies, so CI installs them; the first CI run with them passed
+on pull request #10 (run 37449326911; `docs/HANDOFF.md`, *Verified state*).
 
 | Package | Version | Licence (package metadata) | Compiled code | Used for |
 |---|---|---|---|---|
@@ -172,7 +173,8 @@ on `main` at `0f66d47` (run 37566508358), read from the public GitHub API (job l
 
 Checked 2026-10-07 on Windows 11, Python 3.12.7, from PyPI wheels; exact versions are pinned in
 `apps/api/constraints-ci.txt`. Development tools only: not imported by `qms_os` and not installed by the test jobs.
-Used by `scripts\run-lint.bat` and the CI jobs `lint` (ruff only) and `types` (mypy). Not yet run in CI.
+Used by `scripts\run-lint.bat` and the CI jobs `lint` (ruff only) and `types` (mypy), which run in CI since pull
+request #20 (merged as `5b3e181`; CI run 37648488409, as reported by the Admin).
 
 | Package | Version | Licence (package metadata) | Compiled code | Used for |
 |---|---|---|---|---|
@@ -306,12 +308,21 @@ any use.
 
 Every statement in `docs/` (this file, `ROADMAP.md`, `DECISIONS.md`, `HANDOFF.md`, `BENCHMARK-PLAN.md`, `adr/`,
 `LOCAL-RUNTIME.md`; there is no README) that asserts a feature, capability, licence, version or behaviour of an
-upstream or service, at the line where it stands on branch `docs/mvp0-closure` (R-28). Statements about QMS OS's
-own code are covered by its tests and are not listed. **Verified** names the source already in the repository
-and its date; nothing was researched for this register. **Not verified** claims are labelled in place where a
-stage needs them. **Flagged** claims are not verified and no stage needs them: the Admin kept all seven as labelled
-(2026-10-13, R-28); none was removed or researched. Line numbers move when the documents change; the anchor is
-the claim text.
+upstream or service, at the line where it stands (regenerated on branch `docs/mvp0-review`; R-28). Statements
+about QMS OS's own code are covered by its tests and are not listed. **Verified** names the source already in the
+repository and its date; nothing was researched for this register. **Not verified** claims are labelled in place
+where a stage needs them. **Flagged** claims are not verified and no stage needs them: 9 flagged, kept as
+labelled by the Admin on 2026-10-13 (C-28, C-51, C-62, C-66, C-67, C-111, C-126, C-129, C-130; R-28); none was
+removed or researched.
+Line numbers move when the documents change; the anchor is the claim text.
+
+Completeness search (slice 6, 2026-10-13): every line in `docs/` (except the specification and this register)
+that names an upstream or service and contains a claim word (licence, version, default, support, send, contact,
+bind, bundle, require, allow, accept, block, update, expose, telemetry, network, read, write, store, run, only,
+always, never) and is not cited here was reviewed by hand. Lines about QMS OS's own code, decisions,
+requirements, test results and section headings, continuation lines of a cited claim, and restatements in the
+session log of `HANDOFF.md` are not separate claims. Four claims had no row (C-127 to C-130); four restatements
+were added to their existing rows. C-129 and C-130 are among the 9 flagged claims kept as labelled.
 
 | # | Where | Claim | Status | Source and date, or note | Needed by |
 |---|---|---|---|---|---|
@@ -349,84 +360,84 @@ the claim text.
 | C-32 | `UPSTREAMS.md:77` | mako 1.4.3 is licensed MIT | not verified | package metadata only (secondary), read 2026-10-05; primary source not read | MVP-1 (PostgreSQL as the authority) |
 | C-33 | `UPSTREAMS.md:78` | markupsafe 3.0.4 is licensed BSD-3-Clause | not verified | package metadata only (secondary), read 2026-10-05; primary source not read | MVP-1 (PostgreSQL as the authority) |
 | C-34 | `UPSTREAMS.md:79` | tzdata 2026.5 is licensed Apache-2.0 | not verified | package metadata only (secondary), read 2026-10-05; primary source not read | MVP-1 (PostgreSQL as the authority) |
-| C-35 | `UPSTREAMS.md:120` | argon2-cffi 25.1.0 is licensed MIT | not verified | package metadata only (secondary), read 2026-10-06; primary source not read | MVP-1 (authentication; on `main`) |
-| C-36 | `UPSTREAMS.md:121` | argon2-cffi-bindings 26.1.0 is licensed MIT | not verified | package metadata only (secondary), read 2026-10-06; primary source not read | MVP-1 (authentication; on `main`) |
-| C-37 | `UPSTREAMS.md:122` | cffi 2.1.1 is licensed MIT-0 | not verified | package metadata only (secondary), read 2026-10-06; primary source not read | MVP-1 (authentication; on `main`) |
-| C-38 | `UPSTREAMS.md:123` | pycparser 3.0 is licensed BSD-3-Clause | not verified | package metadata only (secondary), read 2026-10-06; primary source not read | MVP-1 (authentication; on `main`) |
-| C-39 | `UPSTREAMS.md:124` | pyotp 2.10.0 is licensed MIT | not verified | package metadata only (secondary), read 2026-10-06; primary source not read | MVP-1 (authentication; on `main`) |
-| C-40 | `UPSTREAMS.md:125` | cryptography 50.0.2 is licensed Apache-2.0 OR BSD-3-Clause | not verified | package metadata only (secondary), read 2026-10-06; primary source not read | MVP-1 (authentication; on `main`) |
-| C-41 | `UPSTREAMS.md:179` | ruff 0.16.10 is licensed MIT | not verified | package metadata only (secondary), read 2026-10-07; primary source not read | MVP-0 (CI jobs `lint` and `types`) |
-| C-42 | `UPSTREAMS.md:180` | mypy 2.4.0 is licensed MIT | not verified | package metadata only (secondary), read 2026-10-07; primary source not read | MVP-0 (CI jobs `lint` and `types`) |
-| C-43 | `UPSTREAMS.md:181` | mypy-extensions 1.1.0 is licensed MIT | not verified | package metadata only (secondary), read 2026-10-07; primary source not read | MVP-0 (CI jobs `lint` and `types`) |
-| C-44 | `UPSTREAMS.md:182` | pathspec 1.1.1 is licensed MPL-2.0 | not verified | package metadata only (secondary), read 2026-10-07; primary source not read | MVP-0 (CI jobs `lint` and `types`) |
-| C-45 | `UPSTREAMS.md:183` | librt 0.16.0 is licensed MIT | not verified | package metadata only (secondary), read 2026-10-07; primary source not read | MVP-0 (CI jobs `lint` and `types`) |
-| C-46 | `UPSTREAMS.md:184` | ast-serialize 0.12.1 is licensed MIT | not verified | package metadata only (secondary), read 2026-10-07; primary source not read | MVP-0 (CI jobs `lint` and `types`) |
-| C-47 | `UPSTREAMS.md:75`; `UPSTREAMS.md:125` | psycopg-binary bundles libpq 18.4 and OpenSSL 3; cryptography bundles OpenSSL 3 | not verified | no source recorded (labelled in place) | Production-2 (durable upgrades) |
+| C-35 | `UPSTREAMS.md:121` | argon2-cffi 25.1.0 is licensed MIT | not verified | package metadata only (secondary), read 2026-10-06; primary source not read | MVP-1 (authentication; on `main`) |
+| C-36 | `UPSTREAMS.md:122` | argon2-cffi-bindings 26.1.0 is licensed MIT | not verified | package metadata only (secondary), read 2026-10-06; primary source not read | MVP-1 (authentication; on `main`) |
+| C-37 | `UPSTREAMS.md:123` | cffi 2.1.1 is licensed MIT-0 | not verified | package metadata only (secondary), read 2026-10-06; primary source not read | MVP-1 (authentication; on `main`) |
+| C-38 | `UPSTREAMS.md:124` | pycparser 3.0 is licensed BSD-3-Clause | not verified | package metadata only (secondary), read 2026-10-06; primary source not read | MVP-1 (authentication; on `main`) |
+| C-39 | `UPSTREAMS.md:125` | pyotp 2.10.0 is licensed MIT | not verified | package metadata only (secondary), read 2026-10-06; primary source not read | MVP-1 (authentication; on `main`) |
+| C-40 | `UPSTREAMS.md:126` | cryptography 50.0.2 is licensed Apache-2.0 OR BSD-3-Clause | not verified | package metadata only (secondary), read 2026-10-06; primary source not read | MVP-1 (authentication; on `main`) |
+| C-41 | `UPSTREAMS.md:181` | ruff 0.16.10 is licensed MIT | not verified | package metadata only (secondary), read 2026-10-07; primary source not read | MVP-0 (CI jobs `lint` and `types`) |
+| C-42 | `UPSTREAMS.md:182` | mypy 2.4.0 is licensed MIT | not verified | package metadata only (secondary), read 2026-10-07; primary source not read | MVP-0 (CI jobs `lint` and `types`) |
+| C-43 | `UPSTREAMS.md:183` | mypy-extensions 1.1.0 is licensed MIT | not verified | package metadata only (secondary), read 2026-10-07; primary source not read | MVP-0 (CI jobs `lint` and `types`) |
+| C-44 | `UPSTREAMS.md:184` | pathspec 1.1.1 is licensed MPL-2.0 | not verified | package metadata only (secondary), read 2026-10-07; primary source not read | MVP-0 (CI jobs `lint` and `types`) |
+| C-45 | `UPSTREAMS.md:185` | librt 0.16.0 is licensed MIT | not verified | package metadata only (secondary), read 2026-10-07; primary source not read | MVP-0 (CI jobs `lint` and `types`) |
+| C-46 | `UPSTREAMS.md:186` | ast-serialize 0.12.1 is licensed MIT | not verified | package metadata only (secondary), read 2026-10-07; primary source not read | MVP-0 (CI jobs `lint` and `types`) |
+| C-47 | `UPSTREAMS.md:75`; `UPSTREAMS.md:126` | psycopg-binary bundles libpq 18.4 and OpenSSL 3; cryptography bundles OpenSSL 3 | not verified | no source recorded (labelled in place) | Production-2 (durable upgrades) |
 | C-48 | `UPSTREAMS.md:91` | psycopg/libpq connect only to the configured host, send no telemetry, read `PG*` variables and `pgpass.conf` | not verified | no source recorded (labelled in place) | MVP-1 (PostgreSQL as the authority) |
 | C-49 | `UPSTREAMS.md:98` | psycopg-binary security fixes arrive only through new releases | not verified | no source recorded (labelled in place) | Production-2 (durable upgrades) |
 | C-50 | `UPSTREAMS.md:101` | Alembic makes no network calls; autogenerate reads the catalogue only | not verified | no source recorded (labelled in place) | MVP-1 (PostgreSQL as the authority) |
-| C-51 | `UPSTREAMS.md:121` | argon2-cffi-bindings bundles the Argon2 reference C library (CC0-1.0 OR Apache-2.0) | not verified — flagged | no source recorded; no stage distributes QMS OS; Admin: kept as labelled (R-28) | none |
-| C-52 | `UPSTREAMS.md:124` | pyotp produces RFC 6238 codes | verified | `tests/test_auth.py::test_totp_matches_rfc_6238_vectors`, passing since 2026-10-06 | MVP-1 (authentication) |
-| C-53 | `UPSTREAMS.md:127` | The vendored list is SecLists 10k at commit `913b3273`, MIT | verified | commit and file SHA-256 recorded, 2026-10-06 | MVP-1 (authentication) |
-| C-54 | `UPSTREAMS.md:134` | The authentication packages make no network calls | not verified | packages' source not reviewed (labelled in place) | MVP-1 (authentication) |
-| C-55 | `UPSTREAMS.md:140`; `UPSTREAMS.md:190`; `adr/0003-auth-dev-identity.md:113` | These packages ship compiled code on Windows | verified | local installs from PyPI wheels, 2026-10-06 and 2026-10-07; whether the code is signed: not verified (labelled in place) | MVP-0 (local development) |
-| C-56 | `HANDOFF.md:123` | Smart App Control blocked SQLAlchemy's unsigned `_row_cy` | verified | Code Integrity events 3033/3077, observed 2026-10-06 | MVP-0 (local development) |
-| C-57 | `UPSTREAMS.md:143` | cryptography's OpenSSL fixes arrive only through new releases | not verified | no source recorded (labelled in place) | Production-2 (durable upgrades) |
-| C-58 | `UPSTREAMS.md:159` | gitleaks 8.30.1 archive SHA-256 and tag commit | verified | release checksums file and tag, read 2026-10-06 | MVP-0 (CI job `secret-scan`) |
-| C-59 | `UPSTREAMS.md:159` | gitleaks is licensed MIT | not verified | no source recorded (labelled in place) | MVP-0 (CI job `secret-scan`) |
-| C-60 | `UPSTREAMS.md:164` | gitleaks downloads nothing at scan time; `--redact` keeps values out of the log | not verified | no source recorded (labelled in place) | MVP-0 (CI job `secret-scan`) |
-| C-61 | `UPSTREAMS.md:167` | gitleaks finds no leaks in the history and detects a fake key outside the allow-list | verified | local runs, 2026-10-06 | MVP-0 (CI job `secret-scan`) |
-| C-62 | `UPSTREAMS.md:169` | actionlint is licensed MIT | not verified — flagged | no source recorded; local check only, no stage uses it; Admin: kept as labelled (R-28) | none |
-| C-63 | `UPSTREAMS.md:160`; `DECISIONS.md:61`; `HANDOFF.md:168` | The pinned image is PostgreSQL 17.11 (Debian 17.11-1.pgdg13+2) | verified | `select version()` on the local container, 2026-10-05 and 2026-10-10; CI job `postgres` | MVP-1 (PostgreSQL) |
-| C-64 | `UPSTREAMS.md:160` | The postgres image is under the PostgreSQL Licence | not verified | no source recorded (labelled in place) | MVP-1 (PostgreSQL) |
-| C-65 | `UPSTREAMS.md:161` | actions/checkout and setup-python are licensed MIT | not verified | no source recorded (labelled in place) | MVP-0 (CI) |
-| C-66 | `UPSTREAMS.md:186` | ruff and mypy make no network calls | not verified — flagged | no source recorded; development tools only; Admin: kept as labelled (R-28) | none |
-| C-67 | `UPSTREAMS.md:188` | pathspec's MPL-2.0 is file-level copyleft | not verified — flagged | licence interpretation, not a legal opinion; no stage distributes QMS OS; Admin: kept as labelled (R-28) | none |
-| C-68 | `UPSTREAMS.md:213` | Ollama `v0.40.0`, published 2026-09-25 | verified | GitHub release API, read 2026-10-07 | slice 4 runs; MVP-2 and later |
-| C-69 | `UPSTREAMS.md:214` | Tag `v0.40.0` = commit `0d0720e5` | verified | GitHub ref API, 2026-10-07; `git ls-remote`, 2026-10-10 | slice 4 runs |
-| C-70 | `UPSTREAMS.md:215` | Ollama is licensed MIT | verified | `LICENSE` at the tag, read 2026-10-07 | slice 4 runs; MVP-2 and later |
-| C-71 | `UPSTREAMS.md:216`; `UPSTREAMS.md:217`; `UPSTREAMS.md:218` | Release asset SHA-256 digests | verified | release API `digest` fields, read 2026-10-07 | slice 4 runs |
-| C-72 | `UPSTREAMS.md:219`; `BENCHMARK-PLAN.md:142` | Image `ollama/ollama:0.40.0` index digest `1bef6397…` | verified | Docker Hub API, 2026-10-07; `docker buildx imagetools inspect`, 2026-10-12 | slice 4 runs |
-| C-73 | `UPSTREAMS.md:225` | Below 24 GiB VRAM the default context is 4K | verified | docs.ollama.com/context-length, read 2026-10-07; smoke test showed CONTEXT 4096 (Admin, 2026-10-12) | slice 4 runs |
-| C-74 | `UPSTREAMS.md:226` | `OLLAMA_CONTEXT_LENGTH` sets the default; `ollama ps` shows it | verified | docs.ollama.com/context-length, read 2026-10-07 | slice 4 runs |
-| C-75 | `UPSTREAMS.md:227`; `BENCHMARK-PLAN.md:27` | Native API accepts per-request `num_ctx`; a new value reloads the model; OpenAI-compatible routes cannot set it | verified | source and docs at `0d0720e5`, read 2026-10-10 | slice 4 runs |
-| C-76 | `UPSTREAMS.md:228` | Ollama binds 127.0.0.1:11434 by default | verified | docs.ollama.com/faq, read 2026-10-07 | slice 4 runs; MVP-2 and later |
-| C-77 | `UPSTREAMS.md:229` | Ollama does not see prompts when run locally | not verified | documentation statement only (`docs/faq.mdx:161` at `0d0720e5`, 2026-10-10); not checked at runtime | before the first live Ollama adapter |
-| C-78 | `UPSTREAMS.md:230`; `DECISIONS.md:84`; `HANDOFF.md:260`; `adr/0005-provider-contract-and-egress.md:54` | The daemon contacts ollama.com by default (recommendations, cloud-model cache), signed with the installation key | verified | source at `0d0720e5`, read 2026-10-10 | before the first live Ollama adapter (R-27) |
-| C-79 | `UPSTREAMS.md:231` | `OLLAMA_NO_CLOUD=1` or `disable_ollama_cloud` turns that off | verified | source and docs at `0d0720e5`, read 2026-10-10; set in `ollama-bench` (Admin check, 2026-10-12) | before the first live Ollama adapter (R-27) |
-| C-80 | `UPSTREAMS.md:232` | No other outbound calls or analytics in Ollama | not verified | grep of the tag's own code only, 2026-10-10; dependencies and runtime not verified (as stated) | before the first live Ollama adapter |
-| C-81 | `UPSTREAMS.md:233`; `DECISIONS.md:73` | The desktop app checks ollama.com for updates hourly; no setting disables the check; Docker image runs `ollama serve` | verified | FAQ and source at `0d0720e5`, read 2026-10-10 | before any shared deployment (R-16 note) |
-| C-82 | `UPSTREAMS.md:234` | The GPU is usable in a Linux container under Docker Desktop/WSL2 on the benchmark host | verified | Admin-supplied output, 2026-10-12 (`nvidia-smi` in `ollama-bench`; smoke test at 100% GPU); updated in place | slice 4 runs |
-| C-83 | `UPSTREAMS.md:235` | Cloud tags exist (`gemma4:cloud`, `gemma4:31b-cloud`) | verified | ollama.com tags page, read 2026-10-07 | only if an admin enables cloud (R-17) |
-| C-84 | `UPSTREAMS.md:235`; `adr/0005-provider-contract-and-egress.md:50` | A general cloud-tag naming rule; Ollama's cloud terms | not verified | `docs/cloud.mdx` at `28a9f8c9` gives one example and no rule (read 2026-10-09); terms not read | before the first live Ollama adapter |
-| C-85 | `UPSTREAMS.md:241` | Tag `gemma4:12b` exists | verified | ollama.com library pages, read 2026-10-07; pulled in the smoke test (Admin, 2026-10-12) | slice 4 runs |
-| C-86 | `UPSTREAMS.md:242` | `gemma4:12b` publishes a 256K context | verified | Ollama pages and Hugging Face model data, read 2026-10-07 (published value only; use on 12 GB is B1) | slice 4 runs |
-| C-87 | `UPSTREAMS.md:243` | Manifest layer digests of `gemma4:12b` | verified | registry manifest, read 2026-10-07; layer prefixes matched in the smoke test (Admin, 2026-10-12) | slice 4 runs |
-| C-88 | `UPSTREAMS.md:244`; `BENCHMARK-PLAN.md:189` | Which value Ollama's short model ID is derived from | not verified | two pages disagree (2026-10-07); smoke-test ID `6114515d63c1` matches neither (2026-10-12) | slice 4 runs |
-| C-89 | `UPSTREAMS.md:245` | Ollama's `gemma4:12b` weights licence is Apache-2.0 | verified | licence blob downloaded and hashed, 2026-10-07 | slice 4 runs; any live use |
-| C-90 | `UPSTREAMS.md:246` | Publisher's Gemma 4 12B weights are Apache-2.0 | verified | Hugging Face API, revision `707f0a3b`, read 2026-10-07 | slice 4 runs; any live use |
-| C-91 | `UPSTREAMS.md:247`; `UPSTREAMS.md:249` | `gemma4:12b` accepts audio input | not verified | sources conflict (2026-10-07, 2026-10-10); projector metadata read partially, hash not verified; not run | slice 4 (B7 probe); MVP-3 |
-| C-92 | `UPSTREAMS.md:248` | Ollama `v0.40.0` has audio input paths | verified | source at `0d0720e5`, read 2026-10-10 | slice 4 (B7); MVP-3 |
-| C-93 | `UPSTREAMS.md:250` | `gemma4:12b` has native function calling | not verified | documentation statement only (Ollama family page, 2026-10-07); reliability is B4 | slice 4 (B4) |
-| C-94 | `UPSTREAMS.md:251` | Fit and throughput on the 12 GB VRAM host | not verified | a measurement (B1, B3, B5) | slice 4 runs (not an exit item, R-28) |
+| C-51 | `UPSTREAMS.md:122` | argon2-cffi-bindings bundles the Argon2 reference C library (CC0-1.0 OR Apache-2.0) | not verified — flagged | no source recorded; no stage distributes QMS OS; Admin: kept as labelled (R-28) | none |
+| C-52 | `UPSTREAMS.md:125` | pyotp produces RFC 6238 codes | verified | `tests/test_auth.py::test_totp_matches_rfc_6238_vectors`, passing since 2026-10-06 | MVP-1 (authentication) |
+| C-53 | `UPSTREAMS.md:128` | The vendored list is SecLists 10k at commit `913b3273`, MIT | verified | commit and file SHA-256 recorded, 2026-10-06 | MVP-1 (authentication) |
+| C-54 | `UPSTREAMS.md:135` | The authentication packages make no network calls | not verified | packages' source not reviewed (labelled in place) | MVP-1 (authentication) |
+| C-55 | `UPSTREAMS.md:141`; `UPSTREAMS.md:192`; `adr/0003-auth-dev-identity.md:113` | These packages ship compiled code on Windows | verified | local installs from PyPI wheels, 2026-10-06 and 2026-10-07; whether the code is signed: not verified (labelled in place) | MVP-0 (local development) |
+| C-56 | `HANDOFF.md:132` | Smart App Control blocked SQLAlchemy's unsigned `_row_cy` | verified | Code Integrity events 3033/3077, observed 2026-10-06 | MVP-0 (local development) |
+| C-57 | `UPSTREAMS.md:144` | cryptography's OpenSSL fixes arrive only through new releases | not verified | no source recorded (labelled in place) | Production-2 (durable upgrades) |
+| C-58 | `UPSTREAMS.md:160` | gitleaks 8.30.1 archive SHA-256 and tag commit | verified | release checksums file and tag, read 2026-10-06 | MVP-0 (CI job `secret-scan`) |
+| C-59 | `UPSTREAMS.md:160` | gitleaks is licensed MIT | not verified | no source recorded (labelled in place) | MVP-0 (CI job `secret-scan`) |
+| C-60 | `UPSTREAMS.md:165` | gitleaks downloads nothing at scan time; `--redact` keeps values out of the log | not verified | no source recorded (labelled in place) | MVP-0 (CI job `secret-scan`) |
+| C-61 | `UPSTREAMS.md:168` | gitleaks finds no leaks in the history and detects a fake key outside the allow-list | verified | local runs, 2026-10-06 | MVP-0 (CI job `secret-scan`) |
+| C-62 | `UPSTREAMS.md:170` | actionlint is licensed MIT | not verified — flagged | no source recorded; local check only, no stage uses it; Admin: kept as labelled (R-28) | none |
+| C-63 | `UPSTREAMS.md:161`; `DECISIONS.md:61`; `HANDOFF.md:180` | The pinned image is PostgreSQL 17.11 (Debian 17.11-1.pgdg13+2) | verified | `select version()` on the local container, 2026-10-05 and 2026-10-10; CI job `postgres` | MVP-1 (PostgreSQL) |
+| C-64 | `UPSTREAMS.md:161` | The postgres image is under the PostgreSQL Licence | not verified | no source recorded (labelled in place) | MVP-1 (PostgreSQL) |
+| C-65 | `UPSTREAMS.md:162` | actions/checkout and setup-python are licensed MIT | not verified | no source recorded (labelled in place) | MVP-0 (CI) |
+| C-66 | `UPSTREAMS.md:188` | ruff and mypy make no network calls | not verified — flagged | no source recorded; development tools only; Admin: kept as labelled (R-28) | none |
+| C-67 | `UPSTREAMS.md:190` | pathspec's MPL-2.0 is file-level copyleft | not verified — flagged | licence interpretation, not a legal opinion; no stage distributes QMS OS; Admin: kept as labelled (R-28) | none |
+| C-68 | `UPSTREAMS.md:215` | Ollama `v0.40.0`, published 2026-09-25 | verified | GitHub release API, read 2026-10-07 | slice 4 runs; MVP-2 and later |
+| C-69 | `UPSTREAMS.md:216` | Tag `v0.40.0` = commit `0d0720e5` | verified | GitHub ref API, 2026-10-07; `git ls-remote`, 2026-10-10 | slice 4 runs |
+| C-70 | `UPSTREAMS.md:217` | Ollama is licensed MIT | verified | `LICENSE` at the tag, read 2026-10-07 | slice 4 runs; MVP-2 and later |
+| C-71 | `UPSTREAMS.md:218`; `UPSTREAMS.md:219`; `UPSTREAMS.md:220` | Release asset SHA-256 digests | verified | release API `digest` fields, read 2026-10-07 | slice 4 runs |
+| C-72 | `UPSTREAMS.md:221`; `BENCHMARK-PLAN.md:142` | Image `ollama/ollama:0.40.0` index digest `1bef6397…` | verified | Docker Hub API, 2026-10-07; `docker buildx imagetools inspect`, 2026-10-12 | slice 4 runs |
+| C-73 | `UPSTREAMS.md:227` | Below 24 GiB VRAM the default context is 4K | verified | docs.ollama.com/context-length, read 2026-10-07; smoke test showed CONTEXT 4096 (Admin, 2026-10-12) | slice 4 runs |
+| C-74 | `UPSTREAMS.md:228` | `OLLAMA_CONTEXT_LENGTH` sets the default; `ollama ps` shows it | verified | docs.ollama.com/context-length, read 2026-10-07 | slice 4 runs |
+| C-75 | `UPSTREAMS.md:229`; `BENCHMARK-PLAN.md:27`; `BENCHMARK-PLAN.md:63`; `ROADMAP.md:33` | Native API accepts per-request `num_ctx`; a new value reloads the model; OpenAI-compatible routes cannot set it | verified | source and docs at `0d0720e5`, read 2026-10-10 | slice 4 runs |
+| C-76 | `UPSTREAMS.md:230` | Ollama binds 127.0.0.1:11434 by default | verified | docs.ollama.com/faq, read 2026-10-07 | slice 4 runs; MVP-2 and later |
+| C-77 | `UPSTREAMS.md:231` | Ollama does not see prompts when run locally | not verified | documentation statement only (`docs/faq.mdx:161` at `0d0720e5`, 2026-10-10); not checked at runtime | before the first live Ollama adapter |
+| C-78 | `UPSTREAMS.md:232`; `DECISIONS.md:84`; `HANDOFF.md:272`; `adr/0005-provider-contract-and-egress.md:54` | The daemon contacts ollama.com by default (recommendations, cloud-model cache), signed with the installation key | verified | source at `0d0720e5`, read 2026-10-10 | before the first live Ollama adapter (R-27) |
+| C-79 | `UPSTREAMS.md:233` | `OLLAMA_NO_CLOUD=1` or `disable_ollama_cloud` turns that off | verified | source and docs at `0d0720e5`, read 2026-10-10; set in `ollama-bench` (Admin check, 2026-10-12) | before the first live Ollama adapter (R-27) |
+| C-80 | `UPSTREAMS.md:234` | No other outbound calls or analytics in Ollama | not verified | grep of the tag's own code only, 2026-10-10; dependencies and runtime not verified (as stated) | before the first live Ollama adapter |
+| C-81 | `UPSTREAMS.md:235`; `DECISIONS.md:73` | The desktop app checks ollama.com for updates hourly; no setting disables the check; Docker image runs `ollama serve` | verified | FAQ and source at `0d0720e5`, read 2026-10-10 | before any shared deployment (R-16 note) |
+| C-82 | `UPSTREAMS.md:236` | The GPU is usable in a Linux container under Docker Desktop/WSL2 on the benchmark host | verified | Admin-supplied output, 2026-10-12 (`nvidia-smi` in `ollama-bench`; smoke test at 100% GPU); updated in place | slice 4 runs |
+| C-83 | `UPSTREAMS.md:237`; `DECISIONS.md:74` | Cloud tags exist (`gemma4:cloud`, `gemma4:31b-cloud`) | verified | ollama.com tags page, read 2026-10-07 | only if an admin enables cloud (R-17) |
+| C-84 | `UPSTREAMS.md:237`; `adr/0005-provider-contract-and-egress.md:50` | A general cloud-tag naming rule; Ollama's cloud terms | not verified | `docs/cloud.mdx` at `28a9f8c9` gives one example and no rule (read 2026-10-09); terms not read | before the first live Ollama adapter |
+| C-85 | `UPSTREAMS.md:243` | Tag `gemma4:12b` exists | verified | ollama.com library pages, read 2026-10-07; pulled in the smoke test (Admin, 2026-10-12) | slice 4 runs |
+| C-86 | `UPSTREAMS.md:244`; `ROADMAP.md:80` | `gemma4:12b` publishes a 256K context | verified | Ollama pages and Hugging Face model data, read 2026-10-07 (published value only; use on 12 GB is B1) | slice 4 runs |
+| C-87 | `UPSTREAMS.md:245` | Manifest layer digests of `gemma4:12b` | verified | registry manifest, read 2026-10-07; layer prefixes matched in the smoke test (Admin, 2026-10-12) | slice 4 runs |
+| C-88 | `UPSTREAMS.md:246`; `BENCHMARK-PLAN.md:189` | Which value Ollama's short model ID is derived from | not verified | two pages disagree (2026-10-07); smoke-test ID `6114515d63c1` matches neither (2026-10-12) | slice 4 runs |
+| C-89 | `UPSTREAMS.md:247`; `ROADMAP.md:80` | Ollama's `gemma4:12b` weights licence is Apache-2.0 | verified | licence blob downloaded and hashed, 2026-10-07 | slice 4 runs; any live use |
+| C-90 | `UPSTREAMS.md:248` | Publisher's Gemma 4 12B weights are Apache-2.0 | verified | Hugging Face API, revision `707f0a3b`, read 2026-10-07 | slice 4 runs; any live use |
+| C-91 | `UPSTREAMS.md:249`; `UPSTREAMS.md:251`; `BENCHMARK-PLAN.md:80` | `gemma4:12b` accepts audio input | not verified | sources conflict (2026-10-07, 2026-10-10); projector metadata read partially, hash not verified; not run | slice 4 (B7 probe); MVP-3 |
+| C-92 | `UPSTREAMS.md:250`; `ROADMAP.md:33` | Ollama `v0.40.0` has audio input paths | verified | source at `0d0720e5`, read 2026-10-10 | slice 4 (B7); MVP-3 |
+| C-93 | `UPSTREAMS.md:252` | `gemma4:12b` has native function calling | not verified | documentation statement only (Ollama family page, 2026-10-07); reliability is B4 | slice 4 (B4) |
+| C-94 | `UPSTREAMS.md:253` | Fit and throughput on the 12 GB VRAM host | not verified | a measurement (B1, B3, B5) | slice 4 runs (not an exit item, R-28) |
 | C-95 | `BENCHMARK-PLAN.md:193` | A per-request control for `gemma4:12b` thinking output | not verified | none recorded; request field `think` exists in the source (2026-10-13), effect not verified | slice 4 runs (open item 12) |
 | C-96 | `BENCHMARK-PLAN.md:330` | Response field names of `POST /api/chat` | verified | source at `0d0720e5`, read 2026-10-13 (live behaviour not verified) | slice 4 runs |
 | C-97 | `BENCHMARK-PLAN.md:334`; `BENCHMARK-PLAN.md:337`; `BENCHMARK-PLAN.md:338` | Whether `eval_count` counts thinking tokens; duration units; `/api/tags` digest vs `ollama list` ID | not verified | as stated in the plan | slice 4 runs |
-| C-98 | `UPSTREAMS.md:260` | WeKnora `v0.8.2` (commit `3e8b0bfc`) is licensed MIT, with listed exceptions | verified | `LICENSE` at the tag, read 2026-10-07; notices read 2026-10-09 | slice 3b; MVP-2 |
-| C-99 | `UPSTREAMS.md:260` | Services and images in WeKnora's `docker-compose.yml` | verified | `docker-compose.yml` at the tag, read 2026-10-07 (which are optional profiles: not verified) | slice 3b; MVP-2 |
-| C-100 | `UPSTREAMS.md:260` | WeKnora model defaults; retrieval and ACL features | not verified | not researched (R-28: no Tier C claim for its own sake) | slice 3b; MVP-2 |
-| C-101 | `UPSTREAMS.md:276` | WeKnora's third-party notices and `licenses/` files | verified | files at `3e8b0bfc`, read 2026-10-09 | slice 3b; MVP-2 |
-| C-102 | `UPSTREAMS.md:288` | Licences of the images in WeKnora's compose file | not verified | not read | slice 3b; MVP-2 |
-| C-103 | `UPSTREAMS.md:261` | Hermes agent `v2026.9.24` (commit `f97608f1`) is licensed MIT | verified | `LICENSE` at the tag, read 2026-10-07 | MVP-2 |
-| C-104 | `UPSTREAMS.md:261` | Hermes skills, `skills.write_approval`, Telegram gateway | not verified | not researched (R-28) | MVP-2 |
-| C-105 | `UPSTREAMS.md:262` | Hindsight `v0.10.2` (commit `5fc4ce20`) is licensed MIT; README image `:latest` | verified | `LICENSE` and README at the tag, read 2026-10-07 | MVP-4 |
-| C-106 | `UPSTREAMS.md:262` | Hindsight embedding defaults, Hermes plugin, `bank_id_template` | not verified | not researched (R-28) | MVP-4 |
-| C-107 | `UPSTREAMS.md:265` | edge-tts `7.2.8` is LGPL-3.0 (one MIT file) | verified | `LICENSE` at the tag, read 2026-10-07 | only if an admin enables it (R-20) |
-| C-108 | `UPSTREAMS.md:265`; `DECISIONS.md:77` | edge-tts sends text to a Microsoft online service | verified | `src/edge_tts/constants.py` and README at the tag, read 2026-10-07 | only if an admin enables it (R-20) |
-| C-109 | `UPSTREAMS.md:266` | Digital-Secretary version, licence and modules | not verified | not researched (R-28) | MVP-3 |
-| C-110 | `UPSTREAMS.md:267` | Telegram Bot API terms; voice notes as files; outbound-only polling | not verified | not researched (R-28) | MVP-2 (text simulator), MVP-3 |
-| C-111 | `UPSTREAMS.md:298` | CLM-v0.1-8B is built on Qwen3-8B | not verified — flagged | no source recorded; Tier D, not adopted; Admin: kept as labelled (R-28) | none |
-| C-112 | `UPSTREAMS.md:303` | Docker Desktop and WSL2 licence and subscription terms | not verified | not recorded (as stated) | MVP-0 (local runtime, in use) |
+| C-98 | `UPSTREAMS.md:262` | WeKnora `v0.8.2` (commit `3e8b0bfc`) is licensed MIT, with listed exceptions | verified | `LICENSE` at the tag, read 2026-10-07; notices read 2026-10-09 | slice 3b; MVP-2 |
+| C-99 | `UPSTREAMS.md:262` | Services and images in WeKnora's `docker-compose.yml` | verified | `docker-compose.yml` at the tag, read 2026-10-07 (which are optional profiles: not verified) | slice 3b; MVP-2 |
+| C-100 | `UPSTREAMS.md:262` | WeKnora model defaults; retrieval and ACL features | not verified | not researched (R-28: no Tier C claim for its own sake) | slice 3b; MVP-2 |
+| C-101 | `UPSTREAMS.md:278` | WeKnora's third-party notices and `licenses/` files | verified | files at `3e8b0bfc`, read 2026-10-09 | slice 3b; MVP-2 |
+| C-102 | `UPSTREAMS.md:290` | Licences of the images in WeKnora's compose file | not verified | not read | slice 3b; MVP-2 |
+| C-103 | `UPSTREAMS.md:263` | Hermes agent `v2026.9.24` (commit `f97608f1`) is licensed MIT | verified | `LICENSE` at the tag, read 2026-10-07 | MVP-2 |
+| C-104 | `UPSTREAMS.md:263` | Hermes skills, `skills.write_approval`, Telegram gateway | not verified | not researched (R-28) | MVP-2 |
+| C-105 | `UPSTREAMS.md:264` | Hindsight `v0.10.2` (commit `5fc4ce20`) is licensed MIT; README image `:latest` | verified | `LICENSE` and README at the tag, read 2026-10-07 | MVP-4 |
+| C-106 | `UPSTREAMS.md:264` | Hindsight embedding defaults, Hermes plugin, `bank_id_template` | not verified | not researched (R-28) | MVP-4 |
+| C-107 | `UPSTREAMS.md:267` | edge-tts `7.2.8` is LGPL-3.0 (one MIT file) | verified | `LICENSE` at the tag, read 2026-10-07 | only if an admin enables it (R-20) |
+| C-108 | `UPSTREAMS.md:267`; `DECISIONS.md:77` | edge-tts sends text to a Microsoft online service | verified | `src/edge_tts/constants.py` and README at the tag, read 2026-10-07 | only if an admin enables it (R-20) |
+| C-109 | `UPSTREAMS.md:268` | Digital-Secretary version, licence and modules | not verified | not researched (R-28) | MVP-3 |
+| C-110 | `UPSTREAMS.md:269` | Telegram Bot API terms; voice notes as files; outbound-only polling | not verified | not researched (R-28) | MVP-2 (text simulator), MVP-3 |
+| C-111 | `UPSTREAMS.md:300` | CLM-v0.1-8B is built on Qwen3-8B | not verified — flagged | no source recorded; Tier D, not adopted; Admin: kept as labelled (R-28) | none |
+| C-112 | `UPSTREAMS.md:305` | Docker Desktop and WSL2 licence and subscription terms | not verified | not recorded (as stated) | MVP-0 (local runtime, in use) |
 | C-113 | `LOCAL-RUNTIME.md:34` | Docker Desktop's default disk-image location and setting | not verified | no source recorded (labelled in place) | MVP-0 (local runtime) |
 | C-114 | `DECISIONS.md:62` | psycopg is LGPL-3.0-only (same claim as the psycopg row above) | not verified | package metadata only, 2026-10-05 | MVP-1 (PostgreSQL as the authority) |
 | C-115 | `adr/0003-auth-dev-identity.md:23` | argon2-cffi defaults are 64 MiB, 3 passes, 4 lanes | not verified | no source recorded (labelled in place) | MVP-1 (authentication) |
@@ -439,7 +450,12 @@ the claim text.
 | C-122 | `BENCHMARK-PLAN.md:166` | Compose resolves variables for the whole file | not verified | no source recorded (labelled in place) | slice 4 runs |
 | C-123 | `BENCHMARK-PLAN.md:167` | `docker compose down -v` in `reset-db.bat` may delete the benchmark models volume | not verified | not tested (as stated) | slice 4 runs |
 | C-124 | `BENCHMARK-PLAN.md:173`; `BENCHMARK-PLAN.md:177` | Smoke test: pull, one-word reply, `ollama ps`, `nvidia-smi` (one sample) | verified | Admin-supplied output, 2026-10-12 (not a benchmark result) | slice 4 runs |
-| C-125 | `HANDOFF.md:118` | The R-3 compiled dependencies install on Linux (CI) | verified | CI step results, read 2026-10-06 (log not read) | MVP-1 (authentication) |
-| C-126 | `HANDOFF.md:261` | Whether the PostgreSQL digest is a multi-arch index | not verified — flagged | not checked; only amd64 hosts are used; Admin: kept as labelled (R-28) | none |
+| C-125 | `HANDOFF.md:127` | The R-3 compiled dependencies install on Linux (CI) | verified | CI step results, read 2026-10-06 (log not read) | MVP-1 (authentication) |
+| C-126 | `HANDOFF.md:273` | Whether the PostgreSQL digest is a multi-arch index | not verified — flagged | not checked; only amd64 hosts are used; Admin: kept as labelled (R-28) | none |
+| C-127 | `BENCHMARK-PLAN.md:108`; `HANDOFF.md:575` | Memory inside a container is capped by the Docker Desktop allocation | not verified | no source recorded | slice 4 runs |
+| C-128 | `HANDOFF.md:512` | Compose ignores the unused `POSTGRES_TAG` in `.env` | not verified | no source recorded | MVP-0 (local runtime) |
+| C-129 | `UPSTREAMS.md:81` | LGPL-3.0 obligations for psycopg (internal use conveys nothing; notices and replaceability on delivery) | not verified — flagged | licence interpretation; the note itself says it is not legal advice; no stage delivers QMS OS to another organisation; Admin: kept as labelled (R-28) | none |
+| C-130 | `UPSTREAMS.md:88` | pg8000 is BSD-licensed | not verified — flagged | no source recorded; pg8000 is not adopted; Admin: kept as labelled (R-28) | none |
 
-Counts: 67 verified, 52 not verified, 7 flagged (not verified, no stage needs them); 126 in all.
+Counts: 67 verified, 54 not verified, 9 flagged (not verified, no stage needs them), kept as labelled
+by the Admin on 2026-10-13; 130 in all.

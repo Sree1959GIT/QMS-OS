@@ -6,18 +6,19 @@
 
 - Repository: this repository (`QMS-OS`); confirm the remote with `git remote -v`.
 - Specification: `docs/SPECIFICATION.md`, v3.0 dated 29 September 2026. Verify title and version locally.
-- Baseline recorded here: `main` at `d7f1127ef09c0075dbe5cfcc24ae3febeba840b5` (2026-10-13; "Add the benchmark
-  harness and test-mode adapter (MVP-0 slice 4b) (#33)"). Work in progress: branch `docs/mvp0-closure` from
-  `d7f1127` (R-28, the MVP-0 exit reading, and the slice 2 labelling pass; documentation only; local, not
-  committed, not pushed).
+- Baseline recorded here: `main` at `fa5c5f239f2d390e672d819e125996117b2f5c28` (2026-10-13; "docs: close MVP-0 on
+  the narrow exit reading (R-28), claims register (#34)"). Work in progress: branch `docs/mvp0-review` from
+  `fa5c5f2` (slice 6, the MVP-0 exit review and evidence table; documentation only; local, not committed, not
+  pushed).
   Re-verify branch, HEAD and working tree with Git at session start; this file may be stale.
 - Stage: MVP-0 in progress. The exit is read as written in the specification (R-28). Of the eight items in the
   ROADMAP's MVP-0 table, five are done (Git scaffold, CI and protected `main`; synthetic fixtures; fixture startup as
   a server process; documentation reconciled; model-provider contract), the benchmark plan is written (measurements
-  are not an exit item), the upstream matrix is done for the exit (the labelling pass; the 7 flagged claims kept as
-  labelled) and container configuration beyond PostgreSQL is descoped for the exit. One slice remains before the
-  MVP-0 exit (6, which also fixes the stale *Current baseline* paragraph in `docs/ROADMAP.md`) — see *Remaining
-  before the MVP-0 exit* in `docs/ROADMAP.md`.
+  are not an exit item), the upstream matrix is done for the exit (the labelling pass; 9 flagged claims, kept as
+  labelled by the Admin on 2026-10-13, 2 of them, C-129 and C-130, found in the slice 6 review) and container
+  configuration beyond PostgreSQL is descoped for the exit. Slice 6, the last exit slice, is in review on branch
+  `docs/mvp0-review`; the evidence is in *MVP-0 exit evidence* in `docs/ROADMAP.md`. Whether MVP-0 is complete is
+  the Admin's decision; it is not declared here.
 - Mode: synthetic only. No live connectors, staff accounts or model credentials are configured in this repository,
   and none has been verified; do not claim they are configured.
 
@@ -25,7 +26,15 @@
 
 Each item says how it was verified.
 
-- **Git:** on 2026-10-13, after a restart of the laptop, `git pull --ff-only` brought local `main` from `2a385a9`
+- **Git:** on 2026-10-13 `git pull --ff-only` brought local `main` to `fa5c5f239f2d390e672d819e125996117b2f5c28`
+  (= `origin/main`), working tree clean; its tree is identical to the tip of `docs/mvp0-closure` (`7eed4da`; `git
+  diff` empty). Pull request #34 (`docs/mvp0-closure`, head `7eed4da`, R-28 and the claims register) was merged as
+  `fa5c5f2` (committer time 2026-10-13 14:19 UTC, from Git). `main` run 38412392880 (shown as #72) on `fa5c5f2`:
+  conclusion Success, total 1m 17s; jobs `test` (41s), `test-py311` (48s), `lint` (15s), `types` (32s), `postgres`
+  (1m 13s) and `secret-scan` (7s), all passed — from the Admin's screenshots of the run page, 2026-10-13, not read
+  from GitHub by Claude Code. The pull request run was not recorded. Branch `docs/mvp0-review` was created from
+  `fa5c5f2` (local only).
+  Earlier: on 2026-10-13, after a restart of the laptop, `git pull --ff-only` brought local `main` from `2a385a9`
   to `d7f1127ef09c0075dbe5cfcc24ae3febeba840b5` (= `origin/main`), working tree clean; the merged tree is identical
   to the tip of `feat/benchmark-harness` (`git diff` empty). Pull request #33 (`feat/benchmark-harness`, slice 4b)
   was merged as `d7f1127` on 2026-10-13 at 04:05 UTC: pull request run 38344515431 (checks about 04:02 to 04:03 UTC
@@ -146,6 +155,9 @@ Each item says how it was verified.
     passed`; `alembic check` "No new upgrade operations detected."; `alembic heads` `44bca21ba248 (head)` (single
     head); ruff "All checks passed!"; mypy "Success: no issues found in 46 source files". Nine deliberate breaks
     (M1–M9) each made their tests fail (see *Last sessions*);
+  - `main` at `fa5c5f2…` (R-28 merged), local Windows (Python 3.12.7) on 2026-10-13: `scripts\run-tests.bat` `324
+    passed, 1 skipped, 1 warning` (exit 0; the skip is the PostgreSQL module); `scripts\run-pg-tests.bat full` `346
+    passed, 1 warning` (exit 0);
   - `main` at `eb3c583…` (link code merged), local Windows on 2026-10-07: `scripts\run-tests.bat` `179 passed, 1
     skipped, 1 warning` (exit 0); `scripts\run-pg-tests.bat full` `200 passed, 1 warning` (exit 0);
   - GitHub Actions, Ubuntu 24.04, Python 3.12.10: job `test` succeeded on pull request #1 (run 36837238711; its
@@ -610,15 +622,27 @@ See *Proposed MVP-0 order* in `docs/ROADMAP.md`. No dates or delivery commitment
   `docs/adr/0005-provider-contract-and-egress.md`, `docs/LOCAL-RUNTIME.md` and `docs/BENCHMARK-PLAN.md`; the
   UPSTREAMS GPU-in-container row now cites the Admin's 2026-10-12 check; a stale LOCAL-RUNTIME line (Postgres
   image "pinned by tag") marked resolved. No new research, no code, tests, CI or migration changes;
-  `docs/SPECIFICATION.md` not edited.
-- Next: slice 6 ("no unverified feature claim" review, the last MVP-0 exit slice; it also fixes the stale *Current
-  baseline* paragraph in `docs/ROADMAP.md`); the Admin's decisions — benchmark thresholds (plan open items 1, 4 and
-  12), R-27 (Ollama cloud features off) and the R-16 note (container or server-only Ollama for a shared
-  deployment); the Cloudflare route
-  on the existing `ollama` container (open: dashboard route and any Access policy not checked); exit criteria for the
-  WeKnora spike (3b) before it starts; payload-bound approval; harness extensions for B1 to B3 and tokens per second
-  in the aggregate; the first benchmark results (the Admin's trial run of 2026-10-13 exists, untracked; no numbers
-  are recorded).
+  `docs/SPECIFICATION.md` not edited. Merged as `fa5c5f2` (pull request #34; see *Verified state*, Git).
+- Branch `docs/mvp0-review` from `fa5c5f2` (2026-10-13; slice 6, the MVP-0 exit review; documentation only;
+  synthetic): `docs/ROADMAP.md` *Current baseline* updated to `fa5c5f2` with counts from runs on 2026-10-13
+  (`324 passed, 1 skipped` SQLite, `346 passed` PostgreSQL); the MVP-0 item table and the remaining-slices section
+  agree with R-28 (upstream matrix and benchmark plan done for the exit, container configuration descoped, slice 6
+  in review, "as of `fa5c5f2`"); new section *MVP-0 exit evidence* (one row per criterion of specification line 158,
+  with its evidence and gaps). Out-of-date statements of current state fixed with dated wording (ROADMAP item 9 on
+  required checks; UPSTREAMS on the postgres extra in CI, the first CI run of the authentication packages and the
+  lint tools in CI; ROADMAP item-table text on per-request `num_ctx` and audio input, verified on 2026-10-10).
+  Claims register: completeness search (method in its header) found 4 claims with no row (C-127 to C-130) and 4
+  restatements (added to their rows); now 130 claims: 67 verified, 54 not verified, 9 flagged, kept as labelled by
+  the Admin on 2026-10-13 (including C-129 the psycopg LGPL note and C-130 "pg8000 is BSD-licensed"). Admin
+  decisions (2026-10-13): C-129 and C-130 kept as labelled; the screenshot-based CI evidence for run 38412392880
+  accepted. MVP-0 is not declared complete; the Admin decides.
+- Next: the Admin's review of slice 6 (`docs/mvp0-review`; slice 6 is done once reviewed) and the decision whether
+  the MVP-0 exit is met; the Admin's decisions — benchmark thresholds
+  (plan open items 1, 4 and 12), R-27 (Ollama cloud features off) and the R-16 note (container or server-only Ollama
+  for a shared deployment); the Cloudflare route on the existing `ollama` container (open: dashboard route and any
+  Access policy not checked); exit criteria for the WeKnora spike (3b) before it starts; payload-bound approval;
+  harness extensions for B1 to B3 and tokens per second in the aggregate; the first benchmark results (the Admin's
+  trial run of 2026-10-13 exists, untracked; no numbers are recorded).
 
 ## End-of-session update template
 
