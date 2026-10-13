@@ -54,7 +54,7 @@ extend-immutable-calls = ["fastapi.Depends", "qms_os.auth.limits.AuthLimits"]
 
 [tool.mypy]
 python_version = "3.11"
-files = ["qms_os"]
+files = ["qms_os", "qms_bench"]
 warn_unused_ignores = true
 warn_redundant_casts = true
 warn_unused_configs = true

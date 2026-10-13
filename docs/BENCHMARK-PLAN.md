@@ -1,11 +1,11 @@
 # QMS OS — Local-model benchmark plan (MVP-0 slice 4)
 
-Status: **plan only.** No benchmark cell in this file has been measured. No benchmark harness, adapter, recording or
-result exists. Every number in *Pass criteria* is **proposed, Admin to set** unless the row names the specification or a
-decision that states it. Results, when they exist, are added under *Results* by a later pull request. The host and Docker
-facts in section 1 were supplied by the Admin on 2026-10-11; they were not measured by Claude Code. The container checks
-and the smoke test in section 5 were run by the Admin on 2026-10-12 (Admin-supplied output, not measured by Claude Code);
-they are not benchmark results.
+Status: **plan only.** No benchmark cell in this file has been measured. A harness and a test-mode adapter exist (section
+7) but have not run against a real model; no recording or result exists. Every number in *Pass criteria* is **proposed,
+Admin to set** unless the row names the specification or a decision that states it. Results, when they exist, are added
+under *Results* by a later pull request. The host and Docker facts in section 1 were supplied by the Admin on 2026-10-11;
+they were not measured by Claude Code. The container checks and the smoke test in section 5 were run by the Admin on
+2026-10-12 (Admin-supplied output, not measured by Claude Code); they are not benchmark results.
 
 ## 1. Scope and rules
 
@@ -252,7 +252,8 @@ total minutes, word error rate, QMS term error rate, values misrecognised and fl
 6. **Citation corpus:** size of the synthetic corpus and how facts are placed for B6.
 7. **Co-running:** whether a second model (embeddings, ranking) alongside the first is measured in this plan or later.
 8. **Harness and `test`-mode adapter:** which slice builds them, and their review before any run.
-   *Admin's lean (not decided): a new slice 4b builds the harness and the `test`-mode adapter.*
+   *Admin's lean (not decided): a new slice 4b builds the harness and the `test`-mode adapter.* Slice 4b wrote them
+   (section 7); no live run.
 9. **Cloud setting for runs:** whether benchmark runs must use `OLLAMA_NO_CLOUD=1` before R-27 is decided.
    *Admin's lean (not decided): yes, benchmark runs use `OLLAMA_NO_CLOUD=1`.*
 10. **Where results go:** this file's *Results* section or a separate results file, and the approval of each results
@@ -264,6 +265,78 @@ total minutes, word error rate, QMS term error rate, values misrecognised and fl
 12. **Thinking output:** how thinking text from `gemma4:12b` is treated in runs: counted toward the 512-token cap,
     capped separately, or disabled. A per-request control is not verified (`docs/UPSTREAMS.md` records none).
     *Admin to decide.*
+
+## 7. Harness (slice 4b)
+
+Written in slice 4b; **no live run.** It has been tested only against a fake server. Every benchmark cell stays
+`not run` until the Admin runs it and a results pull request records the aggregates (open item 10).
+
+**What it measures.** B4 (JSON tool-call validity) and B5 (latency), each at `num_ctx` 4096 and 8192: four cells
+(`B4-4K`, `B4-8K`, `B5-4K`, `B5-8K`). B1, B2, B3 and B6 to B8 are not covered yet. Per cell: warm-up runs first
+(default 1, left out of the aggregates; a different `num_ctx` reloads the model, `docs/UPSTREAMS.md`), then N
+repetitions (default 10, open item 4). Every request is `POST /api/chat` with `stream: false`, `options.num_ctx` set
+per request and the output cap `options.num_predict` (default 512, open item 4). B4 offers three synthetic tools; a
+run is valid when the reply holds exactly one tool call, to the tool the prompt asks for, with arguments that match
+the tool's schema (required names, types and enums; a name the schema does not list is invalid). B5 sends synthetic
+prompts without tools. The prompts are synthetic and in the repository (`apps/api/qms_bench/prompts.py`).
+
+**Per run it records** (raw, untracked: `bench-results/<UTC time>/runs.jsonl`): cell id, `num_ctx`, the cap, prompt id,
+warm-up flag, the wall-clock time of the HTTP exchange, the HTTP status, `done_reason` and whether it is `length`
+(truncated), `prompt_eval_count`, `eval_count` and the duration fields as the endpoint returns them, the character counts
+of the answer and of the thinking text (never the text), the number of tool calls, B4 validity with a reason code, the
+response's key names and the gateway request id. `meta.json` holds the server version (`GET /api/version`), the model
+name and digest as `GET /api/tags` reports them, `GET /api/ps` after each cell (`size`, `size_vram`, `context_length`,
+runner), the Admin's flags and the counts of the run's egress-log rows by provider, model, egress class, integration
+mode, data class and outcome. `aggregate.json` holds the aggregate rows. Nothing is written into `docs/`.
+
+**Printed aggregates**, per cell: runs, errors, p50 and p95 latency (linear interpolation between the closest ranks),
+the valid-JSON count and rate (B4; an error counts as invalid), the truncated count and the runs with thinking text.
+The aggregate output records the provider, the model and the egress class: a line above the printed table, and
+three fields in every row of `aggregate.json`.
+
+**Through the provider contract.** Each model call goes through `ProviderGateway.call` with the test-mode adapter
+`OllamaBenchProvider` (`apps/api/qms_bench/ollama_adapter.py`): integration mode `test`, family `ollama`, egress class
+`local`. The harness and the adapter are a package of their own, `apps/api/qms_bench/`, outside `qms_os`: the application
+package holds no HTTP client (an existing test checks it) and never imports `qms_bench` (a new test). The registry
+accepts it because it refuses only `live` adapters (R-25, unchanged; a test checks that it still refuses this adapter as
+`live`); no default registry registers it, so the application never calls it. The endpoint must be
+`http://127.0.0.1:<port>` or `http://localhost:<port>`: any other host is refused, redirects are not followed and proxy
+settings are ignored. The gateway uses a temporary SQLite database, created in the run's output directory and deleted
+after the run, also when the run fails; the harness never opens the application's database (a test checks both; Admin,
+2026-10-13). Its allow-list holds one entry that the harness writes for the run (the model, the digest the Admin passes,
+egress class `local`, ceiling `public`), and every call states the data class `public`. **Benchmark runs therefore bypass
+the Admin's audited allow-list** (ADR 0005, R-25): no account admin approves the entry and no audit event is written. The
+egress log still records every call, and its counts are kept in `meta.json`. Before any model call the harness refuses to
+run unless `GET /api/tags` lists the model with exactly that digest (R-21). The gateway's cloud model-name rule still
+applies.
+
+**How the Admin runs a live run**, from the repository root, with the container from slice 1b (section 5).
+`scripts\run-benchmark.bat` changes to `apps\api` and forwards its arguments to `python -m qms_bench`:
+
+1. `docker compose --profile benchmark up -d ollama-bench` (needs `POSTGRES_PASSWORD`, section 5).
+2. `scripts\run-benchmark.bat --list-models` prints each model's name and digest.
+3. `scripts\run-benchmark.bat --model gemma4:12b --model-digest sha256:<64 hex from step 2> --power-mode "<mode>"
+   --plugged-in yes --gpu-temp-c <C> --gpu-in-use "<GPU>"` (one line). Optional flags:
+   `--endpoint` (default `http://127.0.0.1:11435`), `--repetitions` (10), `--warmup` (1), `--num-predict` (512),
+   `--contexts` (`4096,8192`), `--timeout` (600 s per request), `--out` (a new directory).
+4. `docker compose --profile benchmark stop ollama-bench`.
+
+Exit codes: 0 done, 2 usage error, 3 refused or failed.
+
+**Not verified:**
+
+- No live run: behaviour against Ollama `v0.40.0` is tested only with a fake server.
+- Field names come from the `v0.40.0` source at `0d0720e5` (`api/types.go`, `server/routes.go:2293`,
+  `llm/server.go:255-265`), read on 2026-10-13 from the archive recorded in `docs/UPSTREAMS.md`. Of these, only
+  `options.num_ctx` is in the UPSTREAMS rows; `options.num_predict` and the response fields are not. Each record keeps
+  the response's key names, so a field that is missing or renamed shows up.
+- Whether `eval_count` includes thinking tokens. That source has no separate thinking-token count, so thinking is
+  recorded as a character count. It has a request field `think` (`api/types.go:112,164`); the harness does not set
+  it, and its effect on `gemma4:12b` is not verified. How thinking is treated is open item 12, the Admin's decision.
+- The duration fields' unit (Go `time.Duration`, nanoseconds by that source's JSON encoding); stored as returned.
+- Whether the `/api/tags` digest is the value behind the model ID that `ollama list` shows.
+- The latency is the HTTP exchange measured on the host; the gateway's log writes are outside it.
+- `localhost` is resolved by the host; `127.0.0.1` avoids that.
 
 ## Results
 
