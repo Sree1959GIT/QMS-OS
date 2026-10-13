@@ -31,7 +31,7 @@ Keeping files in the project folder
   the pip cache and pycache to `<root>\cache`; the folders are created if missing. A C: or relative path, or a folder
   that cannot be created, stops the script with an error, and every script that calls `env.bat` stops too — there is
   never a fallback to the user profile.
-- Docker Desktop keeps its disk image, including the Postgres volume, in the user profile by default. Move it under Settings > Resources > Advanced > Disk image location.
+- Not verified (no source recorded): Docker Desktop keeps its disk image, including the Postgres volume, in the user profile by default; it can be moved under Settings > Resources > Advanced > Disk image location.
 - Not redirected: the Python installer, the `py` launcher, and Docker Desktop's own app data.
 - Do not place the repo in OneDrive or another synced folder.
 
@@ -39,4 +39,4 @@ Not verified
 - A restore from a backup.
 - The API server process running against PostgreSQL (tests use the in-process test client only).
 - The `[dev]` extra name; `setup-venv.bat` falls back to installing pytest and httpx.
-- The Postgres image is pinned by major-version tag, not by digest.
+- (Resolved 2026-10-10: the Postgres image in `compose.yaml` is pinned by digest, the same reference as CI; R-2 note, R-21.)

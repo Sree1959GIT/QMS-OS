@@ -39,7 +39,8 @@ classification.
 - **Application-level control only.** Nothing stops other code, or Hermes, from opening a network connection
   directly. Routing Hermes through this gateway (or a proxy) and network-level egress rules are later slices.
 - **SQLite allows one writer.** On SQLite the gateway must be called before the caller's transaction writes;
-  otherwise the log write waits for it. PostgreSQL has no such restriction.
+  otherwise the log write waits for it. PostgreSQL has no such restriction. (Database behaviour as stated; not
+  verified against the SQLite or PostgreSQL documentation.)
 - Two admins enabling the cloud switch for the first time at the same moment can collide on the first row (one gets
   an error); later changes lock the row.
 - Step-up is not payload-bound approval (R-3).
