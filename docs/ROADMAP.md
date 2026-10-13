@@ -12,14 +12,18 @@
 
 ## Current baseline
 
-A synthetic-data backend prototype on `main` at `fa5c5f2` (pull request #34, documentation only, on top of
-`d7f1127`): `324 passed, 1 skipped` on SQLite (`scripts\run-tests.bat`) and `346 passed` on PostgreSQL
-(`scripts\run-pg-tests.bat full`), both local runs at `fa5c5f2` on 2026-10-13 (Windows, Python 3.12.7); CI on
+A synthetic-data backend prototype on `main` at `e1b5276` (pull request #35, documentation only, on top of
+`fa5c5f2`): `324 passed, 1 skipped` on SQLite (`scripts\run-tests.bat`) and `346 passed` on PostgreSQL
+(`scripts\run-pg-tests.bat full`), both local runs at `e1b5276` on 2026-10-13 (Windows, Python 3.12.7); CI on
 GitHub Actions with six jobs (`test`, `test-py311`, `lint`, `types`, `postgres`, `secret-scan`), all required on a
-protected `main` branch (R-13), all passed on `main` at `fa5c5f2` (run 38412392880, as shown in the Admin's
-screenshots; *MVP-0 exit evidence* below). See *Verified state* and *Not verified* in `docs/HANDOFF.md`.
+protected `main` branch (R-13), all passed on `main` at `e1b5276` (run 38434451817, as shown in the Admin's
+screenshot; *MVP-0 exit evidence* below). MVP-0: declared met (R-29). See *Verified state* and *Not verified* in
+`docs/HANDOFF.md`.
 
 ## MVP-0
+
+Status: **Declared met (R-29)**, by the Admin on 2026-10-13, on the narrow reading of the exit (R-28); evidence and
+accepted gaps in *MVP-0 exit evidence* below.
 
 Specification scope: upstream inspection with a licence and version matrix, Git scaffold, container configuration,
 synthetic fixtures, a model-provider contract and a local-model benchmark plan. Exit: one safe fixture startup and
@@ -35,6 +39,7 @@ no unverified feature claim.
 | Model-provider contract (interface and a simulated provider only) | Done | pull request #23, merged as `53f6f23`; `main` CI run 37939344103 green (as reported by the Admin): contract, simulated providers, gateway, allow-list, cloud switch, egress log and admin routes; ADR 0005, R-24, R-25 |
 | Local-model benchmark plan | Done for the exit (R-28): plan written (`docs/BENCHMARK-PLAN.md`); thresholds proposed (the Admin's open decisions); measurements are not an exit item | slice 4 below |
 | Documentation reconciled with the repository | Done | pull request #2 |
+| MVP-0 exit ("one safe fixture startup and no unverified feature claim") | Declared met (R-29) | *MVP-0 exit evidence* below; R-28 |
 
 ### Proposed MVP-0 order (a proposal, not a commitment)
 
@@ -58,14 +63,13 @@ no unverified feature claim.
    required status checks, with the up-to-date rule on (R-13, Admin, 2026-10-07). No formatter is enforced (Admin
    decision, 2026-10-07).
 
-### Remaining before the MVP-0 exit (as of `fa5c5f2`)
+### Remaining before the MVP-0 exit (as of `e1b5276`)
 
 The exit is read as written in the specification (R-28): one safe fixture startup and no unverified feature claim.
-One slice remains for the exit: 6 (the review), in review on branch `docs/mvp0-review` (evidence: *MVP-0 exit
-evidence* below; the *Current baseline* paragraph above is updated).
-Slices 2, 3, 4 and 5 are done for the exit (slice 2: the labelling pass; 9 flagged claims, kept as labelled by the
-Admin on 2026-10-13;
-slice 4: the plan; measurements are not an exit item, R-28); slice 1 is descoped for the exit
+No slices remain for the exit: MVP-0 is declared met (R-29). Slice 6 (the review) is done (pull request #35,
+merged as `e1b5276`; evidence in *MVP-0 exit evidence* below).
+Slices 2, 3, 4, 5 and 6 are done for the exit (slice 2: the labelling pass; 9 flagged claims, kept as labelled by
+the Admin on 2026-10-13; slice 4: the plan; measurements are not an exit item, R-28); slice 1 is descoped for the exit
 (R-28); slices 1b, 3a, 3b and 4b are not exit items (1b, 3a and 4b are done). Statuses: in progress = some work is
 on `main`; not started = none is.
 
@@ -80,7 +84,7 @@ on `main`; not started = none is.
 | 4 | Local-model benchmark plan (item 8), including audio work. Runtime-neutral (R-26): it covers the specification's Ollama benchmark plan scope (`docs/SPECIFICATION.md` §7 and §12, lines 103 and 158), with Ollama and `gemma4:12b` as the first case; other runtimes and models are added as provider entries. In MVP-0 only the plan, with pass criteria for word error rate, latency and memory on English with different accents (including Indian and American), with shop-floor noise and QMS vocabulary; measurements later. Recordings stay on the Admin's machine, untracked (R-23). Plan: `docs/BENCHMARK-PLAN.md` | Done for the exit (R-28): plan written and merged; thresholds are the Admin's open decisions (items 1, 4, 12); measurements are not an exit item | 3 and 2 — **inferred, not stated in the specification**: the plan measures models through the provider contract, and the local models need licence entries for code and weights. Ollama `v0.40.0`, the `gemma4:12b` manifest digests, its Apache-2.0 weights licence and 256K published context are recorded in `docs/UPSTREAMS.md` (Tier B, pull request #21); fit on the 12 GB VRAM host is a measurement for this slice |
 | 4b | Benchmark harness and `test`-mode adapter (`docs/BENCHMARK-PLAN.md`, section 7): B4 and B5 at 4K and 8K context through the provider gateway; loopback endpoints only; model digest checked against the endpoint (R-21); raw records untracked (R-23). Not an MVP-0 exit item by itself | Done (merged as `d7f1127`, pull request #33); no live run recorded | 1b; 4 (the plan); ADR 0005; R-25 (registry refuses `live`, unchanged) |
 | 5 | CI hardening, the rest (item 9): lint and format, type checks, Python 3.11; whether `postgres` and `secret-scan` become required checks | Done (pull requests #15 and #20; all six jobs required, R-13). Python 3.11.17 verified for the SQLite suite only | — |
-| 6 | "No unverified feature claim" review of the documentation (the exit criterion) | In review (branch `docs/mvp0-review`): evidence in *MVP-0 exit evidence* below; done once the Admin has reviewed it | 2 (done for the exit; slice 1 descoped and slices 3 to 5 done for the exit, R-28; not 1b, 3a, 3b or 4b) |
+| 6 | "No unverified feature claim" review of the documentation (the exit criterion) | Done (pull request #35, merged as `e1b5276`): evidence in *MVP-0 exit evidence* below; MVP-0 declared met by the Admin (R-29) | 2 (done for the exit; slice 1 descoped and slices 3 to 5 done for the exit, R-28; not 1b, 3a, 3b or 4b) |
 
 Not MVP-0 exit items, but recorded blockers for later steps: **before the first live model adapter**, two-admin
 approval of widening provider changes (adding a cloud entry, turning the cloud switch on, raising a ceiling) — until
@@ -90,14 +94,20 @@ then the provider registry refuses any `live` adapter (R-25), and a live adapter
 ## MVP-0 exit evidence
 
 The exit criteria are quoted from `docs/SPECIFICATION.md`, section 12, line 158: "Exit: one safe fixture startup and
-no unverified feature claim." The exit is read as written (R-28). This section gives the evidence; whether the exit
-is met is the Admin's decision. CI evidence for `fa5c5f2` comes from the Admin's screenshots of the run page on
-2026-10-13; Claude Code did not read it from GitHub, and the job logs were not read.
+no unverified feature claim." The exit is read as written (R-28). This section gives the evidence; the Admin
+declared the exit met on 2026-10-13, accepting the gaps listed below (R-29). CI evidence for `fa5c5f2` comes from the
+Admin's screenshots of the run page on 2026-10-13; Claude Code did not read it from GitHub, and the job logs were not
+read.
 
 | Criterion (line 158) | Evidence | Gaps |
 |---|---|---|
 | "one safe fixture startup" | `apps/api/tests/test_startup_smoke.py` (`test_server_process_starts_in_demo_mode_and_reports_health`): seeds a temporary SQLite database with the synthetic fixture (`python -m qms_os.seed`), starts the real server as a separate process (`python -m uvicorn qms_os.main:create_app --factory`) in `demo` mode on `127.0.0.1` with the organisation policy file removed from its environment, and checks `/api/health` without a proxy. Locally on 2026-10-13 at `fa5c5f2` (Windows, Python 3.12.7): it passed alone and in `scripts\run-tests.bat` (`324 passed, 1 skipped`; the skip is the PostgreSQL module, which needs a test-database URL). CI on `main` at `fa5c5f239f2d390e672d819e125996117b2f5c28`: run 38412392880 (shown as #72), conclusion Success, total 1m 17s; jobs `test` (41s), `test-py311` (48s), `lint` (15s), `types` (32s), `postgres` (1m 13s), `secret-scan` (7s), all passed (Admin's screenshots, 2026-10-13). The SQLite suite, which includes this test, runs in jobs `test` and `test-py311` | The CI evidence is a screenshot, not read from GitHub by Claude Code (accepted by the Admin, 2026-10-13); the job logs, and so the per-test results in CI, were not read. "Safe" is shown by the test's design (synthetic fixture, `demo` mode, loopback only, no policy file, no secrets), not by a separate review. The startup is on SQLite only; the API server process has not been run against PostgreSQL (`docs/HANDOFF.md`, *Not verified*) |
 | "no unverified feature claim" | R-28 (`docs/DECISIONS.md`): a claim counts as handled when it is verified, with its source and date, or labelled "not verified". `docs/UPSTREAMS.md`, *Claims register*: 130 claims, 67 verified with source and date, 54 not verified (labelled in place where a stage needs them) and 9 flagged, kept as labelled by the Admin on 2026-10-13 (not verified, no stage needs them; C-129 and C-130 were found by the completeness search of the slice 6 review, whose method is in the register's header) | The completeness search is a keyword search reviewed by hand: a claim worded without any of its names or claim words would not be found. 54 claims stay not verified by design (R-28); several are needed by later stages (MVP-1 and later, slice 4 runs) |
+
+**Post-merge check** (after the slice 6 review merged; from the Admin's screenshot of the run page, not read from
+GitHub by Claude Code; job logs not read): CI run 38434451817 on `main` at `e1b5276d1c114b50fba51e05f937d535a4707d01`,
+conclusion Success, total 1m 37s; jobs `test` (50s), `test-py311` (55s), `lint` (13s), `types` (35s), `postgres`
+(1m 33s), `secret-scan` (5s), all passed.
 
 ## Later stages (specification scope; all not started)
 
