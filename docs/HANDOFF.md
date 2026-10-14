@@ -275,6 +275,9 @@ Each item says how it was verified.
   CHECK constraint (service-layer validation only; the additive-only migration guard does not allow
   `create_check_constraint` on existing tables; the new grant tables do have CHECK constraints). Project
   classification has no route (it can be set in the database only).
+- Super admin skills: what `allowed-tools` pre-approves was not shown (the acceptance run was approved by auto mode);
+  `disallowed-tools` is accepted by the installed Claude Code's frontmatter schema, but its effect was not observed
+  in a run.
 - Docker Compose beyond the PostgreSQL service: no other service has been run. A PostgreSQL restore drill has not been run.
 - Benchmark harness (slice 4b, on `main` since `d7f1127`): tested only against a fake server on 127.0.0.1; no live
   run is recorded. The Admin made a trial run on 2026-10-13; it exists, untracked, and no numbers from it are
@@ -716,7 +719,14 @@ made.
   scope and delegation declared and empty. (D) Skills `housekeeping-check`, `review-org` and `access-segregation`
   (`.claude/skills/`, `docs/superadmin/`), backed by `apps/api/qms_superadmin` (read-only, synthetic database only,
   R-46) and `scripts\run-superadmin.bat`. (E) This housekeeping. Self-protection (R-47): an org admin cannot change
-  their own person record, the grants of their own QMS role, or their own project membership.
+  their own person record, the grants of their own QMS role, or their own project membership. (F) Wording
+  correction (Admin, 2026-10-14): a skill's `allowed-tools` only pre-approves tools and does not restrict them; each
+  skill now also sets `disallowed-tools: Write, Edit, NotebookEdit` (accepted by the installed Claude Code 2.1.299
+  and the VS Code extension's 2.1.296: both carry a skill frontmatter schema with that field). The boundary is the
+  read-only scripts (R-46), the `SKILL.md` rules and the permission settings. Skills acceptance (2026-10-14): Claude
+  Code refused to invoke the skills itself (`disable-model-invocation` honoured); the Admin ran `/housekeeping-check`
+  (0 findings), `/review-org` and `/access-segregation` (first refused, R-46, then 0 findings on the demo database),
+  each running only its one command.
 - Next: MVP-1 pull request 2 review and CI; then pull request 3 (slices 4 and 5: agent enablement, with agents in
   the preview and in `access-segregation`, and the interim content-addressed evidence store with
   `knowledge-integrity`). Admin decisions still open: which completeness checks are in MVP-1 (slice 7); benchmark

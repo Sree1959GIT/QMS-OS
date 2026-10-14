@@ -403,7 +403,7 @@ were added to their existing rows. C-129 and C-130 are among the 9 flagged claim
 | C-75 | `UPSTREAMS.md:229`; `BENCHMARK-PLAN.md:27`; `BENCHMARK-PLAN.md:63`; `ROADMAP.md:37` | Native API accepts per-request `num_ctx`; a new value reloads the model; OpenAI-compatible routes cannot set it | verified | source and docs at `0d0720e5`, read 2026-10-10 | slice 4 runs |
 | C-76 | `UPSTREAMS.md:230` | Ollama binds 127.0.0.1:11434 by default | verified | docs.ollama.com/faq, read 2026-10-07 | slice 4 runs; MVP-2 and later |
 | C-77 | `UPSTREAMS.md:231` | Ollama does not see prompts when run locally | not verified | documentation statement only (`docs/faq.mdx:161` at `0d0720e5`, 2026-10-10); not checked at runtime | before the first live Ollama adapter |
-| C-78 | `UPSTREAMS.md:232`; `DECISIONS.md:84`; `HANDOFF.md:308`; `adr/0005-provider-contract-and-egress.md:54` | The daemon contacts ollama.com by default (recommendations, cloud-model cache), signed with the installation key | verified | source at `0d0720e5`, read 2026-10-10 | before the first live Ollama adapter (R-27) |
+| C-78 | `UPSTREAMS.md:232`; `DECISIONS.md:84`; `HANDOFF.md:311`; `adr/0005-provider-contract-and-egress.md:54` | The daemon contacts ollama.com by default (recommendations, cloud-model cache), signed with the installation key | verified | source at `0d0720e5`, read 2026-10-10 | before the first live Ollama adapter (R-27) |
 | C-79 | `UPSTREAMS.md:233` | `OLLAMA_NO_CLOUD=1` or `disable_ollama_cloud` turns that off | verified | source and docs at `0d0720e5`, read 2026-10-10; set in `ollama-bench` (Admin check, 2026-10-12) | before the first live Ollama adapter (R-27) |
 | C-80 | `UPSTREAMS.md:234` | No other outbound calls or analytics in Ollama | not verified | grep of the tag's own code only, 2026-10-10; dependencies and runtime not verified (as stated) | before the first live Ollama adapter |
 | C-81 | `UPSTREAMS.md:235`; `DECISIONS.md:73` | The desktop app checks ollama.com for updates hourly; no setting disables the check; Docker image runs `ollama serve` | verified | FAQ and source at `0d0720e5`, read 2026-10-10 | before any shared deployment (R-16 note) |
@@ -451,9 +451,9 @@ were added to their existing rows. C-129 and C-130 are among the 9 flagged claim
 | C-123 | `BENCHMARK-PLAN.md:167` | `docker compose down -v` in `reset-db.bat` may delete the benchmark models volume | not verified | not tested (as stated) | slice 4 runs |
 | C-124 | `BENCHMARK-PLAN.md:173`; `BENCHMARK-PLAN.md:177` | Smoke test: pull, one-word reply, `ollama ps`, `nvidia-smi` (one sample) | verified | Admin-supplied output, 2026-10-12 (not a benchmark result) | slice 4 runs |
 | C-125 | `HANDOFF.md:149` | The R-3 compiled dependencies install on Linux (CI) | verified | CI step results, read 2026-10-06 (log not read) | MVP-1 (authentication) |
-| C-126 | `HANDOFF.md:309` | Whether the PostgreSQL digest is a multi-arch index | not verified — flagged | not checked; only amd64 hosts are used; Admin: kept as labelled (R-28) | none |
-| C-127 | `BENCHMARK-PLAN.md:108`; `HANDOFF.md:612` | Memory inside a container is capped by the Docker Desktop allocation | not verified | no source recorded | slice 4 runs |
-| C-128 | `HANDOFF.md:549` | Compose ignores the unused `POSTGRES_TAG` in `.env` | not verified | no source recorded | MVP-0 (local runtime) |
+| C-126 | `HANDOFF.md:312` | Whether the PostgreSQL digest is a multi-arch index | not verified — flagged | not checked; only amd64 hosts are used; Admin: kept as labelled (R-28) | none |
+| C-127 | `BENCHMARK-PLAN.md:108`; `HANDOFF.md:615` | Memory inside a container is capped by the Docker Desktop allocation | not verified | no source recorded | slice 4 runs |
+| C-128 | `HANDOFF.md:552` | Compose ignores the unused `POSTGRES_TAG` in `.env` | not verified | no source recorded | MVP-0 (local runtime) |
 | C-129 | `UPSTREAMS.md:81` | LGPL-3.0 obligations for psycopg (internal use conveys nothing; notices and replaceability on delivery) | not verified — flagged | licence interpretation; the note itself says it is not legal advice; no stage delivers QMS OS to another organisation; Admin: kept as labelled (R-28) | none |
 | C-130 | `UPSTREAMS.md:88` | pg8000 is BSD-licensed | not verified — flagged | no source recorded; pg8000 is not adopted; Admin: kept as labelled (R-28) | none |
 

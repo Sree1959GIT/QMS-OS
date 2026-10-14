@@ -171,8 +171,11 @@ Slice notes (decisions recorded with their slice, not as R-rows):
 Super admin operations are Claude Code project skills under `.claude/skills/`, run by a human with the Admin's own
 login; they read and propose, they never approve or publish (R-38; `docs/SPECIFICATION.md` line 152), and approvals
 stay in the application. Each skill ships in the pull request whose feature it operates, with its documentation.
-None exists yet. Activities are taken from `docs/SPECIFICATION.md` journeys 1 and 2 (lines 176 and 177) and the
-decision rows named; skill names follow the specification's list (line 152) where one fits.
+The three of pull request 2 exist (`housekeeping-check`, `review-org`, `access-segregation`). A skill's
+`allowed-tools` only pre-approves tools and does not restrict them; each skill sets `disallowed-tools` (Write,
+Edit, NotebookEdit), and the boundary is the read-only scripts (R-46), the `SKILL.md` rules and the Claude Code
+permission settings (R-38 note). Activities are taken from `docs/SPECIFICATION.md` journeys 1 and 2 (lines 176 and
+177) and the decision rows named; skill names follow the specification's list (line 152) where one fits.
 
 | Activity (source) | Skill | Ships in | Documentation |
 |---|---|---|---|

@@ -18,7 +18,7 @@ Report what needs doing in the documentation after a merge or a session, and nam
 
 ## How to run
 
-In Claude Code, the Admin invokes the skill (`/housekeeping-check`); it runs only
+In Claude Code, the Admin invokes the skill (`/housekeeping-check`); its instructions run only
 `cmd //c "scripts\\run-superadmin.bat housekeeping"`. The script can also be run directly:
 `scripts\run-superadmin.bat housekeeping`.
 
@@ -28,6 +28,15 @@ One line per finding, each naming what to use: documents are changed only in a d
 writes documents. For the claims register, `python -m qms_superadmin claims-register --print` prints the current
 section for that pull request. A closing line points to `review-org` and `access-segregation` for the database
 reviews. Exit codes: 0 nothing to report, 1 findings.
+
+## Boundary
+
+The skill's instructions name one command, and its `allowed-tools` pre-approves that command; `allowed-tools`
+does not restrict other tools. `disallowed-tools` removes Write, Edit and NotebookEdit while the skill is
+active. The boundary is the read-only script (R-46: read-only database transaction, synthetic database
+only, no network, no file writes), the rules in the `SKILL.md` and the Claude Code permission settings of the
+session. A human-invocation check (2026-10-14) showed each skill running only its command; that run was
+approved by auto mode, so it did not show what `allowed-tools` pre-approves.
 
 ## What it never does
 

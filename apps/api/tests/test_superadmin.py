@@ -115,7 +115,9 @@ def test_scripts_make_no_network_calls_and_write_no_files():
 
 
 @pytest.mark.parametrize("name", SKILL_NAMES)
-def test_each_skill_is_human_invoked_and_may_run_only_its_script(name):
+def test_each_skill_is_human_invoked_preapproves_only_its_script_and_removes_write_tools(name):
+    """``allowed-tools`` only pre-approves (it does not restrict); ``disallowed-tools`` removes the file-writing tools.
+    The boundary is the read-only script (R-46), the SKILL.md rules and the permission settings (R-38 note)."""
     text_ = (SKILLS / name / "SKILL.md").read_text(encoding="utf-8")
     front = text_.split("---")[1]
     assert re.search(r"^name: " + re.escape(name) + r"$", front, re.M)
@@ -123,4 +125,7 @@ def test_each_skill_is_human_invoked_and_may_run_only_its_script(name):
     command = {"housekeeping-check": "housekeeping"}.get(name, name)
     tools = re.search(r"^allowed-tools: (.+)$", front, re.M).group(1)
     assert tools == f'Bash(cmd //c "scripts\\\\run-superadmin.bat {command}")'
+    removed = re.search(r"^disallowed-tools: (.+)$", front, re.M).group(1)
+    assert [t.strip() for t in removed.split(",")] == ["Write", "Edit", "NotebookEdit"]
+    assert "does not restrict" in text_                     # the body states the limit of allowed-tools
     assert (REPO / "docs" / "superadmin" / f"{name}.md").is_file()
