@@ -12,13 +12,13 @@
 
 ## Current baseline
 
-A synthetic-data backend prototype on `main` at `e1b5276` (pull request #35, documentation only, on top of
-`fa5c5f2`): `324 passed, 1 skipped` on SQLite (`scripts\run-tests.bat`) and `346 passed` on PostgreSQL
-(`scripts\run-pg-tests.bat full`), both local runs at `e1b5276` on 2026-10-13 (Windows, Python 3.12.7); CI on
-GitHub Actions with six jobs (`test`, `test-py311`, `lint`, `types`, `postgres`, `secret-scan`), all required on a
-protected `main` branch (R-13), all passed on `main` at `e1b5276` (run 38434451817, as shown in the Admin's
-screenshot; *MVP-0 exit evidence* below). MVP-0: declared met (R-29). See *Verified state* and *Not verified* in
-`docs/HANDOFF.md`.
+A synthetic-data backend prototype on `main` at `59d4d5e` (pull request #36, documentation only, on top of
+`e1b5276`): `324 passed, 1 skipped` on SQLite (`scripts\run-tests.bat`) and `346 passed` on PostgreSQL
+(`scripts\run-pg-tests.bat full`), local runs at `e1b5276` on 2026-10-13 (Windows, Python 3.12.7; `59d4d5e` changed
+documentation only); CI on GitHub Actions with six jobs (`test`, `test-py311`, `lint`, `types`, `postgres`,
+`secret-scan`), all required on a protected `main` branch (R-13), all passed on `main` at `59d4d5e` (run
+38437483176, as shown in the Admin's screenshot). MVP-0: declared met (R-29). MVP-1: in progress (*MVP-1 plan*
+below). See *Verified state* and *Not verified* in `docs/HANDOFF.md`.
 
 ## MVP-0
 
@@ -51,9 +51,9 @@ no unverified feature claim.
 3. Repository restructure: done (`backend/` moved to `apps/api/`, R-1, pull request #5).
 4. PostgreSQL support and migrations (R-14): done (pull request #8); the PostgreSQL suite also runs in CI (job `postgres`, pull request #15).
 5. Container or local runtime configuration: PostgreSQL service done (R-2), its image pinned by digest (pull request #25, merged as `e4ebfd3`); other services after their upstream checks.
-6. Upstream, licence and version matrix.
+6. Upstream, licence and version matrix: done for the exit (R-28; `docs/UPSTREAMS.md`, *Claims register*).
 7. Model-provider contract with a simulated provider: done (pull request #23, `53f6f23`).
-8. Local-model benchmark plan.
+8. Local-model benchmark plan: done for the exit (R-28; `docs/BENCHMARK-PLAN.md`; measurements are not an exit item).
 9. CI hardening: lint and format, type checks, secret scan, Python 3.11, PostgreSQL integration job. Secret scan
    (gitleaks) and PostgreSQL job: done, merged as `0f66d47` (pull request #15), both passed in CI on the pull
    request (run 37565023452) and on `main` (run 37566508358); at that time not yet required status checks (only
@@ -63,7 +63,7 @@ no unverified feature claim.
    required status checks, with the up-to-date rule on (R-13, Admin, 2026-10-07). No formatter is enforced (Admin
    decision, 2026-10-07).
 
-### Remaining before the MVP-0 exit (as of `e1b5276`)
+### Remaining before the MVP-0 exit (as of `59d4d5e`)
 
 The exit is read as written in the specification (R-28): one safe fixture startup and no unverified feature claim.
 No slices remain for the exit: MVP-0 is declared met (R-29). Slice 6 (the review) is done (pull request #35,
@@ -113,12 +113,57 @@ conclusion Success, total 1m 37s; jobs `test` (50s), `test-py311` (55s), `lint` 
 
 | Stage | Specification scope (summary) | Specification exit criteria | Known dependencies |
 |---|---|---|---|
-| MVP-1 | Authentication (API only, merged in pull request #10, one-time link code in pull request #18; no UI) and organisation Admin UI (departments, people, role and grant preview, selective agent enablement); PostgreSQL and object store; auditable, versioned workflow and template engine with human approvals; admin workflow proposal form | No self-approval; a proposed audit workflow fails completeness until the missing control is fixed | R-2, R-3 |
+| MVP-1 | Authentication (API only, merged in pull request #10, one-time link code in pull request #18; no UI) and organisation Admin UI (departments, people, role and grant preview, selective agent enablement); PostgreSQL and object store; auditable, versioned workflow and template engine with human approvals; admin workflow proposal form using local model or rules | No self-approval; a proposed audit workflow fails completeness until the missing control is fixed | R-2, R-3; R-15 (with R-34); R-30 to R-38 (*MVP-1 plan* below) |
 | MVP-2 | Evidence ingestion with citations for mixed document fixtures; QMS evidence; initial skills and agent profiles; messaging text simulator | Exact cited answer; approved-revision filter; cross-role denial | approved data classes |
 | MVP-3 | Voice messaging; local speech recognition and synthesis; full written answer plus a separately composed brief spoken explanation; human correction and provenance | Spoken and typed numerical consistency; read-it mode; reboot recovery | provider approvals |
 | MVP-4 | Read-only fixture mail, then one authorised live provider; isolated agent-memory banks and knowledge sync; corrective-action and customer-complaint flow end to end; limited role pack | Duplicate mail or update replay is safe; cross-bank memory access denied; external messages stay drafts until human review | provider approvals; scope statement below |
 | Production-1 | Full model registry with privacy and cost controls; approved role skill packs; organisation-wide RACI and ISO edition mapping; audit and management review; calendar and delegation; workflow simulation; security reviews and DLP policy | not stated separately; see the release blockers in specification section 12 | R-9 approved policy; D-07, D-08, D-12, D-13, D-15, D-16 |
 | Production-2 | Independent penetration, privacy and backup-restore drill; monitoring and alerting; retention and legal hold; RPO and RTO; performance benchmark; durable upgrades and migrations; staged rollout; optional components only after an explicit go/no-go and a separate threat model | not stated separately; see the release blockers in specification section 12 | D-14 |
+
+## MVP-1 plan (bundled pull requests, R-37)
+
+Scope and exit as in `docs/SPECIFICATION.md` line 160: "Auth and org Admin UI (departments, humans, role/grant
+preview, selective agents), Postgres+object store, auditable versioned workflow/template engine with human approvals
+and admin workflow proposal form using local model or rules. Exit: no self-approval; proposed audit workflow fails
+completeness until missing control fixed." Decisions for MVP-1: R-30 to R-38 (`docs/DECISIONS.md`). One commit per
+slice in a bundle; each slice's tests pass at its own commit. No dates. Status: pull request 1 (slice 1) in progress
+on branch `feat/mvp1-foundation`; the others not started.
+
+| Pull request | Slice | Goal | Exit criterion (testable) |
+|---|---|---|---|
+| 1 (foundation) | 1 | The API server process against PostgreSQL, plus baseline housekeeping | The real server starts as a process against a migrated PostgreSQL test database in `demo` mode on `127.0.0.1` and `/api/health` answers, locally (`scripts\run-pg-tests.bat`) and in CI job `postgres`; skipped when no test-database URL is set |
+| 2 | 2 | Org directory administration API: create and update departments and people, deactivate instead of delete (D-14), every change audited; org-admin permission (R-30); API prefix `/api/v1` (R-35) | An org admin creates and changes records; other roles get 403; every change writes an `audit_events` row; nothing is deleted; a new person has zero agents |
+| 2 | 3 | Roles, grants and an effective-access preview: role + project + resource classification, mailbox scope and delegation declared but empty (R-31), enforced on the server | The preview matches enforcement for the fixture people; a denied read returns 403 or 404 and leaks nothing |
+| 3 | 4 | Selective agent enablement: an agent profile record, zero by default, explicit enrolment with scope (no agent runtime) | No agent exists without explicit enrolment by an org admin; enrolment is audited; the preview shows the agent's scope |
+| 3 | 5 | Original-evidence store: adapter interface and an interim local content-addressed store for synthetic fixtures only (R-34) | Store, read back and verify the SHA-256; no overwrite or delete; access goes through grants |
+| 4 | 6 | Workflow guideline and versioned template, with baseline approval bound to the version's digest (R-32) | Self-approval is refused (author = approver is refused and audited); a baselined version cannot be edited, only superseded; a changed version needs a new approval |
+| 4 | 7 | Completeness validator (the checks in `docs/SPECIFICATION.md` line 57; which checks are in MVP-1 is still open) | A proposed audit workflow with a missing control fails completeness and passes once the control is added (the exit criterion) |
+| 5 | 8 | Case instances pinned to a template version; migration explicit and owner-approved | A running case keeps its version when the template changes; migration needs owner approval and keeps the trace |
+| 5 | 9 | Admin workflow proposal form, rules only (R-33) | Fixture requests produce structured proposals and questions for missing criteria; nothing is baselined without slice 6's approval |
+| 6 and 7 | 10 | Admin web UI (after the frontend ADR, R-36): departments, people, role and grant preview, agent enablement, proposal form, validator results, baseline approval | Each screen performs its flow against the synthetic fixture; end-to-end tests pass |
+| last | 11 | MVP-1 exit evidence and review (documentation) | An evidence row for each exit criterion; the Admin decides |
+
+### Super admin skills and documentation (approved (Admin, 2026-10-14))
+
+Super admin operations are Claude Code project skills under `.claude/skills/`, run by a human with the Admin's own
+login; they read and propose, they never approve or publish (R-38; `docs/SPECIFICATION.md` line 152), and approvals
+stay in the application. Each skill ships in the pull request whose feature it operates, with its documentation.
+None exists yet. Activities are taken from `docs/SPECIFICATION.md` journeys 1 and 2 (lines 176 and 177) and the
+decision rows named; skill names follow the specification's list (line 152) where one fits.
+
+| Activity (source) | Skill | Ships in | Documentation |
+|---|---|---|---|
+| Report what needs doing (stale baselines and "as of" text, register line references, docs to update) and name the skill to use; deterministic read-only script (R-38) | `housekeeping-check` | pull request 2 | `docs/superadmin/housekeeping-check.md` |
+| Review departments and people after the Admin adds them; confirm no agent is assigned by default (journey 1; R-30) | `review-org` | pull request 2 | `docs/superadmin/review-org.md` |
+| Review effective grants: what each person and agent can and cannot read; a non-assigned user has no agent access (journey 1; R-31; `docs/SPECIFICATION.md` line 53) | `access-segregation` | pull request 2, extended in pull request 3 (agent enrolment) | `docs/superadmin/access-segregation.md` |
+| Check that the interim evidence store holds synthetic fixtures only and that stored originals match their hashes (R-34) | `knowledge-integrity` | pull request 3 | `docs/superadmin/knowledge-integrity.md` |
+| Inspect a proposed audit workflow for missing criteria, an eligible independent auditor and completeness before baselining; check that a baselined version's digest matches its approval (journey 2; R-32) | `inspect-workflow-completeness` | pull request 4, extended in pull request 5 (proposal form) | `docs/superadmin/inspect-workflow-completeness.md` |
+| Review a finding's proposed change to a future workflow, which is never auto-published (journey 2) | `inspect-workflow-completeness` | pull request 5 (case pinning) | same file |
+
+Not in MVP-1 (no MVP-1 slice operates them), listed as suggestions only: a read-only review of account administration
+(R-3: operator CLI, two-admin invitations and resets); `model-provider-review` for provider entries and the cloud
+switch (R-25, R-26; the MVP-1 proposal form is rules-only, R-33); journey 1's Telegram ID and mail and vault grants
+(MVP-2 and later; mailbox scope is empty in MVP-1, R-31); `security-review` of CI checks and image pins (R-13, R-21).
 
 ## Not approved / out of scope
 
