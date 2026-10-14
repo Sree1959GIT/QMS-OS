@@ -12,12 +12,12 @@
 
 ## Current baseline
 
-A synthetic-data backend prototype on `main` at `59d4d5e` (pull request #36, documentation only, on top of
-`e1b5276`): `324 passed, 1 skipped` on SQLite (`scripts\run-tests.bat`) and `346 passed` on PostgreSQL
-(`scripts\run-pg-tests.bat full`), local runs at `e1b5276` on 2026-10-13 (Windows, Python 3.12.7; `59d4d5e` changed
-documentation only); CI on GitHub Actions with six jobs (`test`, `test-py311`, `lint`, `types`, `postgres`,
-`secret-scan`), all required on a protected `main` branch (R-13), all passed on `main` at `59d4d5e` (run
-38437483176, as shown in the Admin's screenshot). MVP-0: declared met (R-29). MVP-1: in progress (*MVP-1 plan*
+A synthetic-data backend prototype on `main` at `ded0fe8` (pull request #37, MVP-1 pull request 1, on top of
+`59d4d5e`): `324 passed, 2 skipped` on SQLite (`scripts\run-tests.bat`) and `348 passed` on PostgreSQL
+(`scripts\run-pg-tests.bat full`), local runs on 2026-10-14 at `5fe7631`, whose tree is identical to `ded0fe8`
+(Windows, Python 3.12.7); CI on GitHub Actions with six jobs (`test`, `test-py311`, `lint`, `types`, `postgres`,
+`secret-scan`), all required on a protected `main` branch (R-13), all passed on `main` at `ded0fe8` (run
+38578074918, as shown in the Admin's screenshot). MVP-0: declared met (R-29). MVP-1: in progress (*MVP-1 plan*
 below). See *Verified state* and *Not verified* in `docs/HANDOFF.md`.
 
 ## MVP-0
@@ -63,7 +63,7 @@ no unverified feature claim.
    required status checks, with the up-to-date rule on (R-13, Admin, 2026-10-07). No formatter is enforced (Admin
    decision, 2026-10-07).
 
-### Remaining before the MVP-0 exit (as of `59d4d5e`)
+### Remaining before the MVP-0 exit (as of `ded0fe8`)
 
 The exit is read as written in the specification (R-28): one safe fixture startup and no unverified feature claim.
 No slices remain for the exit: MVP-0 is declared met (R-29). Slice 6 (the review) is done (pull request #35,
@@ -126,8 +126,9 @@ Scope and exit as in `docs/SPECIFICATION.md` line 160: "Auth and org Admin UI (d
 preview, selective agents), Postgres+object store, auditable versioned workflow/template engine with human approvals
 and admin workflow proposal form using local model or rules. Exit: no self-approval; proposed audit workflow fails
 completeness until missing control fixed." Decisions for MVP-1: R-30 to R-38 (`docs/DECISIONS.md`). One commit per
-slice in a bundle; each slice's tests pass at its own commit. No dates. Status: pull request 1 (slice 1) in progress
-on branch `feat/mvp1-foundation`; the others not started.
+slice in a bundle; each slice's tests pass at its own commit. No dates. Status: pull request 1 (slice 1) merged as
+`ded0fe8` (pull request #37); pull request 2 (the `/api/v1` move, slices 2 and 3, the first three skills) in progress
+on branch `feat/mvp1-org-grants`; the others not started.
 
 | Pull request | Slice | Goal | Exit criterion (testable) |
 |---|---|---|---|

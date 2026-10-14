@@ -6,10 +6,10 @@
 
 - Repository: this repository (`QMS-OS`); confirm the remote with `git remote -v`.
 - Specification: `docs/SPECIFICATION.md`, v3.0 dated 29 September 2026. Verify title and version locally.
-- Baseline recorded here: `main` at `59d4d5ea5c045a8fc2eb558a21d3dc5535d6a5f6` (2026-10-13; "docs: declare the
-  MVP-0 exit met (R-29) (#36)"). Work in progress: branch `feat/mvp1-foundation` from `59d4d5e` (MVP-1 pull request
-  1, slice 1: the API server process against PostgreSQL; R-30 to R-38; code, tests and documentation; local, not
-  committed, not pushed).
+- Baseline recorded here: `main` at `ded0fe88be199ac391a8d9862bdf973be96ec9f7` (2026-10-14; "feat(api): run the
+  server against PostgreSQL; MVP-1 decisions R-30 to R-38 and plan (#37)"). Work in progress: branch
+  `feat/mvp1-org-grants` from `ded0fe8` (MVP-1 pull request 2: the `/api/v1` move, slices 2 and 3, the first three
+  super admin skills; R-39 to R-46; local, not committed, not pushed).
   Re-verify branch, HEAD and working tree with Git at session start; this file may be stale.
 - Stage: MVP-0 declared met (R-29), by the Admin on 2026-10-13, on the narrow reading of the exit (R-28). Of the
   eight items in the ROADMAP's MVP-0 table, five are done (Git scaffold, CI and protected `main`; synthetic fixtures;
@@ -17,7 +17,8 @@
   the upstream matrix are done for the exit (9 flagged claims, kept as labelled by the Admin on 2026-10-13) and
   container configuration beyond PostgreSQL is descoped for the exit. No slices remain for the exit; the evidence
   and the accepted gaps are in *MVP-0 exit evidence* in `docs/ROADMAP.md`. MVP-1: planned as bundled pull requests
-  (R-37; *MVP-1 plan* in `docs/ROADMAP.md`); pull request 1 (slice 1) is in progress on `feat/mvp1-foundation`.
+  (R-37; *MVP-1 plan* in `docs/ROADMAP.md`); pull request 1 (slice 1) merged as `ded0fe8`; pull request 2 (the
+  `/api/v1` move, slices 2 and 3, the first three skills) in progress on `feat/mvp1-org-grants`.
 - Mode: synthetic only. No live connectors, staff accounts or model credentials are configured in this repository,
   and none has been verified; do not claim they are configured.
 
@@ -25,7 +26,15 @@
 
 Each item says how it was verified.
 
-- **Git:** on 2026-10-14 local `main` was at `59d4d5ea5c045a8fc2eb558a21d3dc5535d6a5f6` (= `origin/main` after
+- **Git:** on 2026-10-14 `git pull --ff-only` brought local `main` to `ded0fe88be199ac391a8d9862bdf973be96ec9f7`
+  (= `origin/main`), working tree clean; its tree is identical to the tip of `feat/mvp1-foundation` (`5fe7631`; `git
+  diff` empty). Pull request #37 (`feat/mvp1-foundation`, MVP-1 pull request 1) was merged as `ded0fe8`. Pull request
+  run 38576897109 (shown as #77): job `postgres` "348 passed", no skips (from the Admin's pasted log), so
+  `tests/test_startup_smoke_pg.py` ran in CI. `main` run 38578074918 (shown as #78, push to `main` at `ded0fe8`):
+  Success, 1m 44s; jobs `test` (57s), `test-py311` (44s), `lint` (15s), `types` (34s), `postgres` (1m 40s) and
+  `secret-scan` (6s). Both from the Admin's screenshots or pasted logs, not read from GitHub by Claude Code. Branch
+  `feat/mvp1-org-grants` was created from `ded0fe8` (local only).
+  Earlier: on 2026-10-14 local `main` was at `59d4d5ea5c045a8fc2eb558a21d3dc5535d6a5f6` (= `origin/main` after
   `git fetch`), working tree clean; its tree is identical to the tip of `docs/mvp0-declaration` (`5415d48`; `git diff`
   empty). Pull request #36 (`docs/mvp0-declaration`, head `5415d48`, R-29) was merged as `59d4d5e`. Pull request run
   38436176286 (shown as #75, on pull request #36): Success, 1m 39s. `main` run 38437483176 (shown as #76, push to
@@ -257,10 +266,15 @@ Each item says how it was verified.
 
 - CI job logs (not readable without a token): the `postgres` test count and the number of commits scanned. The
   API server *process* has been run only against the migrated PostgreSQL test database (since MVP-1 slice 1,
-  `tests/test_startup_smoke_pg.py`, locally; CI job `postgres` not yet seen for it), not against any other
-  PostgreSQL database; `qms_os.seed` supports SQLite only. Database-level
+  `tests/test_startup_smoke_pg.py`; locally, and in CI job `postgres` on pull request run 38576897109, 348 passed
+  with no skips, from the Admin's pasted log), not against any other PostgreSQL database; `qms_os.seed` supports
+  SQLite only. Database-level
   append-only enforcement (trigger or revoked privileges on `audit_events`) does not exist; append-only is enforced
   by application code and `tests/test_no_retention.py`. TLS to a non-local database is not configured.
+- Grants (MVP-1 slice 3): the `classification` columns on `departments`, `users` and `projects` have no database
+  CHECK constraint (service-layer validation only; the additive-only migration guard does not allow
+  `create_check_constraint` on existing tables; the new grant tables do have CHECK constraints). Project
+  classification has no route (it can be set in the database only).
 - Docker Compose beyond the PostgreSQL service: no other service has been run. A PostgreSQL restore drill has not been run.
 - Benchmark harness (slice 4b, on `main` since `d7f1127`): tested only against a fake server on 127.0.0.1; no live
   run is recorded. The Admin made a trial run on 2026-10-13; it exists, untracked, and no numbers from it are
@@ -687,13 +701,27 @@ made.
   mutation (positive test pointed at an unmigrated database): it failed ("database schema is at no revision"), then
   the file was restored and its SHA-256 checked. Claims C-29 to C-34, C-48, C-50, C-64 and C-114 stay not verified.
   Baselines, the R-16 topic, the MVP-0 order statuses, the MVP-1 row ("using local model or rules"), *Next tasks*,
-  the account-admin branch reference and two out-of-date `docs/LOCAL-RUNTIME.md` lines updated.
-- Next: MVP-1 pull request 1 review and CI (job `postgres` must run `tests/test_startup_smoke_pg.py`); then pull
-  request 2 (slices 2 and 3: org directory administration with the org-admin permission, the `/api/v1` prefix,
-  roles, grants and the effective-access preview; with the `housekeeping-check`, `review-org` and
-  `access-segregation` skills from the approved list, R-38). Admin decisions still open: which completeness checks
-  are in MVP-1 (slice 7); benchmark thresholds (plan open items 1, 4
-  and 12), R-27 and the R-16 note; the R-15 product before any real evidence (R-34). Also: the Cloudflare route on
+  the account-admin branch reference and two out-of-date `docs/LOCAL-RUNTIME.md` lines updated. Merged as `ded0fe8`
+  (pull request #37; see *Verified state*, Git).
+- Branch `feat/mvp1-org-grants` from `ded0fe8` (2026-10-14; MVP-1 pull request 2; code, tests and documentation;
+  synthetic; one commit per part): (A) the API moves from `/api` to `/api/v1` (R-35), the session cookie path with
+  it, no alias (R-45); no caller outside the tests (CI, `compose.yaml`, `scripts/` and Dockerfiles checked; Ollama's
+  own `/api/...` paths in `qms_bench` unchanged); R-39 to R-46 recorded. (B) Slice 2: org directory administration
+  under `/api/v1/org/` (departments and people: create, update, deactivate, reactivate; no delete, D-14; each change
+  audited, personal fields recorded only as changed, R-42) for holders of the org admin permission
+  (`platform_permissions`, migration `ba4ee531f3e8`), granted only by the operator CLI (R-39), never with account
+  admin (R-40, deterministic PostgreSQL race test), fresh step-up on every org route (R-41). (C) Slice 3: grants =
+  role + project + resource classification (R-31; migration `486e0d8197ea`), `services/access.py` with one decision
+  function used by enforcement and the preview, denied single reads 404 (R-44), lists filtered (R-43); mailbox
+  scope and delegation declared and empty. (D) Skills `housekeeping-check`, `review-org` and `access-segregation`
+  (`.claude/skills/`, `docs/superadmin/`), backed by `apps/api/qms_superadmin` (read-only, synthetic database only,
+  R-46) and `scripts\run-superadmin.bat`. (E) This housekeeping. Self-protection (R-47): an org admin cannot change
+  their own person record, the grants of their own QMS role, or their own project membership.
+- Next: MVP-1 pull request 2 review and CI; then pull request 3 (slices 4 and 5: agent enablement, with agents in
+  the preview and in `access-segregation`, and the interim content-addressed evidence store with
+  `knowledge-integrity`). Admin decisions still open: which completeness checks are in MVP-1 (slice 7); benchmark
+  thresholds (plan open items 1, 4 and 12), R-27 and the R-16 note; the R-15 product before any real evidence
+  (R-34). Also: the Cloudflare route on
   the existing `ollama` container (open: dashboard route and any Access policy not checked); exit criteria for the
   WeKnora spike (3b) before it starts; payload-bound approval beyond baselines (later slice); harness extensions for
   B1 to B3 and tokens per second in the aggregate; the first benchmark results (the Admin's trial run of
