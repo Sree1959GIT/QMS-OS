@@ -6,16 +6,18 @@
 
 - Repository: this repository (`QMS-OS`); confirm the remote with `git remote -v`.
 - Specification: `docs/SPECIFICATION.md`, v3.0 dated 29 September 2026. Verify title and version locally.
-- Baseline recorded here: `main` at `e1b5276d1c114b50fba51e05f937d535a4707d01` (2026-10-13; "docs: slice 6 MVP-0
-  exit review and evidence table (#35)"). Work in progress: branch `docs/mvp0-declaration` from `e1b5276` (R-29,
-  the Admin's declaration that the MVP-0 exit is met; documentation only; local, not committed, not pushed).
+- Baseline recorded here: `main` at `59d4d5ea5c045a8fc2eb558a21d3dc5535d6a5f6` (2026-10-13; "docs: declare the
+  MVP-0 exit met (R-29) (#36)"). Work in progress: branch `feat/mvp1-foundation` from `59d4d5e` (MVP-1 pull request
+  1, slice 1: the API server process against PostgreSQL; R-30 to R-38; code, tests and documentation; local, not
+  committed, not pushed).
   Re-verify branch, HEAD and working tree with Git at session start; this file may be stale.
 - Stage: MVP-0 declared met (R-29), by the Admin on 2026-10-13, on the narrow reading of the exit (R-28). Of the
   eight items in the ROADMAP's MVP-0 table, five are done (Git scaffold, CI and protected `main`; synthetic fixtures;
   fixture startup as a server process; documentation reconciled; model-provider contract), the benchmark plan and
   the upstream matrix are done for the exit (9 flagged claims, kept as labelled by the Admin on 2026-10-13) and
   container configuration beyond PostgreSQL is descoped for the exit. No slices remain for the exit; the evidence
-  and the accepted gaps are in *MVP-0 exit evidence* in `docs/ROADMAP.md`. MVP-1 has not started.
+  and the accepted gaps are in *MVP-0 exit evidence* in `docs/ROADMAP.md`. MVP-1: planned as bundled pull requests
+  (R-37; *MVP-1 plan* in `docs/ROADMAP.md`); pull request 1 (slice 1) is in progress on `feat/mvp1-foundation`.
 - Mode: synthetic only. No live connectors, staff accounts or model credentials are configured in this repository,
   and none has been verified; do not claim they are configured.
 
@@ -23,7 +25,14 @@
 
 Each item says how it was verified.
 
-- **Git:** on 2026-10-13 `git pull --ff-only` brought local `main` to `e1b5276d1c114b50fba51e05f937d535a4707d01`
+- **Git:** on 2026-10-14 local `main` was at `59d4d5ea5c045a8fc2eb558a21d3dc5535d6a5f6` (= `origin/main` after
+  `git fetch`), working tree clean; its tree is identical to the tip of `docs/mvp0-declaration` (`5415d48`; `git diff`
+  empty). Pull request #36 (`docs/mvp0-declaration`, head `5415d48`, R-29) was merged as `59d4d5e`. Pull request run
+  38436176286 (shown as #75, on pull request #36): Success, 1m 39s. `main` run 38437483176 (shown as #76, push to
+  `main` at `59d4d5e`): Success, 1m 47s; jobs `test` (1m 8s), `test-py311` (44s), `lint` (13s), `types` (27s),
+  `postgres` (1m 43s) and `secret-scan` (15s). Both from the Admin's screenshots of the run pages, not read from
+  GitHub by Claude Code. Branch `feat/mvp1-foundation` was created from `59d4d5e` (local only).
+  Earlier: on 2026-10-13 `git pull --ff-only` brought local `main` to `e1b5276d1c114b50fba51e05f937d535a4707d01`
   (= `origin/main`), working tree clean; its tree is identical to the tip of `docs/mvp0-review` (`1151373`; `git
   diff` empty). Pull request #35 (`docs/mvp0-review`, head `1151373`, the slice 6 review and evidence table) was
   merged as `e1b5276` (committer time 2026-10-13 16:55 UTC, from Git). `main` run 38434451817 on `e1b5276`:
@@ -159,6 +168,10 @@ Each item says how it was verified.
     passed`; `alembic check` "No new upgrade operations detected."; `alembic heads` `44bca21ba248 (head)` (single
     head); ruff "All checks passed!"; mypy "Success: no issues found in 46 source files". Nine deliberate breaks
     (M1–M9) each made their tests fail (see *Last sessions*);
+  - branch `feat/mvp1-foundation` (MVP-1 slice 1), local Windows (Python 3.12.7) on 2026-10-14:
+    `scripts\run-tests.bat` `324 passed, 2 skipped, 1 warning` (exit 0; the skips are the two PostgreSQL modules);
+    `scripts\run-pg-tests.bat` `24 passed, 324 deselected` (exit 0); `scripts\run-pg-tests.bat full` `348 passed, 1
+    warning` (exit 0);
   - `main` at `e1b5276…` (slice 6 merged), local Windows (Python 3.12.7) on 2026-10-13: `scripts\run-tests.bat`
     `324 passed, 1 skipped, 1 warning` (exit 0); `scripts\run-pg-tests.bat full` `346 passed, 1 warning` (exit 0);
   - `main` at `fa5c5f2…` (R-28 merged), local Windows (Python 3.12.7) on 2026-10-13: `scripts\run-tests.bat` `324
@@ -241,8 +254,9 @@ Each item says how it was verified.
 ## Not verified
 
 - CI job logs (not readable without a token): the `postgres` test count and the number of commits scanned. The
-  API server *process* has not been run against PostgreSQL (tests use the in-process test client); `qms_os.seed`
-  supports SQLite only. Database-level
+  API server *process* has been run only against the migrated PostgreSQL test database (since MVP-1 slice 1,
+  `tests/test_startup_smoke_pg.py`, locally; CI job `postgres` not yet seen for it), not against any other
+  PostgreSQL database; `qms_os.seed` supports SQLite only. Database-level
   append-only enforcement (trigger or revoked privileges on `audit_events`) does not exist; append-only is enforced
   by application code and `tests/test_no_retention.py`. TLS to a non-local database is not configured.
 - Docker Compose beyond the PostgreSQL service: no other service has been run. A PostgreSQL restore drill has not been run.
@@ -323,7 +337,7 @@ Each item says how it was verified.
   and R-14 are decided; R-7 gained `401`.
 - Not yet decided for authentication: named owners for the session and lockout candidate values (R-4); a
   breached-password lookup; the payload-bound approval slice. The `account_admin` role is granted and revoked only
-  with the operator CLI (ADR 0003; branch `feat/account-admin-cli`).
+  with the operator CLI (ADR 0003; on `main` since pull request #14).
 - `scripts\env.bat` temp and cache location — **decided (Admin, 2026-10-06):** keep the in-repo defaults (`.cache\`,
   `.tmp\`, both git-ignored) with an optional `QMS_TEMP_ROOT` override that moves TEMP/TMP (and pytest's temporary
   folders) to `<root>\tmp` and the pip cache and pycache to `<root>\cache`; a C: or relative root, or a folder that
@@ -356,7 +370,8 @@ Each item says how it was verified.
 
 ## Next tasks
 
-See *Proposed MVP-0 order* in `docs/ROADMAP.md`. No dates or delivery commitments have been made.
+See *MVP-1 plan* in `docs/ROADMAP.md` (bundled pull requests, R-37). No dates or delivery commitments have been
+made.
 
 ## Binding design decisions
 
@@ -651,18 +666,36 @@ See *Proposed MVP-0 order* in `docs/ROADMAP.md`. No dates or delivery commitment
   thresholds unchanged. `docs/ROADMAP.md`: MVP-0 status "Declared met (R-29)" (status line, item table,
   remaining-slices section with no slices remaining, slice 6 done); baseline and "as of" `e1b5276` with counts from
   runs at `e1b5276` (unchanged: `324 passed, 1 skipped`; `346 passed`); post-merge check CI run 38434451817 added to
-  the evidence section (Admin's screenshot); the `fa5c5f2` evidence rows unchanged.
-- Next: MVP-1 (not started). Its scope as `docs/SPECIFICATION.md` line 160 and the ROADMAP *Later stages* table
-  state it: authentication and the organisation Admin UI (departments, people, role and grant preview, selective
-  agent enablement); PostgreSQL and an object store; an auditable, versioned workflow and template engine with
-  human approvals; an admin workflow proposal form using a local model or rules. Exit: no self-approval; a proposed
-  audit workflow fails completeness until the missing control is fixed. Then the Admin's decisions — benchmark
-  thresholds (plan open items 1, 4 and 12), R-27 (Ollama cloud features off), the R-16 note (container or
-  server-only Ollama for a shared deployment) and R-15 (object store); the Cloudflare route on the existing
-  `ollama` container (open: dashboard route and any Access policy not checked); exit criteria for the WeKnora spike
-  (3b) before it starts; payload-bound approval; harness extensions for B1 to B3 and tokens per second in the
-  aggregate; the first benchmark results (the Admin's trial run of 2026-10-13 exists, untracked; no numbers are
-  recorded); running the API server process against PostgreSQL.
+  the evidence section (Admin's screenshot); the `fa5c5f2` evidence rows unchanged. Merged as `59d4d5e` (pull
+  request #36; see *Verified state*, Git).
+- Branch `feat/mvp1-foundation` from `59d4d5e` (2026-10-14; MVP-1 pull request 1, slice 1; code, tests and
+  documentation; synthetic): `docs/DECISIONS.md` gains R-30 to R-38 (Admin decisions of 2026-10-14: org-admin
+  permission; grant model; baseline approval bound to the version digest; rules-only proposal form; R-15 decoupled
+  from the WeKnora spike with an interim local content-addressed store for synthetic fixtures; `/api/v1` in pull
+  request 2; frontend ADR before the UI; bundled pull requests; super admin operations as project skills), with a
+  dated note on R-15 and R-16's topic reworded (slice 1 was descoped by R-28). `docs/ROADMAP.md` gains *MVP-1 plan*
+  (bundle table with each slice's exit criterion) and *Super admin skills and documentation* (approved by the Admin
+  on 2026-10-14 as written; no skill or documentation file created yet). Code: new
+  `apps/api/tests/test_startup_smoke_pg.py` (marker `postgres`): the real server process starts in `demo` mode on
+  `127.0.0.1` against the migrated PostgreSQL test database loaded with the synthetic fixture and answers
+  `/api/health`; a permanent negative test shows the server
+  refuses an unmigrated database (exit code 1, "database schema is at no revision"), with the rebuild in a
+  `finally`. The helpers moved from `tests/test_startup_smoke.py` into `tests/server_process.py` (the server is
+  stopped in a `finally`); the SQLite test keeps its name and behaviour (`1 passed` before and after). Scratch
+  mutation (positive test pointed at an unmigrated database): it failed ("database schema is at no revision"), then
+  the file was restored and its SHA-256 checked. Claims C-29 to C-34, C-48, C-50, C-64 and C-114 stay not verified.
+  Baselines, the R-16 topic, the MVP-0 order statuses, the MVP-1 row ("using local model or rules"), *Next tasks*,
+  the account-admin branch reference and two out-of-date `docs/LOCAL-RUNTIME.md` lines updated.
+- Next: MVP-1 pull request 1 review and CI (job `postgres` must run `tests/test_startup_smoke_pg.py`); then pull
+  request 2 (slices 2 and 3: org directory administration with the org-admin permission, the `/api/v1` prefix,
+  roles, grants and the effective-access preview; with the `housekeeping-check`, `review-org` and
+  `access-segregation` skills from the approved list, R-38). Admin decisions still open: which completeness checks
+  are in MVP-1 (slice 7); benchmark thresholds (plan open items 1, 4
+  and 12), R-27 and the R-16 note; the R-15 product before any real evidence (R-34). Also: the Cloudflare route on
+  the existing `ollama` container (open: dashboard route and any Access policy not checked); exit criteria for the
+  WeKnora spike (3b) before it starts; payload-bound approval beyond baselines (later slice); harness extensions for
+  B1 to B3 and tokens per second in the aggregate; the first benchmark results (the Admin's trial run of
+  2026-10-13 exists, untracked; no numbers are recorded).
 
 ## End-of-session update template
 

@@ -37,6 +37,5 @@ Keeping files in the project folder
 
 Not verified
 - A restore from a backup.
-- The API server process running against PostgreSQL (tests use the in-process test client only).
-- The `[dev]` extra name; `setup-venv.bat` falls back to installing pytest and httpx.
+- The API server process against a non-test PostgreSQL database. (Since MVP-1 slice 1, `tests/test_startup_smoke_pg.py` starts the server process against the migrated PostgreSQL test database, run by `scripts\run-pg-tests.bat` and the CI job `postgres`.)
 - (Resolved 2026-10-10: the Postgres image in `compose.yaml` is pinned by digest, the same reference as CI; R-2 note, R-21.)
