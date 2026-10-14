@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from ..models import Audit, AuditProgram, Department, Finding, Notification, Project, Risk, User, Workpaper
 from ..policy import PolicyContext
 from ..rules.findings import Role
+from ..services import access as ACC
 from ..services import findings as FS
 from ..services import policy_gate as G
 from ..services import program as PS
@@ -26,7 +27,7 @@ from ..services.common import (
 )
 from .deps import current_user, get_session, policy, public, step_up_user, today
 
-router = APIRouter(prefix="/api")
+router = APIRouter(prefix="/api/v1")
 
 
 # ---------- identity & reference data ----------
@@ -43,10 +44,26 @@ def health(_: None = Depends(public), s: Session = Depends(get_session), t: date
     return {"ok": True, "mode": p.mode.value, "policy_state": G.state(s, p, t)["state"]}
 
 
+def _person_row(access, p: User) -> dict:
+    """A person row; the department name only if that department is readable too (no leak, R-44)."""
+    row = user_row(p)
+    if p.department is not None and not ACC.decide(access, ACC.resource_of(p.department)):
+        row["department"] = None
+    return row
+
+
 @router.get("/users")
 def users(s: Session = Depends(get_session), u: User = Depends(current_user)):
-    """Directory of people, for signed-in users."""
-    return [user_row(u) for u in s.scalars(select(User).order_by(User.id))]
+    """Directory of people, filtered by the caller's grants (R-31, R-43)."""
+    access = ACC.effective_access(s, u)
+    return [_person_row(access, p) for p in s.scalars(select(User).order_by(User.id))
+            if ACC.decide(access, ACC.resource_of(p))]
+
+
+@router.get("/users/{user_id}")
+def user(user_id: int, s: Session = Depends(get_session), u: User = Depends(current_user)):
+    p = ACC.require_read(s, u, "person", user_id)
+    return _person_row(ACC.effective_access(s, u), p)
 
 
 @router.get("/me")
@@ -54,10 +71,20 @@ def me(u: User = Depends(current_user)):
     return user_row(u)
 
 
+def _department_row(d: Department) -> dict:
+    return {"id": d.id, "code": d.code, "name": d.name, "head_user_id": d.head_user_id}
+
+
 @router.get("/departments")
 def departments(s: Session = Depends(get_session), u: User = Depends(current_user)):
-    return [{"id": d.id, "code": d.code, "name": d.name, "head_user_id": d.head_user_id}
-            for d in s.scalars(select(Department).order_by(Department.id))]
+    """Departments, filtered by the caller's grants (R-31, R-43)."""
+    return [_department_row(d) for d in ACC.readable(s, u, "department",
+                                                     list(s.scalars(select(Department).order_by(Department.id))))]
+
+
+@router.get("/departments/{department_id}")
+def department(department_id: int, s: Session = Depends(get_session), u: User = Depends(current_user)):
+    return _department_row(ACC.require_read(s, u, "department", department_id))
 
 
 @router.get("/policy")
@@ -360,11 +387,21 @@ def _can_see_risk(u: User, r: Risk) -> bool:
     return r.department_id == u.department_id or (r.project is not None and r.project.manager_user_id == u.id)
 
 
+def _project_row(p: Project) -> dict:
+    return {"id": p.id, "code": p.code, "name": p.name, "department_id": p.department_id,
+            "manager_user_id": p.manager_user_id, "assignment_basis": p.assignment_basis}
+
+
 @router.get("/projects")
 def projects(s: Session = Depends(get_session), u: User = Depends(current_user)):
-    return [{"id": p.id, "code": p.code, "name": p.name, "department_id": p.department_id,
-             "manager_user_id": p.manager_user_id, "assignment_basis": p.assignment_basis}
-            for p in s.scalars(select(Project).order_by(Project.id))]
+    """Projects, filtered by the caller's grants (R-31, R-43)."""
+    rows = list(s.scalars(select(Project).order_by(Project.id)))
+    return [_project_row(p) for p in ACC.readable(s, u, "project", rows)]
+
+
+@router.get("/projects/{project_id}")
+def project(project_id: int, s: Session = Depends(get_session), u: User = Depends(current_user)):
+    return _project_row(ACC.require_read(s, u, "project", project_id))
 
 
 @router.get("/risks")

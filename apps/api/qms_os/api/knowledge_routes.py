@@ -11,7 +11,7 @@ from ..models import User
 from ..rules.findings import Role
 from .deps import current_user, get_session, step_up_user
 
-router = APIRouter(prefix="/api/knowledge")
+router = APIRouter(prefix="/api/v1/knowledge")
 
 
 def _svc(s: Session) -> KnowledgeService:

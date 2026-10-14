@@ -11,7 +11,7 @@ from ..providers import admin as PA
 from ..providers.registry import ProviderRegistry
 from .deps import account_admin, get_session
 
-router = APIRouter(prefix="/api")
+router = APIRouter(prefix="/api/v1")
 
 
 class EntryIn(BaseModel):

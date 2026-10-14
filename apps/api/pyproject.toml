@@ -47,6 +47,8 @@ select = ["E", "W", "F", "I", "B", "UP", "DTZ"]
 "migrations/versions/*" = ["W291", "I001", "UP007", "UP035"]
 # Kept byte-for-byte when lint was added (Admin condition, 2026-10-07): `from typing import Callable` stays.
 "qms_os/auth/service.py" = ["UP035"]
+# Register data: each claim's anchor, claim text and note stays on one line, so a claim can be found by grep.
+"qms_superadmin/claims_register.py" = ["E501"]
 
 [tool.ruff.lint.flake8-bugbear]
 # FastAPI dependencies are declared as Depends(...) defaults by design; AuthLimits is a frozen dataclass.
@@ -54,7 +56,7 @@ extend-immutable-calls = ["fastapi.Depends", "qms_os.auth.limits.AuthLimits"]
 
 [tool.mypy]
 python_version = "3.11"
-files = ["qms_os", "qms_bench"]
+files = ["qms_os", "qms_bench", "qms_superadmin"]
 warn_unused_ignores = true
 warn_redundant_casts = true
 warn_unused_configs = true

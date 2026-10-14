@@ -590,9 +590,14 @@ def _role_event(s: Session, user: User, action: str, old: str, new: str) -> None
 
 
 def grant_account_admin(s: Session, email: str) -> User:
-    user, _ = _role_change_target(s, email)
+    from .permissions import holds_org_admin  # local import: permissions imports this module
+
+    user, _ = _role_change_target(s, email)      # person row locked first, so a concurrent org-admin grant waits
     if user.platform_role == ACCOUNT_ADMIN:
         raise RuleViolation(f"{user.email} is already an account admin")
+    if holds_org_admin(s, user.id):
+        raise RuleViolation(f"{user.email} holds the org admin permission; one person cannot hold both account admin "
+                            "and org admin (R-40)")
     old, user.platform_role = user.platform_role, ACCOUNT_ADMIN
     _role_event(s, user, "auth.account_admin.granted", old, ACCOUNT_ADMIN)
     return user

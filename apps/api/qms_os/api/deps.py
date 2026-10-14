@@ -126,6 +126,16 @@ def account_admin(user: User = Depends(step_up_user)) -> User:
     return user
 
 
+def org_admin(user: User = Depends(step_up_user), s: Session = Depends(get_session)) -> User:
+    """Level ``human+step-up`` restricted to holders of the org admin permission (R-30, R-41): separate from the
+    account admin platform role and from every QMS role."""
+    from ..auth.permissions import holds_org_admin
+
+    if not holds_org_admin(s, user.id):
+        raise Forbidden("requires the org admin permission")
+    return user
+
+
 def today(request: Request) -> date:
     return request.app.state.today()
 

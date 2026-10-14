@@ -52,36 +52,36 @@ def test_non_utc_value_is_stored_and_read_back_as_utc(fresh):
 
 def test_api_timestamps_are_timezone_aware_utc(api):
     # programme approval, notifications and events
-    prog = api.as_("ma").post("/api/programs", {"year": 2026}).json()
-    ok = api.as_("ma").post(f"/api/programs/{prog['id']}/approve").json()
+    prog = api.as_("ma").post("/api/v1/programs", {"year": 2026}).json()
+    ok = api.as_("ma").post(f"/api/v1/programs/{prog['id']}/approve").json()
     _utc(ok["approved_at"])
-    _utc(api.as_("ma").get("/api/notifications").json()[0]["created_at"])
-    assert all(_utc(e["at"]) for e in api.as_("ma").get("/api/events").json())
+    _utc(api.as_("ma").get("/api/v1/notifications").json()[0]["created_at"])
+    assert all(_utc(e["at"]) for e in api.as_("ma").get("/api/v1/events").json())
     # risk sign-off, the 'last approved — under reassessment' snapshot and assessment records
-    r = api.as_("pur_head").post("/api/risks", {"department_id": 2, "process": "p", "failure_mode": "f",
+    r = api.as_("pur_head").post("/api/v1/risks", {"department_id": 2, "process": "p", "failure_mode": "f",
                                               "severity": 2, "occurrence": 2, "detection": 2}).json()
-    api.as_("pur_head").post(f"/api/risks/{r['id']}/submit")
-    api.as_("ma").post(f"/api/risks/{r['id']}/ma-review", {"approve": True})
-    api.as_("md").post(f"/api/risks/{r['id']}/signoff", {"approve": True})
-    re = api.as_("pur_head").post(f"/api/risks/{r['id']}/reassess",
+    api.as_("pur_head").post(f"/api/v1/risks/{r['id']}/submit")
+    api.as_("ma").post(f"/api/v1/risks/{r['id']}/ma-review", {"approve": True})
+    api.as_("md").post(f"/api/v1/risks/{r['id']}/signoff", {"approve": True})
+    re = api.as_("pur_head").post(f"/api/v1/risks/{r['id']}/reassess",
                                {"severity": 2, "occurrence": 2, "detection": 3}).json()
     signed = _utc(re["last_approved"]["signed_off_at"])
     assert abs(datetime.now(UTC) - signed) < timedelta(minutes=5)
-    assert all(_utc(x["at"]) for x in api.as_("md").get(f"/api/risks/{r['id']}/records").json())
+    assert all(_utc(x["at"]) for x in api.as_("md").get(f"/api/v1/risks/{r['id']}/records").json())
     # knowledge module (separate metadata, same contract)
-    src = api.as_("ma").post("/api/knowledge/sources", {"name": "S"}).json()
-    item = api.as_("qa_head").post("/api/knowledge/items", {"source_id": src["id"], "title": "t", "body": "b",
+    src = api.as_("ma").post("/api/v1/knowledge/sources", {"name": "S"}).json()
+    item = api.as_("qa_head").post("/api/v1/knowledge/items", {"source_id": src["id"], "title": "t", "body": "b",
                                                         "origin": "o"}).json()
     _utc(item["captured_at"])
-    _utc(api.as_("ma").post(f"/api/knowledge/items/{item['id']}/decide", {"approve": True}).json()["approved_at"])
+    _utc(api.as_("ma").post(f"/api/v1/knowledge/items/{item['id']}/decide", {"approve": True}).json()["approved_at"])
 
 
 def test_policy_approval_timestamps_are_utc(op):
     op.write()
     o = op.start()
-    sub = o.as_("ma").post("/api/policy/submit", {}).json()
+    sub = o.as_("ma").post("/api/v1/policy/submit", {}).json()
     _utc(sub["submitted_at"])
-    ok = o.as_("md").post(f"/api/policy/submissions/{sub['id']}/approve",
+    ok = o.as_("md").post(f"/api/v1/policy/submissions/{sub['id']}/approve",
                           {"fingerprint": sub["fingerprint"], "confirm_version": sub["policy_version"]}).json()
     _utc(ok["decided_at"])
-    _utc(o.as_("ma").get("/api/policy").json()["approval"]["approved_at"])
+    _utc(o.as_("ma").get("/api/v1/policy").json()["approval"]["approved_at"])

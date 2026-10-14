@@ -4,6 +4,8 @@
     python -m qms_os.auth bootstrap-admin --email E --name N
     python -m qms_os.auth grant-account-admin EMAIL      # asks you to type the e-mail address again
     python -m qms_os.auth revoke-account-admin EMAIL
+    python -m qms_os.auth grant-org-admin EMAIL          # asks you to type the e-mail address again
+    python -m qms_os.auth revoke-org-admin EMAIL
 
 ``bootstrap-admin`` creates the first account admin. It runs only while no active account admin exists, asks for
 the password interactively (never from arguments or the environment), requires a confirming authenticator code, and
@@ -12,6 +14,9 @@ prints the recovery codes once. It needs QMS_AUTH_KEY_FILE and the database name
 ``grant-account-admin`` and ``revoke-account-admin`` change the ``account_admin`` platform role of a person with an
 active account; there is no API route for this. Revoking the last active account admin is refused. Each change writes
 an audit event (actor kind "operator", channel "cli"). They need only the database named by QMS_DATABASE_URL.
+
+``grant-org-admin`` and ``revoke-org-admin`` do the same for the org admin permission (R-30, R-39); one person cannot
+hold both account admin and org admin (R-40).
 """
 from __future__ import annotations
 
@@ -25,6 +30,7 @@ from ..db import make_engine, make_sessionmaker, prepare_schema
 from ..services.common import AuthFailure, RuleViolation
 from .keys import KEY_ENV, SecretBox, generate_key_file, load_key_file
 from .limits import AuthConfigError
+from .permissions import grant_org_admin, revoke_org_admin
 from .service import AuthContext, bootstrap_admin, find_user, grant_account_admin, revoke_account_admin
 
 
@@ -56,37 +62,41 @@ def run_bootstrap(maker, ctx: AuthContext, email: str, name: str, *, read_secret
     return 0
 
 
-def run_grant(maker, email: str, *, read_line: Callable[[str], str], write: Callable[[str], None]) -> int:
-    """Grant account_admin after the operator types the e-mail address a second time."""
+def run_grant(maker, email: str, *, read_line: Callable[[str], str], write: Callable[[str], None],
+              what: str = "account admin") -> int:
+    """Grant account_admin (or, with ``what="org admin"``, the org admin permission) after the operator types the
+    e-mail address a second time."""
+    grant = grant_org_admin if what == "org admin" else grant_account_admin
+    label = "the org admin permission" if what == "org admin" else "the account_admin role"
     with maker() as s:
         person = find_user(s, email)
         if person is not None:
-            typed = read_line(f"Grant the account_admin role to {person.email}? Type the e-mail address again to "
-                              "confirm: ")
+            typed = read_line(f"Grant {label} to {person.email}? Type the e-mail address again to confirm: ")
             if typed.strip().lower() != person.email.lower():
                 write("The e-mail address did not match; nothing was changed.")
                 return 1
         try:
-            user = grant_account_admin(s, email)
+            user = grant(s, email)
         except RuleViolation as e:
             s.rollback()
             write(f"Refused: {e}")
             return 1
         s.commit()
-    write(f"{user.email} is now an account admin.")
+    write(f"{user.email} is now an {what}.")
     return 0
 
 
-def run_revoke(maker, email: str, *, write: Callable[[str], None]) -> int:
+def run_revoke(maker, email: str, *, write: Callable[[str], None], what: str = "account admin") -> int:
+    revoke = revoke_org_admin if what == "org admin" else revoke_account_admin
     with maker() as s:
         try:
-            user = revoke_account_admin(s, email)
+            user = revoke(s, email)
         except RuleViolation as e:
             s.rollback()
             write(f"Refused: {e}")
             return 1
         s.commit()
-    write(f"{user.email} is no longer an account admin.")
+    write(f"{user.email} is no longer an {what}.")
     return 0
 
 
@@ -108,6 +118,10 @@ def main(argv: list[str] | None = None) -> int:
     gr.add_argument("email")
     rv = sub.add_parser("revoke-account-admin", help="remove the account_admin role (never the last active one)")
     rv.add_argument("email")
+    go = sub.add_parser("grant-org-admin", help="give a person with an active account the org admin permission")
+    go.add_argument("email")
+    ro = sub.add_parser("revoke-org-admin", help="remove the org admin permission")
+    ro.add_argument("email")
     args = ap.parse_args(argv)
     try:
         if args.cmd == "generate-key":
@@ -118,6 +132,10 @@ def main(argv: list[str] | None = None) -> int:
             return run_grant(_database(), args.email, read_line=input, write=print)
         if args.cmd == "revoke-account-admin":
             return run_revoke(_database(), args.email, write=print)
+        if args.cmd == "grant-org-admin":
+            return run_grant(_database(), args.email, read_line=input, write=print, what="org admin")
+        if args.cmd == "revoke-org-admin":
+            return run_revoke(_database(), args.email, write=print, what="org admin")
         key_file = os.environ.get(KEY_ENV)
         if not key_file:
             raise AuthConfigError(f"set {KEY_ENV} to the authentication key file")

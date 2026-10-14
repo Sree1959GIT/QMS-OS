@@ -15,8 +15,11 @@ LEVELS = {
     deps.step_up_user: "human+step-up",
     deps.step_up_principal: "human+step-up",
     deps.account_admin: "human+step-up",
+    deps.org_admin: "human+step-up",
 }
-PUBLIC = {"/api/health", "/api/auth/login", "/api/auth/login/recovery", "/api/auth/setup", "/api/auth/setup/confirm"}
+PUBLIC = {"/api/v1/health", "/api/v1/auth/login", "/api/v1/auth/login/recovery", "/api/v1/auth/setup",
+          "/api/v1/auth/setup/confirm"}
+API_PREFIX = "/api/v1/"   # R-35: the application API lives under /api/v1 (docs/SPECIFICATION.md line 113)
 # approving, rejecting, accepting, verifying, closing or deciding something needs a fresh TOTP
 STEP_UP_SEGMENTS = {"approve", "reject", "accept", "verify", "acknowledge", "ma-review", "signoff", "close", "decide"}
 
@@ -58,10 +61,25 @@ def test_public_routes_are_exactly_the_sign_in_and_health_endpoints():
 
 def test_approval_and_admin_routes_need_step_up():
     for r in _routes():
-        if r.path.rsplit("/", 1)[-1] in STEP_UP_SEGMENTS or r.path.startswith("/api/admin/"):
+        if r.path.rsplit("/", 1)[-1] in STEP_UP_SEGMENTS or r.path.startswith("/api/v1/admin/"):
             assert _level(r) == ["human+step-up"], r.path
-        if r.path.startswith("/api/admin/"):
+        if r.path.startswith("/api/v1/admin/"):
             assert any(d.call is deps.account_admin for d in r.dependant.dependencies), r.path
+        if r.path.startswith("/api/v1/org/"):          # R-41: every org route, reads included, needs step-up
+            assert any(d.call is deps.org_admin for d in r.dependant.dependencies), r.path
+
+
+def test_every_route_is_under_api_v1():
+    assert [r.path for r in _routes() if not r.path.startswith(API_PREFIX)] == []
+
+
+def test_the_old_api_prefix_is_gone():
+    """No compatibility alias (R-35 move): the pre-v1 paths answer 404, and the session cookie is scoped to /api/v1."""
+    from fastapi.testclient import TestClient
+
+    with TestClient(create_app(engine=_engine(), mode="test", auth_key=os.urandom(32))) as c:
+        assert c.get("/api/health").status_code == 404
+        assert c.get("/api/v1/health").status_code == 200
 
 
 def test_401_reasons_do_not_reveal_account_state():

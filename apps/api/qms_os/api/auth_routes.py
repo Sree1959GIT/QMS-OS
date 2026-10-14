@@ -23,7 +23,7 @@ from .deps import (
 )
 from .routes import user_row
 
-router = APIRouter(prefix="/api")
+router = APIRouter(prefix="/api/v1")
 
 
 class LoginIn(BaseModel):
@@ -63,7 +63,7 @@ class ResetIn(BaseModel):
 
 
 def _signed_in(response: Response, ctx: AS.AuthContext, user: User, issued: AS.IssuedSession) -> dict:
-    response.set_cookie(SESSION_COOKIE, issued.token, httponly=True, secure=True, samesite="strict", path="/api",
+    response.set_cookie(SESSION_COOKIE, issued.token, httponly=True, secure=True, samesite="strict", path="/api/v1",
                         max_age=int(ctx.limits.session_absolute.total_seconds()))
     return {"user": user_row(user), "csrf_token": issued.csrf, "method": issued.session.method,
             "idle_expires_at": issued.session.idle_expires_at,
@@ -117,7 +117,7 @@ def logout(response: Response, p: Principal = Depends(current_principal), s: Ses
     if p.session is None:
         raise RuleViolation("no session to end")
     AS.logout(s, ctx, p.session, p.channel)
-    response.delete_cookie(SESSION_COOKIE, path="/api")
+    response.delete_cookie(SESSION_COOKIE, path="/api/v1")
     return {"ok": True}
 
 
@@ -149,7 +149,7 @@ def reenroll_confirm(body: CodeIn, response: Response, p: Principal = Depends(cu
     _may_reenrol(p, s)
     codes, sign_in_required = AS.reenroll_confirm(s, ctx, p.user, p.session, body.code, p.channel)
     if sign_in_required:
-        response.delete_cookie(SESSION_COOKIE, path="/api")
+        response.delete_cookie(SESSION_COOKIE, path="/api/v1")
     return {"recovery_codes": codes, "sign_in_required": sign_in_required}
 
 

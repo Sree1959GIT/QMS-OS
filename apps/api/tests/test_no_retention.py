@@ -52,25 +52,25 @@ def _snapshot(fresh):
 def test_records_survive_ten_years_of_normal_operation(api, clock, fresh):
     # build a representative record set: programme, report, finding + action plan, risk, knowledge, drafts, events
     ma = api.as_("ma")
-    prog = ma.post("/api/programs", {"year": 2026}).json()
-    assert ma.post(f"/api/programs/{prog['id']}/approve").status_code == 200
+    prog = ma.post("/api/v1/programs", {"year": 2026}).json()
+    assert ma.post(f"/api/v1/programs/{prog['id']}/approve").status_code == 200
     a = prog["cycles"][0]["audits"][0]
     auditor = api.as_(a["auditor_id"])
-    nc = auditor.post(f"/api/audits/{a['id']}/findings", {
+    nc = auditor.post(f"/api/v1/audits/{a['id']}/findings", {
         "category": "MINOR_NC", "statement": "No calibration record", "objective_evidence": "Log L-3 blank",
         "iso_clause": "7.1.5", "qms_ref": "SYN/PROC/CAL"}).json()
-    auditor.post(f"/api/findings/{nc['id']}/concurrence", {"concurred": True})
+    auditor.post(f"/api/v1/findings/{nc['id']}/concurrence", {"concurred": True})
     clock.d = date.fromisoformat(a["audit_date"])
-    assert auditor.post(f"/api/audits/{a['id']}/report").status_code == 200
-    head = next(u for u in ma.get("/api/users").json()
+    assert auditor.post(f"/api/v1/audits/{a['id']}/report").status_code == 200
+    head = next(u for u in ma.get("/api/v1/users").json()
                 if u["department_id"] == a["department_id"] and u["role"] == "AUDITEE")
-    api.as_(head["id"]).post(f"/api/findings/{nc['id']}/action-plan", {
+    api.as_(head["id"]).post(f"/api/v1/findings/{nc['id']}/action-plan", {
         "root_cause": "rc", "corrective_action": "ca", "owner_name": "o", "planned_closure": a["audit_date"]})
-    dept = next(d for d in ma.get("/api/departments").json() if d["id"] == a["department_id"])
-    api.as_(head["id"]).post("/api/risks", {"department_id": dept["id"], "process": "p", "failure_mode": "f",
+    dept = next(d for d in ma.get("/api/v1/departments").json() if d["id"] == a["department_id"])
+    api.as_(head["id"]).post("/api/v1/risks", {"department_id": dept["id"], "process": "p", "failure_mode": "f",
                                             "severity": 2, "occurrence": 2, "detection": 2})
-    src = ma.post("/api/knowledge/sources", {"name": "S"}).json()
-    api.as_(head["id"]).post("/api/knowledge/items", {"source_id": src["id"], "title": "t", "body": "b",
+    src = ma.post("/api/v1/knowledge/sources", {"name": "S"}).json()
+    api.as_(head["id"]).post("/api/v1/knowledge/items", {"source_id": src["id"], "title": "t", "body": "b",
                                                       "origin": "o"})
     before = _snapshot(fresh)
     assert all(before[t] for t in ("audit_programs", "audits", "findings", "corrective_actions", "risks",
@@ -79,12 +79,13 @@ def test_records_survive_ten_years_of_normal_operation(api, clock, fresh):
     # ten years later: exercise every read path and the scheduled-style actions
     clock.d = date(2036, 12, 31)
     for who in ("ma", "md", "viewer", head["id"]):
-        for url in ("/api/dashboard", "/api/findings", "/api/risks", "/api/programs", "/api/knowledge/items"):
+        for url in ("/api/v1/dashboard", "/api/v1/findings", "/api/v1/risks", "/api/v1/programs",
+                    "/api/v1/knowledge/items"):
             assert api.as_(who).get(url).status_code == 200
-    assert ma.get("/api/reports/monthly?year=2036&month=12").status_code == 200
-    assert ma.get("/api/events").status_code == 200
-    assert ma.post("/api/notifications/prepare-circulars").status_code == 200
-    assert ma.post("/api/notifications/reminders").status_code == 200
+    assert ma.get("/api/v1/reports/monthly?year=2036&month=12").status_code == 200
+    assert ma.get("/api/v1/events").status_code == 200
+    assert ma.post("/api/v1/notifications/prepare-circulars").status_code == 200
+    assert ma.post("/api/v1/notifications/reminders").status_code == 200
 
     after = _snapshot(fresh)
     for table, rows in before.items():

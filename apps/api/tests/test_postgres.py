@@ -107,7 +107,7 @@ def test_app_refuses_to_start_unless_schema_is_at_head(pg, clock):
     finally:
         with pg.begin() as conn:
             command.stamp(PG.alembic_config(conn), "head")
-    assert TestClient(create_app(engine=pg, today=clock, mode="test")).get("/api/health").status_code == 200
+    assert TestClient(create_app(engine=pg, today=clock, mode="test")).get("/api/v1/health").status_code == 200
 
 
 def test_timestamps_stay_utc_when_the_session_time_zone_is_not_utc(pg):
@@ -152,7 +152,7 @@ def test_same_totp_code_in_parallel_signs_in_exactly_once(engine):
     qa = h.onboard(h.bootstrap(), "qa_head")
     h.now.tick()
     code, clients = qa.code(), [h.client() for _ in range(2)]
-    results = _together(2, lambda i: clients[i].post("/api/auth/login", json={
+    results = _together(2, lambda i: clients[i].post("/api/v1/auth/login", json={
         "email": qa.email, "password": qa.password, "code": code}).status_code)
     assert sorted(results) == [200, 401]
 
@@ -164,7 +164,7 @@ def test_parallel_wrong_passwords_are_each_counted(engine, n, counted, locked):
     h = TA.Harness(engine)
     qa = h.onboard(h.bootstrap(), "qa_head")
     clients = [h.client() for _ in range(n)]
-    results = _together(n, lambda i: clients[i].post("/api/auth/login", json={
+    results = _together(n, lambda i: clients[i].post("/api/v1/auth/login", json={
         "email": qa.email, "password": "wrong " + qa.password, "code": "000000"}).status_code)
     assert results == [401] * n
     with h.db() as s:
@@ -189,7 +189,7 @@ def _reset_requested(h, slow_target_password=False):
     target = h.onboard(first, "qa_head", approver=approvers[0])   # three admin records: invitations are approved
     h.ctx.hasher = TA.FAST
     first.login()                                            # fresh step-up for the request
-    action = first.post(f"/api/admin/accounts/{h.uid('qa_head')}/reset", {"identity_proof": "seen in person"}).json()
+    action = first.post(f"/api/v1/admin/accounts/{h.uid('qa_head')}/reset", {"identity_proof": "seen in person"}).json()
     assert action["status"] == "pending_approval", action
     for a in approvers:
         assert a.login().status_code == 200                  # fresh step-up for the approval
@@ -214,11 +214,11 @@ def _assert_reset_state(h, action_id):
 def test_two_concurrent_approvals_of_one_reset_approve_exactly_once(engine):
     h = TA.Harness(engine)
     approvers, _, action_id, code = _reset_requested(h)
-    results = _together(2, lambda i: approvers[i].post(f"/api/admin/account-actions/{action_id}/approve"))
+    results = _together(2, lambda i: approvers[i].post(f"/api/v1/admin/account-actions/{action_id}/approve"))
     assert sorted(r.status_code for r in results) == [200, 422]
     winner = next(r.json() for r in results if r.status_code == 200)
     assert _assert_reset_state(h, action_id) == winner["approved_by_id"]
-    setup = h.client().post("/api/auth/setup", json={"token": winner["link_token"], "verification_code": code,
+    setup = h.client().post("/api/v1/auth/setup", json={"token": winner["link_token"], "verification_code": code,
                                                      "password": TA.GOOD})
     assert setup.status_code == 200                           # the single issued link is the one that works
 
@@ -235,8 +235,8 @@ def test_reset_approval_racing_the_person_signing_in_leaves_a_consistent_state(e
     def act(i):
         if i == 0:
             time.sleep(0.15)                                  # let the sign-in read the credential first
-            return approvers[0].post(f"/api/admin/account-actions/{action_id}/approve").status_code
-        return target.c.post("/api/auth/login", json={"email": target.email, "password": target.password,
+            return approvers[0].post(f"/api/v1/admin/account-actions/{action_id}/approve").status_code
+        return target.c.post("/api/v1/auth/login", json={"email": target.email, "password": target.password,
                                                        "code": code}).status_code
     approval, sign_in = _together(2, act)
     assert approval == 200 and sign_in in (200, 401)          # either order is valid ...
@@ -271,6 +271,86 @@ def test_two_concurrent_revocations_never_leave_zero_account_admins(engine, monk
     assert len(admins) == 1 and len(revoked) == 1
 
 
+# ---------- account admin and org admin are never held by one person (R-40) ----------
+
+def _wait_until_waiting_on_a_lock(engine, pid: int, deadline_s: float = 10.0) -> bool:
+    """Poll pg_stat_activity until backend ``pid`` waits on a lock. No sleep: each poll is its own autocommit
+    statement (PostgreSQL caches activity statistics within a transaction)."""
+    end = time.monotonic() + deadline_s
+    with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as c:
+        while time.monotonic() < end:
+            if c.execute(text("SELECT wait_event_type FROM pg_stat_activity WHERE pid = :p"),
+                         {"p": pid}).scalar() == "Lock":
+                return True
+    return False
+
+
+@pytest.mark.parametrize("first", ["org_admin", "account_admin"])
+def test_concurrent_account_admin_and_org_admin_grants_never_both_succeed(engine, first):
+    """Deterministic: the first grant holds the person's row lock (uncommitted) while the second grant, in another
+    session, is shown to be waiting for that lock; only then does the first commit. The second must then see the
+    first and be refused. Invariant: one person never holds both (R-40)."""
+    import queue
+
+    from qms_os.auth.permissions import grant_org_admin, holds_org_admin
+    from qms_os.services.common import RuleViolation
+
+    h = TA.Harness(engine)
+    admin = h.bootstrap()
+    md = h.onboard(admin, "md")
+    grants = {"org_admin": grant_org_admin, "account_admin": AS.grant_account_admin}
+    second = "account_admin" if first == "org_admin" else "org_admin"
+    maker = h.app.state.sessionmaker
+    pids: queue.Queue[int] = queue.Queue()
+    outcome: dict[str, str] = {}
+
+    def other() -> None:
+        with maker() as s2:
+            pids.put(s2.execute(text("SELECT pg_backend_pid()")).scalar())
+            try:
+                grants[second](s2, md.email)
+                s2.commit()
+                outcome["second"] = "granted"
+            except RuleViolation as e:
+                s2.rollback()
+                outcome["second"] = f"refused: {e}"
+
+    s1 = maker()
+    try:
+        grants[first](s1, md.email)                         # holds md's person row lock, not yet committed
+        s1.flush()
+        t = threading.Thread(target=other)
+        t.start()
+        pid = pids.get(timeout=10)
+        assert _wait_until_waiting_on_a_lock(engine, pid), "the second grant did not wait for the person's row lock"
+        s1.commit()
+    finally:
+        s1.close()
+    t.join(timeout=30)
+    assert not t.is_alive()
+    assert outcome["second"].startswith("refused") and "R-40" in outcome["second"], outcome
+    with h.db() as s:
+        u = s.get(User, h.uid("md"))
+        is_account_admin, is_org_admin = u.platform_role == AS.ACCOUNT_ADMIN, holds_org_admin(s, u.id)
+    assert not (is_account_admin and is_org_admin)          # the invariant
+    assert (is_account_admin, is_org_admin) == (first == "account_admin", first == "org_admin")
+
+
+# ---------- super admin scripts are read-only on PostgreSQL too (R-46) ----------
+
+def test_superadmin_session_cannot_write_on_postgres(engine):
+    from sqlalchemy.exc import InternalError
+
+    from qms_superadmin import access_segregation, review_org
+    from qms_superadmin.readonly import read_only_session
+
+    env = {"QMS_MODE": "test", "QMS_DATABASE_URL": URL}
+    with read_only_session(env) as (s, _):
+        assert "findings: 0" in review_org.review(s) and "findings: 0" in access_segregation.review(s)
+        with pytest.raises(InternalError, match="read-only transaction"):
+            s.execute(text("UPDATE departments SET name = 'changed'"))
+
+
 # ---------- link-code slice: verification code, two-admin invitations, single-admin exception ----------
 
 def _two_admin_records(h):
@@ -289,10 +369,10 @@ def test_parallel_wrong_link_codes_count_exactly_and_void_the_link(engine):
     """Eight wrong codes at once: exactly five are counted and the link is void; the rest find it void."""
     h = TA.Harness(engine)
     first, second = _two_admin_records(h)
-    req = first.post(f"/api/admin/accounts/{h.uid('qa_head')}/invite").json()
-    token = second.post(f"/api/admin/account-actions/{req['id']}/approve").json()["link_token"]
+    req = first.post(f"/api/v1/admin/accounts/{h.uid('qa_head')}/invite").json()
+    token = second.post(f"/api/v1/admin/account-actions/{req['id']}/approve").json()["link_token"]
     clients = [h.client() for _ in range(8)]
-    results = _together(8, lambda i: clients[i].post("/api/auth/setup", json={
+    results = _together(8, lambda i: clients[i].post("/api/v1/auth/setup", json={
         "token": token, "verification_code": "22222-22222", "password": TA.GOOD}).status_code)
     assert results == [401] * 8
     with h.db() as s:
@@ -309,11 +389,11 @@ def test_two_concurrent_approvals_of_one_invitation_approve_exactly_once(engine)
     assert cli.run_grant(h.app.state.sessionmaker, third.email, read_line=lambda _: third.email,
                          write=lambda _: None) == 0
     first.login()
-    req = first.post(f"/api/admin/accounts/{h.uid('qa_head')}/invite").json()
+    req = first.post(f"/api/v1/admin/accounts/{h.uid('qa_head')}/invite").json()
     approvers = [second, third]
     for a in approvers:
         a.login()
-    results = _together(2, lambda i: approvers[i].post(f"/api/admin/account-actions/{req['id']}/approve"))
+    results = _together(2, lambda i: approvers[i].post(f"/api/v1/admin/account-actions/{req['id']}/approve"))
     assert sorted(r.status_code for r in results) == [200, 422]
     with h.db() as s:
         approved = s.scalars(select(AuditEvent).where(AuditEvent.action == "auth.invite.approved",
@@ -339,8 +419,8 @@ def test_disable_racing_an_invitation_never_gives_a_single_admin_invitation(engi
 
     def act(i):
         if i == 0:
-            return first.post(f"/api/admin/accounts/{h.uid('qa_head')}/invite")
-        return other_session.post(f"/api/admin/accounts/{h.uid('md')}/disable")
+            return first.post(f"/api/v1/admin/accounts/{h.uid('qa_head')}/invite")
+        return other_session.post(f"/api/v1/admin/accounts/{h.uid('md')}/disable")
     invite, disable = _together(2, act)
     assert disable.status_code == 200
     assert invite.status_code in (200, 409)

@@ -56,7 +56,7 @@ class Person:
 
     def login(self, code: str | None = None, password: str | None = None):
         self.h.now.tick()
-        r = self.c.post("/api/auth/login", json={"email": self.email, "password": password or self.password,
+        r = self.c.post("/api/v1/auth/login", json={"email": self.email, "password": password or self.password,
                                                   "code": code if code is not None else self.code()})
         if r.status_code == 200:
             self.csrf = r.json()["csrf_token"]
@@ -103,20 +103,20 @@ class Harness:
     def onboard(self, admin: Person, local: str, password: str = GOOD, approver: Person | None = None) -> Person:
         """Invite and set up an account. With one account-admin record the invitation is issued at once (bootstrap
         exception); otherwise ``approver`` (a different admin) approves it and receives the link."""
-        r = admin.post(f"/api/admin/accounts/{self.uid(local)}/invite")
+        r = admin.post(f"/api/v1/admin/accounts/{self.uid(local)}/invite")
         assert r.status_code == 200, r.text
         code, token = r.json()["verification_code"], r.json().get("link_token")
         if token is None:
             assert approver is not None, "two account-admin records exist: the invitation needs an approver"
             approver.login()                                        # fresh step-up for the approval
-            ok = approver.post(f"/api/admin/account-actions/{r.json()['id']}/approve")
+            ok = approver.post(f"/api/v1/admin/account-actions/{r.json()['id']}/approve")
             assert ok.status_code == 200, ok.text
             token = ok.json()["link_token"]
         anon = self.client()
-        setup = anon.post("/api/auth/setup", json={"token": token, "verification_code": code, "password": password})
+        setup = anon.post("/api/v1/auth/setup", json={"token": token, "verification_code": code, "password": password})
         assert setup.status_code == 200, setup.text
         secret = setup.json()["secret"]
-        done = anon.post("/api/auth/setup/confirm", json={"token": token, "code": T.code_at(secret, self.now())})
+        done = anon.post("/api/v1/auth/setup/confirm", json={"token": token, "code": T.code_at(secret, self.now())})
         assert done.status_code == 200, done.text
         p = Person(self, f"{local}@fixture-org.example", password, secret)
         p.recovery_codes = done.json()["recovery_codes"]
@@ -145,24 +145,33 @@ def test_invited_person_sets_own_password_enrols_totp_and_signs_in(h):
     r = qa.login()
     assert r.status_code == 200 and r.json()["user"]["email"] == qa.email
     assert "qms_session" in qa.c.cookies and r.json()["method"] == "password_totp"
-    assert qa.get("/api/me").json()["email"] == qa.email
-    assert qa.get("/api/users").status_code == 200
-    assert qa.get("/api/auth/session").json()["step_up_fresh"] is True
+    assert qa.get("/api/v1/me").json()["email"] == qa.email
+    assert qa.get("/api/v1/users").status_code == 200
+    assert qa.get("/api/v1/auth/session").json()["step_up_fresh"] is True
+
+
+def test_session_cookie_is_scoped_to_api_v1_and_hardened(h):
+    """R-35: the cookie path follows the /api/v1 prefix; the other attributes are unchanged by the move."""
+    admin = h.bootstrap()
+    r = admin.login()
+    assert r.status_code == 200
+    cookie = r.headers["set-cookie"].lower()
+    assert "path=/api/v1" in cookie and "httponly" in cookie and "secure" in cookie and "samesite=strict" in cookie
 
 
 def test_unsafe_request_without_csrf_token_is_refused(h):
     ma = h.onboard(h.bootstrap(), "ma")
     ma.login()
-    refused = ma.post("/api/knowledge/sources", {"name": "S"}, csrf=False)
+    refused = ma.post("/api/v1/knowledge/sources", {"name": "S"}, csrf=False)
     assert refused.status_code == 403 and "CSRF" in refused.json()["detail"]
-    assert ma.post("/api/knowledge/sources", {"name": "S"}).status_code == 200
+    assert ma.post("/api/v1/knowledge/sources", {"name": "S"}).status_code == 200
 
 
 def test_totp_accepts_only_the_current_step_and_each_step_once(h):
     qa = h.onboard(h.bootstrap(), "qa_head")
     assert qa.login().status_code == 200
     reused = qa.code()                                         # same 30-second step as the sign-in just made
-    r = qa.c.post("/api/auth/login", json={"email": qa.email, "password": qa.password, "code": reused})
+    r = qa.c.post("/api/v1/auth/login", json={"email": qa.email, "password": qa.password, "code": reused})
     assert r.status_code == 401 and r.json() == INVALID
     previous = T.code_at(qa.secret, h.now() - timedelta(seconds=30))
     h.now.tick()
@@ -173,11 +182,11 @@ def test_totp_accepts_only_the_current_step_and_each_step_once(h):
 def test_failures_do_not_reveal_which_factor_or_account_state_was_wrong(h):
     admin = h.bootstrap()
     qa = h.onboard(admin, "qa_head")
-    bodies = [qa.c.post("/api/auth/login", json={"email": "nobody@fixture-org.example", "password": GOOD,
+    bodies = [qa.c.post("/api/v1/auth/login", json={"email": "nobody@fixture-org.example", "password": GOOD,
                                                  "code": "000000"}).json(),
               qa.login(password="wrong " + GOOD).json(),
               qa.login(code="000000").json()]
-    assert admin.post(f"/api/admin/accounts/{h.uid('qa_head')}/disable").status_code == 200
+    assert admin.post(f"/api/v1/admin/accounts/{h.uid('qa_head')}/disable").status_code == 200
     bodies.append(qa.login().json())
     assert all(b == INVALID for b in bodies)
     unknown = [e for e in h.events("auth.login.failed") if e.entity_id is None]
@@ -201,14 +210,14 @@ def test_session_idle_and_absolute_limits(h):
     qa = h.onboard(h.bootstrap(), "qa_head")
     qa.login()
     h.now.tick(minutes=29)
-    assert qa.get("/api/me").status_code == 200                 # activity extends the idle limit
+    assert qa.get("/api/v1/me").status_code == 200                 # activity extends the idle limit
     h.now.tick(minutes=30, seconds=1)
-    r = qa.get("/api/me")
+    r = qa.get("/api/v1/me")
     assert r.status_code == 401 and r.json()["reason"] == "session_expired"
     qa.login()
     for _ in range(17):                                          # active every 29 minutes for 8 h 13 min
         h.now.tick(minutes=29)
-        last = qa.get("/api/me")
+        last = qa.get("/api/v1/me")
     assert last.status_code == 401 and last.json()["reason"] == "session_expired"
 
 
@@ -216,8 +225,8 @@ def test_logout_revokes_the_session(h):
     qa = h.onboard(h.bootstrap(), "qa_head")
     qa.login()
     cookie = qa.c.cookies.get("qms_session")
-    assert qa.post("/api/auth/logout").status_code == 200
-    replay = h.client().get("/api/me", headers={"Cookie": f"qms_session={cookie}"})
+    assert qa.post("/api/v1/auth/logout").status_code == 200
+    replay = h.client().get("/api/v1/me", headers={"Cookie": f"qms_session={cookie}"})
     assert replay.status_code == 401 and replay.json()["reason"] == "not_authenticated"
 
 
@@ -226,12 +235,12 @@ def test_logout_revokes_the_session(h):
 def test_approval_routes_need_a_totp_within_five_minutes(h):
     admin = h.bootstrap()
     h.now.tick(minutes=6)
-    r = admin.post(f"/api/admin/accounts/{h.uid('qa_head')}/invite")
+    r = admin.post(f"/api/v1/admin/accounts/{h.uid('qa_head')}/invite")
     assert r.status_code == 401 and r.json()["reason"] == "step_up_required"
-    assert admin.post("/api/auth/step-up", {"code": "000000"}).status_code == 401
+    assert admin.post("/api/v1/auth/step-up", {"code": "000000"}).status_code == 401
     h.now.tick()
-    assert admin.post("/api/auth/step-up", {"code": admin.code()}).status_code == 200
-    assert admin.post(f"/api/admin/accounts/{h.uid('qa_head')}/invite").status_code == 200
+    assert admin.post("/api/v1/auth/step-up", {"code": admin.code()}).status_code == 200
+    assert admin.post(f"/api/v1/admin/accounts/{h.uid('qa_head')}/invite").status_code == 200
 
 
 # ---------- recovery codes ----------
@@ -241,31 +250,32 @@ def test_recovery_code_signs_in_but_never_satisfies_step_up_and_forces_reenrolme
     qa = h.onboard(admin, "qa_head")
     code = qa.recovery_codes[0]
     h.now.tick()
-    r = qa.c.post("/api/auth/login/recovery", json={"email": qa.email, "password": qa.password, "recovery_code": code})
+    r = qa.c.post("/api/v1/auth/login/recovery",
+                  json={"email": qa.email, "password": qa.password, "recovery_code": code})
     assert r.status_code == 200 and r.json()["totp_reenrollment_required"] is True
     qa.csrf = r.json()["csrf_token"]
-    assert qa.get("/api/me").json()["reason"] == "totp_reenrollment_required"
-    assert qa.post("/api/auth/recovery-codes").json()["reason"] == "totp_reenrollment_required"
-    assert qa.get("/api/auth/session").json()["step_up_fresh"] is False
+    assert qa.get("/api/v1/me").json()["reason"] == "totp_reenrollment_required"
+    assert qa.post("/api/v1/auth/recovery-codes").json()["reason"] == "totp_reenrollment_required"
+    assert qa.get("/api/v1/auth/session").json()["step_up_fresh"] is False
     with h.db() as s:
         assert s.scalar(select(Notification).where(Notification.kind == "security_notice")) is not None
-    setup = qa.post("/api/auth/totp/reenroll").json()
+    setup = qa.post("/api/v1/auth/totp/reenroll").json()
     qa.secret = setup["secret"]
-    done = qa.post("/api/auth/totp/reenroll/confirm", {"code": qa.code()}).json()
+    done = qa.post("/api/v1/auth/totp/reenroll/confirm", {"code": qa.code()}).json()
     codes = done["recovery_codes"]
     assert len(codes) == 10 and code not in codes
     # the recovery-code session ends: it never becomes a full or step-up session, even with the new authenticator
     assert done["sign_in_required"] is True
     old_cookie = r.cookies.get("qms_session")
-    after = h.client().get("/api/me", headers={"Cookie": f"qms_session={old_cookie}"})
+    after = h.client().get("/api/v1/me", headers={"Cookie": f"qms_session={old_cookie}"})
     assert after.status_code == 401 and after.json()["reason"] == "not_authenticated"
     with h.db() as s:
         ended = s.scalar(select(AuthSession).where(AuthSession.method == "recovery_code"))
         assert ended.mfa_at is None and ended.revoked_reason == "reenrolled_after_recovery"
     assert qa.login().status_code == 200                       # normal sign-in: password + the new TOTP
-    assert qa.get("/api/auth/session").json()["step_up_fresh"] is True
+    assert qa.get("/api/v1/auth/session").json()["step_up_fresh"] is True
     h.now.tick()                                               # the old code is used and the set superseded
-    again = qa.c.post("/api/auth/login/recovery", json={"email": qa.email, "password": qa.password,
+    again = qa.c.post("/api/v1/auth/login/recovery", json={"email": qa.email, "password": qa.password,
                                                         "recovery_code": code})
     assert again.json() == INVALID
 
@@ -275,7 +285,7 @@ def test_recovery_code_signs_in_but_never_satisfies_step_up_and_forces_reenrolme
 def test_reset_needs_a_second_account_admin(h):
     admin = h.bootstrap()
     qa = h.onboard(admin, "qa_head")
-    r = admin.post(f"/api/admin/accounts/{h.uid('qa_head')}/reset", {"identity_proof": "seen in person, ID card"})
+    r = admin.post(f"/api/v1/admin/accounts/{h.uid('qa_head')}/reset", {"identity_proof": "seen in person, ID card"})
     assert r.status_code == 409 and r.json()["rule"] == "second_admin_required"
     with h.db() as s:
         held = s.scalars(select(AuditEvent).where(AuditEvent.action == "transition.held")).all()
@@ -293,26 +303,26 @@ def test_reset_initiated_by_one_admin_approved_by_another_and_completed_by_the_p
     qa.login()
     admin.login()
     second.login()
-    url = f"/api/admin/accounts/{h.uid('qa_head')}/reset"
+    url = f"/api/v1/admin/accounts/{h.uid('qa_head')}/reset"
     assert admin.post(url, {"identity_proof": ""}).status_code == 422
     action = admin.post(url, {"identity_proof": "seen in person, ID card checked"}).json()
     assert action["status"] == "pending_approval" and "link_token" not in action and action["verification_code"]
-    assert admin.post(f"/api/admin/account-actions/{action['id']}/approve").status_code == 403   # initiator
-    ok = second.post(f"/api/admin/account-actions/{action['id']}/approve").json()
+    assert admin.post(f"/api/v1/admin/account-actions/{action['id']}/approve").status_code == 403   # initiator
+    ok = second.post(f"/api/v1/admin/account-actions/{action['id']}/approve").json()
     assert ok["status"] == "link_issued" and ok["link_token"] and "verification_code" not in ok
-    assert qa.get("/api/me").json()["reason"] == "not_authenticated"   # sessions revoked
+    assert qa.get("/api/v1/me").json()["reason"] == "not_authenticated"   # sessions revoked
     assert qa.login().json() == INVALID                         # old credentials are gone
     anon = h.client()
     new_pw = "amber kettle seven lantern drift"
-    setup = anon.post("/api/auth/setup", json={"token": ok["link_token"],
+    setup = anon.post("/api/v1/auth/setup", json={"token": ok["link_token"],
                                                "verification_code": action["verification_code"],
                                                "password": new_pw}).json()
     h.now.tick()
-    assert anon.post("/api/auth/setup/confirm", json={"token": ok["link_token"],
+    assert anon.post("/api/v1/auth/setup/confirm", json={"token": ok["link_token"],
                                                       "code": T.code_at(setup["secret"], h.now())}).status_code == 200
     qa.password, qa.secret = new_pw, setup["secret"]
     assert qa.login().status_code == 200
-    assert anon.post("/api/auth/setup", json={"token": ok["link_token"],
+    assert anon.post("/api/v1/auth/setup", json={"token": ok["link_token"],
                                               "verification_code": action["verification_code"],
                                               "password": new_pw}).json()["reason"] == "invalid_link"   # one-time
 
@@ -324,7 +334,7 @@ def test_account_admin_role_is_separate_from_qms_roles(h):
         assert boot.platform_role == AS.ACCOUNT_ADMIN and boot.role == "VIEWER"
     qa = h.onboard(admin, "qa_head")
     qa.login()
-    assert qa.get("/api/admin/accounts").status_code == 403    # a QMS role is not account administration
+    assert qa.get("/api/v1/admin/accounts").status_code == 403    # a QMS role is not account administration
 
 
 # ---------- passwords ----------
@@ -349,8 +359,8 @@ def test_password_policy_accepts_a_long_unrelated_passphrase():
 
 def test_weak_password_is_refused_at_set_up(h):
     admin = h.bootstrap()
-    issued = admin.post(f"/api/admin/accounts/{h.uid('qa_head')}/invite").json()
-    r = h.client().post("/api/auth/setup", json={"token": issued["link_token"],
+    issued = admin.post(f"/api/v1/admin/accounts/{h.uid('qa_head')}/invite").json()
+    r = h.client().post("/api/v1/auth/setup", json={"token": issued["link_token"],
                                                  "verification_code": issued["verification_code"],
                                                  "password": "password1234567"})
     assert r.status_code == 422 and "common" in r.json()["detail"]
@@ -363,7 +373,7 @@ def test_every_auth_event_records_actor_kind_and_channel_and_no_secret(h):
     qa = h.onboard(admin, "qa_head")
     qa.login(password="wrong " + GOOD)
     qa.login()
-    qa.post("/api/auth/logout")
+    qa.post("/api/v1/auth/logout")
     events = h.events()
     assert {e.action for e in events} >= {"auth.bootstrap_admin", "auth.account.invited", "auth.setup.password_set",
                                           "auth.totp.enrolled", "auth.account.activated", "auth.login.failed",
@@ -380,7 +390,7 @@ def test_every_auth_event_records_actor_kind_and_channel_and_no_secret(h):
 def test_sessions_are_revoked_not_deleted(h):
     qa = h.onboard(h.bootstrap(), "qa_head")
     qa.login()
-    qa.post("/api/auth/logout")
+    qa.post("/api/v1/auth/logout")
     with h.db() as s:
         rows = s.scalars(select(AuthSession).where(AuthSession.user_id == h.uid("qa_head"))).all()
     assert rows and all(r.revoked_at is not None for r in rows)
@@ -454,7 +464,7 @@ def test_test_identity_provider_is_refused_outside_test_mode(engine, mode, tmp_p
                    policy_file=tmp_path / "absent.json" if mode == "operational" else None)
     app = create_app(engine=engine, mode=mode, env=env,
                      policy_file=tmp_path / "absent.json" if mode == "operational" else None)
-    r = TestClient(app).get("/api/me", headers={TestIdentityProvider.header: "1"})
+    r = TestClient(app).get("/api/v1/me", headers={TestIdentityProvider.header: "1"})
     assert r.status_code == 401 and r.json()["reason"] == "not_authenticated"   # the header means nothing here
 
 
@@ -463,16 +473,16 @@ def test_users_directory_needs_sign_in_in_every_mode(engine, mode, tmp_path):
     app = create_app(engine=engine, mode=mode, auth_key=os.urandom(32), env={},
                      policy_file=tmp_path / "absent.json" if mode == "operational" else None)
     for headers in ({}, {"X-User-Id": "1"}):                                # the old development header means nothing
-        r = TestClient(app).get("/api/users", headers=headers)
+        r = TestClient(app).get("/api/v1/users", headers=headers)
         assert r.status_code == 401 and r.json() == {"detail": "authentication required", "reason": "not_authenticated"}
 
 
 def test_validation_errors_never_echo_submitted_values(h):
     anon = h.client()
     too_long = "LONG-SENTINEL-" + "p" * 1100                                 # over the 1024-character field limit
-    r = anon.post("/api/auth/login", json={"email": "a@fixture-org.example", "password": too_long, "code": "1"})
+    r = anon.post("/api/v1/auth/login", json={"email": "a@fixture-org.example", "password": too_long, "code": "1"})
     assert r.status_code == 422 and "LONG-SENTINEL" not in r.text
-    r = anon.post("/api/auth/setup", json={"token": "t", "password": ["TYPED-SENTINEL"]})   # wrong type
+    r = anon.post("/api/v1/auth/setup", json={"token": "t", "password": ["TYPED-SENTINEL"]})   # wrong type
     assert r.status_code == 422 and "TYPED-SENTINEL" not in r.text
     assert all(set(e) <= {"type", "loc", "msg", "url"} for e in r.json()["detail"])
 
@@ -480,8 +490,8 @@ def test_validation_errors_never_echo_submitted_values(h):
 def test_non_human_principals_cannot_use_human_routes(api):
     agent = api.as_("ma")
     agent.h = agent.h | {"X-Test-Principal-Kind": "agent"}
-    assert agent.get("/api/me").status_code == 403
-    assert agent.post("/api/programs/1/approve").status_code == 403
+    assert agent.get("/api/v1/me").status_code == 403
+    assert agent.post("/api/v1/programs/1/approve").status_code == 403
 
 
 # ---------- first Admin (CLI) ----------

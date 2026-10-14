@@ -10,7 +10,7 @@ from qms_os.rules.calendar import previous_working_day
 
 
 def _program(api):
-    r = api.as_("ma").post("/api/programs", {"year": 2026})
+    r = api.as_("ma").post("/api/v1/programs", {"year": 2026})
     assert r.status_code == 200, r.text
     return r.json()
 
@@ -37,17 +37,17 @@ def test_programme_plan_validate_approve(api, fresh):
         assert all(a.department_id is not None and a.auditor_id is not None for a in audits)
         for c in cycles:
             assert {a.department_id for a in c.audits} == set(s.scalars(select(Department.id)))
-    assert api.as_("ma").get(f"/api/programs/{prog['id']}/violations").json() == []
-    assert api.as_("qa_head").post(f"/api/programs/{prog['id']}/approve").status_code == 403
-    r = api.as_("ma").post(f"/api/programs/{prog['id']}/approve")
+    assert api.as_("ma").get(f"/api/v1/programs/{prog['id']}/violations").json() == []
+    assert api.as_("qa_head").post(f"/api/v1/programs/{prog['id']}/approve").status_code == 403
+    r = api.as_("ma").post(f"/api/v1/programs/{prog['id']}/approve")
     assert r.json()["status"] == "APPROVED"
     with fresh() as s:
         p = s.get(AuditProgram, prog["id"])
         assert p.status == "APPROVED" and p.approved_by_id == api.users["ma"]
         assert p.policy_basis == "synthetic-demo" and p.policy_fingerprint == P.fingerprint
     # approved programme cannot be regenerated
-    assert api.as_("ma").post("/api/programs", {"year": 2026}).status_code == 422
-    notes = api.as_("ma").get("/api/notifications").json()
+    assert api.as_("ma").post("/api/v1/programs", {"year": 2026}).status_code == 422
+    notes = api.as_("ma").get("/api/v1/notifications").json()
     assert [n["kind"] for n in notes] == ["calendar_announcement"] and notes[0]["status"] == "DRAFT"
     assert "Planned audits for 2026" in notes[0]["body"] and "audit notice" in notes[0]["body"]
 
@@ -55,18 +55,18 @@ def test_programme_plan_validate_approve(api, fresh):
 def test_manual_assignment_rejects_own_department(api):
     prog = _program(api)
     a = _first_audit(prog)
-    same_dept_head = next(u for u in api.as_("ma").get("/api/users").json()
+    same_dept_head = next(u for u in api.as_("ma").get("/api/v1/users").json()
                           if u["department_id"] == a["department_id"] and u["trained_auditor"])
-    r = api.as_("ma").post(f"/api/audits/{a['id']}/assign", {"auditor_id": same_dept_head["id"]})
+    r = api.as_("ma").post(f"/api/v1/audits/{a['id']}/assign", {"auditor_id": same_dept_head["id"]})
     assert r.status_code == 422 and "cannot audit" in r.json()["detail"]
 
 
 def test_full_nc_lifecycle(api, clock, fresh):
     prog = _program(api)
-    api.as_("ma").post(f"/api/programs/{prog['id']}/approve")
+    api.as_("ma").post(f"/api/v1/programs/{prog['id']}/approve")
     a = _first_audit(prog)
     auditor = api.as_(a["auditor_id"])
-    head = next(u for u in api.as_("ma").get("/api/users").json()
+    head = next(u for u in api.as_("ma").get("/api/v1/users").json()
                 if u["department_id"] == a["department_id"] and u["role"] == "AUDITEE")
     auditee = api.as_(head["id"])
     other = next(k for k in api.users if k not in ("ma", "md", "viewer") and api.users[k] not in
@@ -75,60 +75,61 @@ def test_full_nc_lifecycle(api, clock, fresh):
 
     # circular drafted on the notify date
     clock.d = date.fromisoformat(a["notify_on"])
-    assert api.as_("ma").post("/api/notifications/prepare-circulars").json()["drafted"] >= 1
+    assert api.as_("ma").post("/api/v1/notifications/prepare-circulars").json()["drafted"] >= 1
 
     # NC needs evidence + ISO clause + QMS ref
-    bad = auditor.post(f"/api/audits/{a['id']}/findings", {"category": "MINOR_NC", "statement": "x"})
+    bad = auditor.post(f"/api/v1/audits/{a['id']}/findings", {"category": "MINOR_NC", "statement": "x"})
     assert bad.status_code == 422
-    nc = auditor.post(f"/api/audits/{a['id']}/findings", {
+    nc = auditor.post(f"/api/v1/audits/{a['id']}/findings", {
         "category": "MINOR_NC", "statement": "No supplier re-evaluation record for 2025",
         "objective_evidence": "Supplier file S-12 has no re-evaluation record", "iso_clause": "8.4.1",
         "qms_ref": "SYN/PROC/PUR"}).json()
-    afi = auditor.post(f"/api/audits/{a['id']}/findings",
+    afi = auditor.post(f"/api/v1/audits/{a['id']}/findings",
                        {"category": "AFI", "statement": "Index could be searchable"}).json()
     assert nc["code"].endswith("-nc-1") and afi["code"].endswith("-afi-1")
-    assert auditee.post(f"/api/audits/{a['id']}/findings", {"category": "AFI", "statement": "s"}).status_code == 403
+    assert auditee.post(f"/api/v1/audits/{a['id']}/findings", {"category": "AFI", "statement": "s"}).status_code == 403
 
     # drafts are invisible to the auditee
-    assert auditee.get("/api/findings").json() == []
+    assert auditee.get("/api/v1/findings").json() == []
     # report blocked until concurrence recorded, and before audit date
     clock.d = date.fromisoformat(a["audit_date"])
-    held = auditor.post(f"/api/audits/{a['id']}/report")
+    held = auditor.post(f"/api/v1/audits/{a['id']}/report")
     assert held.status_code == 409 and held.json()["held"] is True
     assert held.json()["rule"] == "concurrence_unrecorded"
-    auditor.post(f"/api/findings/{nc['id']}/concurrence", {"concurred": True})
-    r = auditor.post(f"/api/audits/{a['id']}/report")
+    auditor.post(f"/api/v1/findings/{nc['id']}/concurrence", {"concurred": True})
+    r = auditor.post(f"/api/v1/audits/{a['id']}/report")
     assert r.status_code == 200 and r.json()["status"] == "REPORTED"
     report_day = clock.d
 
-    seen = {f["id"]: f for f in auditee.get("/api/findings").json()}
+    seen = {f["id"]: f for f in auditee.get("/api/v1/findings").json()}
     assert seen[nc["id"]]["status"] == "OPEN" and seen[nc["id"]]["aging"] == "GREEN"
-    assert api.as_(other).get("/api/findings").json() == [] or all(
-        f["department_id"] != a["department_id"] for f in api.as_(other).get("/api/findings").json())
+    assert api.as_(other).get("/api/v1/findings").json() == [] or all(
+        f["department_id"] != a["department_id"] for f in api.as_(other).get("/api/v1/findings").json())
 
     plan = {"root_cause": "Re-evaluation not scheduled", "corrective_action": "Add annual re-evaluation to calendar",
             "owner_name": "Buyer 1"}
-    late = auditee.post(f"/api/findings/{nc['id']}/action-plan",
+    late = auditee.post(f"/api/v1/findings/{nc['id']}/action-plan",
                         plan | {"planned_closure":
                                 (report_day + timedelta(days=P.v("closure_limit_days") + 1)).isoformat()})
     assert late.status_code == 422 and "closure limit" in late.json()["detail"]
-    ok = auditee.post(f"/api/findings/{nc['id']}/action-plan",
+    ok = auditee.post(f"/api/v1/findings/{nc['id']}/action-plan",
                       plan | {"planned_closure":
                               (report_day + timedelta(days=P.v("closure_limit_days") // 2)).isoformat()})
     assert ok.status_code == 200
-    assert auditor.post(f"/api/findings/{nc['id']}/accept").status_code == 403
-    assert api.as_("ma").post(f"/api/findings/{nc['id']}/accept").json()["status"] == "ACTION_PLANNED"
+    assert auditor.post(f"/api/v1/findings/{nc['id']}/accept").status_code == 403
+    assert api.as_("ma").post(f"/api/v1/findings/{nc['id']}/accept").json()["status"] == "ACTION_PLANNED"
 
-    assert auditee.post(f"/api/findings/{nc['id']}/closure", {"evidence_ref": " "}).status_code == 422
-    r = auditee.post(f"/api/findings/{nc['id']}/closure", {"evidence_ref": "DMS://fixture-org/pur/re-eval-2026 v2"})
+    assert auditee.post(f"/api/v1/findings/{nc['id']}/closure", {"evidence_ref": " "}).status_code == 422
+    r = auditee.post(f"/api/v1/findings/{nc['id']}/closure", {"evidence_ref": "DMS://fixture-org/pur/re-eval-2026 v2"})
     assert r.json()["status"] == "PENDING_VERIFICATION"
 
-    assert api.as_(other).post(f"/api/findings/{nc['id']}/verify",
+    assert api.as_(other).post(f"/api/v1/findings/{nc['id']}/verify",
                                {"effective": True, "note": "ok"}).status_code in (403, 404)
-    r = auditor.post(f"/api/findings/{nc['id']}/verify", {"effective": True, "note": "Record sighted"})
+    r = auditor.post(f"/api/v1/findings/{nc['id']}/verify", {"effective": True, "note": "Record sighted"})
     assert r.json()["status"] == "CLOSED" and r.json()["closed_on"] == report_day.isoformat()
 
-    assert api.as_("ma").post(f"/api/findings/{afi['id']}/acknowledge", {"note": "noted"}).json()["status"] == "CLOSED"
+    assert api.as_("ma").post(f"/api/v1/findings/{afi['id']}/acknowledge",
+                              {"note": "noted"}).json()["status"] == "CLOSED"
 
     with fresh() as s:  # persisted closure record, not just the API response
         f = s.get(Finding, nc["id"])
@@ -138,12 +139,12 @@ def test_full_nc_lifecycle(api, clock, fresh):
         assert ca.closure_evidence_ref == "DMS://fixture-org/pur/re-eval-2026 v2"
         assert ca.submitted_by_id == head["id"] != ca.verified_by_id
 
-    actions = [e["action"] for e in api.as_("ma").get("/api/events").json()]
+    actions = [e["action"] for e in api.as_("ma").get("/api/v1/events").json()]
     for expected in ("program.approved", "audit.report_issued", "finding.accept_action_plan", "finding.verify"):
         assert expected in actions
-    assert api.as_(head["id"]).get("/api/events").status_code == 403
+    assert api.as_(head["id"]).get("/api/v1/events").status_code == 403
 
-    kinds = {n["kind"] for n in api.as_("ma").get("/api/notifications").json()}
+    kinds = {n["kind"] for n in api.as_("ma").get("/api/v1/notifications").json()}
     assert {"calendar_announcement", "audit_circular", "audit_report"} <= kinds
 
 
@@ -151,43 +152,44 @@ def test_workpapers_are_auditor_only(api):
     prog = _program(api)
     a = _first_audit(prog)
     auditor = api.as_(a["auditor_id"])
-    assert auditor.post(f"/api/audits/{a['id']}/workpapers", {"kind": "questions", "content": "Q1?"}).status_code == 200
-    assert len(auditor.get(f"/api/audits/{a['id']}").json()["workpapers"]) == 1
-    head = next(u for u in api.as_("ma").get("/api/users").json()
+    assert auditor.post(f"/api/v1/audits/{a['id']}/workpapers",
+                        {"kind": "questions", "content": "Q1?"}).status_code == 200
+    assert len(auditor.get(f"/api/v1/audits/{a['id']}").json()["workpapers"]) == 1
+    head = next(u for u in api.as_("ma").get("/api/v1/users").json()
                 if u["department_id"] == a["department_id"] and u["role"] == "AUDITEE")
-    detail = api.as_(head["id"]).get(f"/api/audits/{a['id']}").json()
+    detail = api.as_(head["id"]).get(f"/api/v1/audits/{a['id']}").json()
     assert detail["workpapers"] is None and detail["prior_findings"] == []
-    assert api.as_(head["id"]).post(f"/api/audits/{a['id']}/workpapers",
+    assert api.as_(head["id"]).post(f"/api/v1/audits/{a['id']}/workpapers",
                                     {"kind": "notes", "content": "x"}).status_code == 403
 
 
 def test_reschedule_recomputes_subplan_and_drafts_notice(api):
     prog = _program(api)
     a = _first_audit(prog)
-    r = api.as_("ma").post(f"/api/audits/{a['id']}/reschedule", {"audit_date": "2026-02-18", "reason": ""})
+    r = api.as_("ma").post(f"/api/v1/audits/{a['id']}/reschedule", {"audit_date": "2026-02-18", "reason": ""})
     assert r.status_code == 422
-    r = api.as_("ma").post(f"/api/audits/{a['id']}/reschedule",
+    r = api.as_("ma").post(f"/api/v1/audits/{a['id']}/reschedule",
                            {"audit_date": "2026-02-21", "reason": "client visit"})
     assert r.status_code == 422  # Saturday
-    r = api.as_("ma").post(f"/api/audits/{a['id']}/reschedule",
+    r = api.as_("ma").post(f"/api/v1/audits/{a['id']}/reschedule",
                            {"audit_date": "2026-02-18", "reason": "a sudden client meeting"}).json()
     expected = previous_working_day(date(2026, 2, 18) + timedelta(days=P.v("notify_offset_days")),
                                     {d for d, _ in holidays(2026)})
     assert r["audit_date"] == "2026-02-18" and r["notify_on"] == expected.isoformat()
-    assert any(n["kind"] == "reschedule" for n in api.as_("ma").get("/api/notifications").json())
+    assert any(n["kind"] == "reschedule" for n in api.as_("ma").get("/api/v1/notifications").json())
 
 
 def test_unauthenticated_and_unknown_user(api):
     from fastapi.testclient import TestClient  # noqa: F401
-    assert api.as_("ma").c.get("/api/me").status_code == 401
-    assert api.as_(9999).get("/api/me").status_code == 401
+    assert api.as_("ma").c.get("/api/v1/me").status_code == 401
+    assert api.as_(9999).get("/api/v1/me").status_code == 401
 
 
 def test_test_mode_policy_is_synthetic_and_cannot_become_organisational(api):
-    p = api.as_("viewer").get("/api/policy").json()
+    p = api.as_("viewer").get("/api/v1/policy").json()
     assert (p["mode"], p["state"]) == ("test", "synthetic-demo")
     assert p["policy"]["params"]["closure_limit_days"]["value"] == P.v("closure_limit_days")
     assert "synthetic example" in p["policy"]["params"]["closure_limit_days"]["source"]
-    assert api.as_("ma").post("/api/policy/submit", {"note": "x"}).status_code == 422
-    assert api.as_("md").post("/api/policy/submissions/1/approve",
+    assert api.as_("ma").post("/api/v1/policy/submit", {"note": "x"}).status_code == 422
+    assert api.as_("md").post("/api/v1/policy/submissions/1/approve",
                               {"fingerprint": P.fingerprint, "confirm_version": "demo-1"}).status_code == 422
