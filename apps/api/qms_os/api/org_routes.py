@@ -7,7 +7,9 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
 from ..models import User
+from ..services import access as ACC
 from ..services import org as O
+from ..services.common import get_or_404
 from .deps import get_session, org_admin
 
 router = APIRouter(prefix="/api/v1/org")
@@ -24,6 +26,7 @@ class DepartmentChange(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: str | None = Field(default=None, max_length=120)
     head_user_id: int | None = None
+    classification: str | None = Field(default=None, max_length=16)
 
 
 class PersonIn(BaseModel):
@@ -42,6 +45,20 @@ class PersonChange(BaseModel):
     role: str | None = Field(default=None, max_length=16)
     department_id: int | None = None
     trained_auditor: bool | None = None
+    classification: str | None = Field(default=None, max_length=16)
+
+
+class RoleGrantIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    role: str = Field(max_length=16)
+    resource_kind: str = Field(max_length=16)
+    max_classification: str = Field(max_length=16)
+    scope: str = Field(default="all", max_length=8)
+
+
+class MemberIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    user_id: int
 
 
 @router.get("/departments")
@@ -94,3 +111,40 @@ def deactivate_person(person_id: int, u: User = Depends(org_admin), s: Session =
 @router.post("/people/{person_id}/reactivate")
 def reactivate_person(person_id: int, u: User = Depends(org_admin), s: Session = Depends(get_session)):
     return O.person_row(O.reactivate_person(s, u, person_id))
+
+
+# ---------- grants and the effective-access preview (MVP-1 slice 3) ----------
+
+@router.get("/role-grants")
+def role_grants(u: User = Depends(org_admin), s: Session = Depends(get_session)):
+    return O.list_role_grants(s)
+
+
+@router.post("/role-grants")
+def add_role_grant(body: RoleGrantIn, u: User = Depends(org_admin), s: Session = Depends(get_session)):
+    return O.role_grant_row(O.add_role_grant(s, u, body.role, body.resource_kind, body.max_classification, body.scope))
+
+
+@router.post("/role-grants/{grant_id}/revoke")
+def revoke_role_grant(grant_id: int, u: User = Depends(org_admin), s: Session = Depends(get_session)):
+    return O.role_grant_row(O.revoke_role_grant(s, u, grant_id))
+
+
+@router.post("/projects/{project_id}/members")
+def add_project_member(project_id: int, body: MemberIn, u: User = Depends(org_admin),
+                       s: Session = Depends(get_session)):
+    m = O.add_project_member(s, u, project_id, body.user_id)
+    return {"project_id": m.project_id, "user_id": m.user_id, "active": True}
+
+
+@router.post("/projects/{project_id}/members/{user_id}/remove")
+def remove_project_member(project_id: int, user_id: int, u: User = Depends(org_admin),
+                          s: Session = Depends(get_session)):
+    m = O.remove_project_member(s, u, project_id, user_id)
+    return {"project_id": m.project_id, "user_id": m.user_id, "active": False}
+
+
+@router.get("/access-preview/{user_id}")
+def access_preview(user_id: int, u: User = Depends(org_admin), s: Session = Depends(get_session)):
+    """What the person can and cannot read, from the same functions that enforce the reads (R-31)."""
+    return ACC.preview(s, get_or_404(s, User, user_id))

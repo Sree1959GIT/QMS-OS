@@ -1,0 +1,119 @@
+"""Grants and the effective-access preview (MVP-1 slice 3; R-31, R-43, R-44).
+
+One code path: ``effective_access`` builds what a person may read from their QMS role's grants, their project
+memberships and the classification ceiling; ``decide`` is the only rule. Enforcement (``require_read``,
+``readable``) and the preview (``preview``) both call these two functions, so they cannot disagree.
+
+Classification values are R-24's candidate data classes (``providers.contract.DataClass``: public < internal <
+confidential). Mailbox scope and delegation are declared in the model but always empty in MVP-1 and do not affect a
+decision. A deactivated person reads nothing. The org admin permission does not widen these reads: org admins work
+through ``/api/v1/org`` (R-41).
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from ..models import Delegation, Department, MailboxScope, Project, ProjectMember, RoleGrant, User
+from ..providers.contract import DataClass
+from .common import NotFound
+
+LEVELS = [c.value for c in DataClass]               # ordered: public < internal < confidential
+KINDS = ("department", "person", "project")
+SCOPES = ("all", "member")
+MODELS: dict[str, type[Department] | type[User] | type[Project]] = {"department": Department, "person": User,
+                                                                  "project": Project}
+
+
+@dataclass(frozen=True)
+class Resource:
+    kind: str
+    id: int
+    classification: str
+
+
+@dataclass
+class AccessSet:
+    user_id: int
+    role: str
+    active: bool
+    ceilings: dict[str, tuple[str, str]] = field(default_factory=dict)    # kind -> (max classification, scope)
+    member_projects: frozenset[int] = frozenset()
+    mailbox_scopes: tuple = ()                                           # declared, empty in MVP-1 (R-31)
+    delegations: tuple = ()                                              # declared, empty in MVP-1 (R-31)
+
+
+def _level(classification: str) -> int:
+    return LEVELS.index(classification)
+
+
+def resource_of(obj) -> Resource:
+    kind = next(k for k, m in MODELS.items() if isinstance(obj, m))
+    return Resource(kind, obj.id, obj.classification)
+
+
+def effective_access(s: Session, user: User) -> AccessSet:
+    if not user.active:
+        return AccessSet(user.id, user.role, active=False)
+    ceilings: dict[str, tuple[str, str]] = {}
+    for g in s.scalars(select(RoleGrant).where(RoleGrant.role == user.role, RoleGrant.revoked_at.is_(None))):
+        current = ceilings.get(g.resource_kind)
+        # several grants for one kind: the widest ceiling and the widest scope win
+        level = g.max_classification if current is None or _level(g.max_classification) > _level(current[0]) \
+            else current[0]
+        scope = "all" if g.scope == "all" or (current is not None and current[1] == "all") else "member"
+        ceilings[g.resource_kind] = (level, scope)
+    members = set(s.scalars(select(ProjectMember.project_id).where(
+        ProjectMember.user_id == user.id, ProjectMember.removed_at.is_(None))))
+    members |= set(s.scalars(select(Project.id).where(Project.manager_user_id == user.id)))
+    # declared but empty in MVP-1: read so that a non-empty table would show up in the preview, never used to decide
+    mailbox = tuple(s.scalars(select(MailboxScope.id).where(MailboxScope.user_id == user.id)))
+    delegated = tuple(s.scalars(select(Delegation.id).where(Delegation.to_user_id == user.id)))
+    return AccessSet(user.id, user.role, True, ceilings, frozenset(members), mailbox, delegated)
+
+
+def decide(access: AccessSet, resource: Resource) -> bool:
+    """The only read rule for grant-governed resources."""
+    if not access.active or resource.kind not in access.ceilings:
+        return False
+    ceiling, scope = access.ceilings[resource.kind]
+    if _level(resource.classification) > _level(ceiling):
+        return False
+    if resource.kind == "project" and scope == "member":
+        return resource.id in access.member_projects
+    return True
+
+
+# ---------- enforcement ----------
+
+def readable(s: Session, user: User, kind: str, rows: list) -> list:
+    access = effective_access(s, user)
+    return [r for r in rows if decide(access, resource_of(r))]
+
+
+def require_read(s: Session, user: User, kind: str, obj_id: int):
+    """The record, or 404 whether it is missing or not readable (R-44: existence is not revealed)."""
+    obj = s.get(MODELS[kind], obj_id)
+    if obj is None or not decide(effective_access(s, user), resource_of(obj)):
+        raise NotFound(f"{kind} {obj_id} not found")
+    return obj
+
+
+# ---------- preview ----------
+
+def preview(s: Session, user: User) -> dict:
+    """What ``user`` can and cannot read, computed by ``effective_access`` and ``decide`` (the enforcement path)."""
+    access = effective_access(s, user)
+    readable_ids: dict[str, list[int]] = {}
+    denied_ids: dict[str, list[int]] = {}
+    for kind, model in MODELS.items():
+        rows: list[Department | User | Project] = list(s.scalars(select(model).order_by(model.id)))
+        readable_ids[kind] = [r.id for r in rows if decide(access, resource_of(r))]
+        denied_ids[kind] = [r.id for r in rows if not decide(access, resource_of(r))]
+    return {"user_id": user.id, "role": user.role, "active": access.active,
+            "grants": {k: {"max_classification": c, "scope": sc} for k, (c, sc) in sorted(access.ceilings.items())},
+            "member_projects": sorted(access.member_projects),
+            "mailbox_scopes": list(access.mailbox_scopes), "delegations": list(access.delegations),
+            "agents": [], "readable": readable_ids, "denied": denied_ids}

@@ -150,6 +150,16 @@ Slice notes (decisions recorded with their slice, not as R-rows):
   and audited. An org admin cannot change their own person record (self-change would grant oneself access).
 - Slice 2 (D14): no fixture person holds the org admin permission; tests and demos grant it with the operator CLI
   (R-39), as for the first account admin.
+- Slice 3 (D7): resource classification uses R-24's candidate values `public < internal < confidential`
+  (`providers.contract.DataClass`); departments, people and projects default to `internal`. Projects have no
+  classification route yet (set in the database only); the three added classification columns rely on service-layer
+  validation (CHECK constraints only on the new grant tables).
+- Slice 3 (D8): org admins add and revoke role grants and project memberships through `/api/v1/org/`, audited. The
+  synthetic fixtures give every QMS role `internal` read on departments, people and projects (the visibility the
+  fixture people had before grants). An org admin cannot change the grants of their own QMS role or add themselves
+  to a project (no self-widening of access).
+- Slice 3 (D11): the effective-access preview covers people in pull request 2; agents join it in pull request 3
+  with slice 4.
 
 ### Super admin skills and documentation (approved (Admin, 2026-10-14))
 

@@ -24,6 +24,11 @@ ORG_ROUTES = {
     ("POST", f"{ORG}/departments/{{department_id}}/reactivate"),
     ("GET", f"{ORG}/people"), ("POST", f"{ORG}/people"), ("PATCH", f"{ORG}/people/{{person_id}}"),
     ("POST", f"{ORG}/people/{{person_id}}/deactivate"), ("POST", f"{ORG}/people/{{person_id}}/reactivate"),
+    # slice 3: grants, project membership and the effective-access preview
+    ("GET", f"{ORG}/role-grants"), ("POST", f"{ORG}/role-grants"), ("POST", f"{ORG}/role-grants/{{grant_id}}/revoke"),
+    ("POST", f"{ORG}/projects/{{project_id}}/members"),
+    ("POST", f"{ORG}/projects/{{project_id}}/members/{{user_id}}/remove"),
+    ("GET", f"{ORG}/access-preview/{{user_id}}"),
 }
 
 

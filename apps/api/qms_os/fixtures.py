@@ -10,7 +10,7 @@ from datetime import date
 
 from sqlalchemy.orm import Session
 
-from .models import Department, Holiday, Project, User
+from .models import Department, Holiday, Project, RoleGrant, User
 
 ORG_NAME = "Fixture Organisation (fictional test data)"
 MAIL_DOMAIN = "fixture-org.example"     # RFC 2606 reserved domain — never deliverable
@@ -73,5 +73,10 @@ def load(s: Session, years: tuple[int, ...] = (2026, 2027)) -> dict[str, User]:
     for y in years:
         for d, n in holidays(y):
             s.add(Holiday(day=d, name=n))
+    # synthetic role grants (MVP-1 slice 3): every QMS role reads departments, people and projects up to "internal",
+    # which reproduces the directory visibility the fixture people had before grants (D8, slice documentation)
+    for role in sorted({u[2] for u in USERS}):
+        for kind in ("department", "person", "project"):
+            s.add(RoleGrant(role=role, resource_kind=kind, max_classification="internal", scope="all"))
     s.flush()
     return users

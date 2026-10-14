@@ -24,6 +24,9 @@ class Department(Base):
     head_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", use_alter=True))
     # directory status (MVP-1 slice 2): deactivated, never deleted (D-14)
     active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=sa_true())
+    # resource classification for grants (MVP-1 slice 3; R-31, R-43): R-24's candidate values public < internal <
+    # confidential; CHECK constraint in the migration
+    classification: Mapped[str] = mapped_column(String(16), default="internal", server_default="internal")
 
 
 class User(Base):
@@ -38,6 +41,9 @@ class User(Base):
     platform_role: Mapped[str] = mapped_column(String(16), default="none", server_default="none")
     # directory status (MVP-1 slice 2), separate from the login account's status: deactivated, never deleted (D-14)
     active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=sa_true())
+    # resource classification for grants (MVP-1 slice 3; R-31, R-43): R-24's candidate values public < internal <
+    # confidential; CHECK constraint in the migration
+    classification: Mapped[str] = mapped_column(String(16), default="internal", server_default="internal")
     department: Mapped[Department | None] = relationship(foreign_keys=[department_id])
 
 
@@ -107,6 +113,9 @@ class Project(Base):
     department_id: Mapped[int] = mapped_column(ForeignKey("departments.id"))
     manager_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     assignment_basis: Mapped[str] = mapped_column(String(24))
+    # resource classification for grants (MVP-1 slice 3; R-31, R-43): R-24's candidate values public < internal <
+    # confidential; CHECK constraint in the migration
+    classification: Mapped[str] = mapped_column(String(16), default="internal", server_default="internal")
     department: Mapped[Department] = relationship()
 
 
@@ -399,6 +408,54 @@ class PlatformPermission(Base):
     permission: Mapped[str] = mapped_column(String(32))
     granted_at: Mapped[datetime] = mapped_column(UTCDateTime, default=now)
     revoked_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+
+
+# ---------- grants (MVP-1 slice 3; R-31, R-43, R-44) ----------
+# Effective grants = role + project + resource classification. Mailbox scope and time-limited delegation are declared
+# here but always empty in MVP-1 (no write path; ``services/access.py`` ignores them, and a test asserts it).
+# Rows are never deleted (D-14): a grant is revoked and a membership removed by setting a timestamp.
+
+class RoleGrant(Base):
+    """What every person with QMS ``role`` may read of ``resource_kind`` (department, person or project): resources
+    classified at or below ``max_classification``; for projects ``scope`` is ``all`` or ``member`` (only projects the
+    person is a member of)."""
+    __tablename__ = "role_grants"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    role: Mapped[str] = mapped_column(String(16))
+    resource_kind: Mapped[str] = mapped_column(String(16))
+    max_classification: Mapped[str] = mapped_column(String(16))
+    scope: Mapped[str] = mapped_column(String(8), default="all", server_default="all")
+    granted_at: Mapped[datetime] = mapped_column(UTCDateTime, default=now)
+    revoked_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+
+
+class ProjectMember(Base):
+    """A person's membership of a project (the project's manager is a member without a row)."""
+    __tablename__ = "project_members"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    added_at: Mapped[datetime] = mapped_column(UTCDateTime, default=now)
+    removed_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+
+
+class MailboxScope(Base):
+    """Declared, empty in MVP-1 (R-31): an explicit mailbox scope granted to a person (spec line 53)."""
+    __tablename__ = "mailbox_scopes"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    mailbox_ref: Mapped[str] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=now)
+
+
+class Delegation(Base):
+    """Declared, empty in MVP-1 (R-31): a time-limited delegation from one person to another (spec line 53)."""
+    __tablename__ = "delegations"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    from_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    to_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    starts_at: Mapped[datetime] = mapped_column(UTCDateTime)
+    ends_at: Mapped[datetime] = mapped_column(UTCDateTime)
 
 
 # ---------- model providers (docs/adr/0005-provider-contract-and-egress.md, R-17 to R-21) ----------
