@@ -143,6 +143,14 @@ on branch `feat/mvp1-foundation`; the others not started.
 | 6 and 7 | 10 | Admin web UI (after the frontend ADR, R-36): departments, people, role and grant preview, agent enablement, proposal form, validator results, baseline approval | Each screen performs its flow against the synthetic fixture; end-to-end tests pass |
 | last | 11 | MVP-1 exit evidence and review (documentation) | An evidence row for each exit criterion; the Admin decides |
 
+Slice notes (decisions recorded with their slice, not as R-rows):
+
+- Slice 2 (D4): a person cannot be deactivated while their login account is active (an account admin disables it
+  first); a department cannot be deactivated while it has active people or any project; reactivation is allowed
+  and audited. An org admin cannot change their own person record (self-change would grant oneself access).
+- Slice 2 (D14): no fixture person holds the org admin permission; tests and demos grant it with the operator CLI
+  (R-39), as for the first account admin.
+
 ### Super admin skills and documentation (approved (Admin, 2026-10-14))
 
 Super admin operations are Claude Code project skills under `.claude/skills/`, run by a human with the Admin's own

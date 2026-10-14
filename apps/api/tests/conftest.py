@@ -136,6 +136,9 @@ class _As:
     def post(self, url, json=None, **kw):
         return self.c.post(url, headers=self.h, json=json or {}, **kw)
 
+    def patch(self, url, json=None, **kw):
+        return self.c.patch(url, headers=self.h, json=json or {}, **kw)
+
 
 # ---------- operational-mode harness (organisation policy file written per test in tmp_path) ----------
 

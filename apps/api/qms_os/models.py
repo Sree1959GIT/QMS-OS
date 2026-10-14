@@ -5,6 +5,7 @@ from datetime import date, datetime
 
 from sqlalchemy import JSON, Boolean, Column, Date, ForeignKey, Integer, String, Table, Text, UniqueConstraint
 from sqlalchemy import false as sa_false
+from sqlalchemy import true as sa_true
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
@@ -21,6 +22,8 @@ class Department(Base):
     code: Mapped[str] = mapped_column(String(32), unique=True)
     name: Mapped[str] = mapped_column(String(120))
     head_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", use_alter=True))
+    # directory status (MVP-1 slice 2): deactivated, never deleted (D-14)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=sa_true())
 
 
 class User(Base):
@@ -33,6 +36,8 @@ class User(Base):
     trained_auditor: Mapped[bool] = mapped_column(Boolean, default=False)
     # account administration, deliberately separate from the QMS role: "account_admin" grants no QMS approval right
     platform_role: Mapped[str] = mapped_column(String(16), default="none", server_default="none")
+    # directory status (MVP-1 slice 2), separate from the login account's status: deactivated, never deleted (D-14)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=sa_true())
     department: Mapped[Department | None] = relationship(foreign_keys=[department_id])
 
 
@@ -377,6 +382,23 @@ class AccountAction(Base):
     # from before the link-code slice; set explicitly on every new row
     split_knowledge: Mapped[bool] = mapped_column(Boolean, default=True, server_default=sa_false())
     request_expires_at: Mapped[datetime | None] = mapped_column(UTCDateTime)   # only while awaiting approval
+
+
+# ---------- platform permissions (MVP-1 slice 2; R-30, R-39, R-40) ----------
+
+ORG_ADMIN = "org_admin"
+
+
+class PlatformPermission(Base):
+    """A platform permission held by a person, separate from the QMS role and from ``users.platform_role``
+    (``account_admin``). In MVP-1 the only permission is ``org_admin`` (R-30). Granted and revoked only by the operator
+    CLI (R-39); a revoked permission keeps its row with ``revoked_at`` set (D-14), and a later grant adds a new row."""
+    __tablename__ = "platform_permissions"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    permission: Mapped[str] = mapped_column(String(32))
+    granted_at: Mapped[datetime] = mapped_column(UTCDateTime, default=now)
+    revoked_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
 
 
 # ---------- model providers (docs/adr/0005-provider-contract-and-egress.md, R-17 to R-21) ----------

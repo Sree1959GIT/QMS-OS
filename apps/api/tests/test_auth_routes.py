@@ -15,6 +15,7 @@ LEVELS = {
     deps.step_up_user: "human+step-up",
     deps.step_up_principal: "human+step-up",
     deps.account_admin: "human+step-up",
+    deps.org_admin: "human+step-up",
 }
 PUBLIC = {"/api/v1/health", "/api/v1/auth/login", "/api/v1/auth/login/recovery", "/api/v1/auth/setup",
           "/api/v1/auth/setup/confirm"}
@@ -64,6 +65,8 @@ def test_approval_and_admin_routes_need_step_up():
             assert _level(r) == ["human+step-up"], r.path
         if r.path.startswith("/api/v1/admin/"):
             assert any(d.call is deps.account_admin for d in r.dependant.dependencies), r.path
+        if r.path.startswith("/api/v1/org/"):          # R-41: every org route, reads included, needs step-up
+            assert any(d.call is deps.org_admin for d in r.dependant.dependencies), r.path
 
 
 def test_every_route_is_under_api_v1():

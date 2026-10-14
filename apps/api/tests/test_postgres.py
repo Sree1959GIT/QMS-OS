@@ -271,6 +271,71 @@ def test_two_concurrent_revocations_never_leave_zero_account_admins(engine, monk
     assert len(admins) == 1 and len(revoked) == 1
 
 
+# ---------- account admin and org admin are never held by one person (R-40) ----------
+
+def _wait_until_waiting_on_a_lock(engine, pid: int, deadline_s: float = 10.0) -> bool:
+    """Poll pg_stat_activity until backend ``pid`` waits on a lock. No sleep: each poll is its own autocommit
+    statement (PostgreSQL caches activity statistics within a transaction)."""
+    end = time.monotonic() + deadline_s
+    with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as c:
+        while time.monotonic() < end:
+            if c.execute(text("SELECT wait_event_type FROM pg_stat_activity WHERE pid = :p"),
+                         {"p": pid}).scalar() == "Lock":
+                return True
+    return False
+
+
+@pytest.mark.parametrize("first", ["org_admin", "account_admin"])
+def test_concurrent_account_admin_and_org_admin_grants_never_both_succeed(engine, first):
+    """Deterministic: the first grant holds the person's row lock (uncommitted) while the second grant, in another
+    session, is shown to be waiting for that lock; only then does the first commit. The second must then see the
+    first and be refused. Invariant: one person never holds both (R-40)."""
+    import queue
+
+    from qms_os.auth.permissions import grant_org_admin, holds_org_admin
+    from qms_os.services.common import RuleViolation
+
+    h = TA.Harness(engine)
+    admin = h.bootstrap()
+    md = h.onboard(admin, "md")
+    grants = {"org_admin": grant_org_admin, "account_admin": AS.grant_account_admin}
+    second = "account_admin" if first == "org_admin" else "org_admin"
+    maker = h.app.state.sessionmaker
+    pids: queue.Queue[int] = queue.Queue()
+    outcome: dict[str, str] = {}
+
+    def other() -> None:
+        with maker() as s2:
+            pids.put(s2.execute(text("SELECT pg_backend_pid()")).scalar())
+            try:
+                grants[second](s2, md.email)
+                s2.commit()
+                outcome["second"] = "granted"
+            except RuleViolation as e:
+                s2.rollback()
+                outcome["second"] = f"refused: {e}"
+
+    s1 = maker()
+    try:
+        grants[first](s1, md.email)                         # holds md's person row lock, not yet committed
+        s1.flush()
+        t = threading.Thread(target=other)
+        t.start()
+        pid = pids.get(timeout=10)
+        assert _wait_until_waiting_on_a_lock(engine, pid), "the second grant did not wait for the person's row lock"
+        s1.commit()
+    finally:
+        s1.close()
+    t.join(timeout=30)
+    assert not t.is_alive()
+    assert outcome["second"].startswith("refused") and "R-40" in outcome["second"], outcome
+    with h.db() as s:
+        u = s.get(User, h.uid("md"))
+        is_account_admin, is_org_admin = u.platform_role == AS.ACCOUNT_ADMIN, holds_org_admin(s, u.id)
+    assert not (is_account_admin and is_org_admin)          # the invariant
+    assert (is_account_admin, is_org_admin) == (first == "account_admin", first == "org_admin")
+
+
 # ---------- link-code slice: verification code, two-admin invitations, single-admin exception ----------
 
 def _two_admin_records(h):
