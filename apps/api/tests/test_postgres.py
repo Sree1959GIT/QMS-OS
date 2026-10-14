@@ -336,6 +336,21 @@ def test_concurrent_account_admin_and_org_admin_grants_never_both_succeed(engine
     assert (is_account_admin, is_org_admin) == (first == "account_admin", first == "org_admin")
 
 
+# ---------- super admin scripts are read-only on PostgreSQL too (R-46) ----------
+
+def test_superadmin_session_cannot_write_on_postgres(engine):
+    from sqlalchemy.exc import InternalError
+
+    from qms_superadmin import access_segregation, review_org
+    from qms_superadmin.readonly import read_only_session
+
+    env = {"QMS_MODE": "test", "QMS_DATABASE_URL": URL}
+    with read_only_session(env) as (s, _):
+        assert "findings: 0" in review_org.review(s) and "findings: 0" in access_segregation.review(s)
+        with pytest.raises(InternalError, match="read-only transaction"):
+            s.execute(text("UPDATE departments SET name = 'changed'"))
+
+
 # ---------- link-code slice: verification code, two-admin invitations, single-admin exception ----------
 
 def _two_admin_records(h):

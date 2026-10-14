@@ -160,6 +160,10 @@ Slice notes (decisions recorded with their slice, not as R-rows):
   to a project (no self-widening of access).
 - Slice 3 (D11): the effective-access preview covers people in pull request 2; agents join it in pull request 3
   with slice 4.
+- Skills (D13): the claims-register generator is `apps/api/qms_superadmin/claims_register.py`; the
+  `housekeeping-check` skill runs its read-only check. Replacing the register in `docs/UPSTREAMS.md` is a
+  development step in a reviewed pull request (`python -m qms_superadmin claims-register --print`), never a skill.
+  Skill scripts: `scripts\run-superadmin.bat` with `housekeeping`, `review-org` or `access-segregation` (R-46).
 
 ### Super admin skills and documentation (approved (Admin, 2026-10-14))
 
