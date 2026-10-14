@@ -36,7 +36,7 @@ class Server:
 
     @property
     def health_url(self) -> str:
-        return f"http://127.0.0.1:{self.port}/api/health"
+        return f"http://127.0.0.1:{self.port}/api/v1/health"
 
     def stderr(self) -> str:
         return read(self.err_path)
@@ -96,7 +96,7 @@ def running_server(env: dict[str, str], log_dir: Path) -> Iterator[Server]:
 
 
 def wait_for_health(server: Server) -> dict:
-    """Poll /api/health until it answers; fail with the server's log if it does not within the timeout."""
+    """Poll /api/v1/health until it answers; fail with the server's log if it does not within the timeout."""
     deadline = time.monotonic() + STARTUP_TIMEOUT_S
     body, last_error = None, None
     while time.monotonic() < deadline:

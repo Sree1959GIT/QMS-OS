@@ -58,7 +58,8 @@ branch `feat/link-code`.* It replaces the earlier known limitation that whoever 
 - **Two parts.** At the request the system generates a **verification code** and shows it once, only to the
   **initiating** admin, who tells it to the person in person. At approval it generates the **link token** and shows it
   once, only to the **approving** admin (never the initiator or the person; `403` otherwise). Redeeming the link
-  (`POST /api/auth/setup`) needs both; step 2 (`setup/confirm`) needs the authenticator code from the secret that only
+  (`POST /api/v1/auth/setup`; `/api/auth/setup` before the R-35 prefix move) needs both; step 2 (`setup/confirm`)
+  needs the authenticator code from the secret that only
   step 1 revealed.
 - **Code.** 10 characters from a look-alike-free alphabet (`23456789ABCDEFGHJKMNPQRSTUVWXYZ`: no 0/O, 1/I/L), about
   49.5 bits, shown as `XXXXX-XXXXX`; case, spaces and hyphens are ignored when typed. Stored only as Argon2id, checked

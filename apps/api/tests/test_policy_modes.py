@@ -23,7 +23,7 @@ def _held(r, rule):
 
 
 def _qa_head_risk(o):
-    return o.as_("qa_head").post("/api/risks", {"department_id": 1, "process": "Doc control",
+    return o.as_("qa_head").post("/api/v1/risks", {"department_id": 1, "process": "Doc control",
                                              "failure_mode": "Obsolete form",
                                              "severity": 2, "occurrence": 2, "detection": 2})
 
@@ -32,18 +32,18 @@ def _qa_head_risk(o):
 
 def test_missing_policy_keeps_admin_up_and_holds_policy_dependent_work(op, tmp_path):
     o = op.start(policy_file=tmp_path / "absent.json")
-    h = o.client.get("/api/health").json()
+    h = o.client.get("/api/v1/health").json()
     assert h == {"ok": True, "mode": "operational", "policy_state": "policy_missing"}
-    assert o.as_("ma").get("/api/me").status_code == 200
-    assert o.as_("ma").get("/api/policy").json()["state"] == "policy_missing"
-    _held(o.as_("ma").post("/api/programs", {"year": 2026}), "policy_missing")               # audit planning
-    _held(o.as_("ma").post("/api/notifications/prepare-circulars"), "policy_missing")       # background scheduling
-    _held(o.as_("ma").post("/api/notifications/reminders"), "policy_missing")
+    assert o.as_("ma").get("/api/v1/me").status_code == 200
+    assert o.as_("ma").get("/api/v1/policy").json()["state"] == "policy_missing"
+    _held(o.as_("ma").post("/api/v1/programs", {"year": 2026}), "policy_missing")               # audit planning
+    _held(o.as_("ma").post("/api/v1/notifications/prepare-circulars"), "policy_missing")       # background scheduling
+    _held(o.as_("ma").post("/api/v1/notifications/reminders"), "policy_missing")
     r = _qa_head_risk(o)                                                                     # draft capture allowed
     assert r.status_code == 200 and r.json()["proposed_classification"] is None
     assert r.json()["effective_classification"] is None
-    _held(o.as_("qa_head").post(f"/api/risks/{r.json()['id']}/submit"), "policy_missing")       # classification held
-    assert o.as_("ma").post("/api/policy/submit", {"note": "x"}).status_code == 422          # nothing to submit
+    _held(o.as_("qa_head").post(f"/api/v1/risks/{r.json()['id']}/submit"), "policy_missing")       # classification held
+    assert o.as_("ma").post("/api/v1/policy/submit", {"note": "x"}).status_code == 422          # nothing to submit
 
 
 def test_unset_mode_means_operational_never_synthetic(tmp_path):
@@ -55,15 +55,15 @@ def test_unset_mode_means_operational_never_synthetic(tmp_path):
 def test_candidate_policy_is_not_in_force(op):
     op.write()
     o = op.start()
-    assert o.as_("md").get("/api/policy").json()["state"] == "policy_unapproved"
-    _held(o.as_("ma").post("/api/programs", {"year": 2026}), "policy_unapproved")
+    assert o.as_("md").get("/api/v1/policy").json()["state"] == "policy_unapproved"
+    _held(o.as_("ma").post("/api/v1/programs", {"year": 2026}), "policy_unapproved")
 
 
 def test_a_file_cannot_approve_itself(op):
     op.write(declared_status="approved")
     o = op.start()
-    assert o.as_("md").get("/api/policy").json()["state"] == "policy_unapproved"
-    _held(o.as_("ma").post("/api/programs", {"year": 2026}), "policy_unapproved")
+    assert o.as_("md").get("/api/v1/policy").json()["state"] == "policy_unapproved"
+    _held(o.as_("ma").post("/api/v1/programs", {"year": 2026}), "policy_unapproved")
 
 
 # ---------- startup: malformed configuration is an error, never a fallback ----------
@@ -124,13 +124,13 @@ def test_demo_programme_is_labelled_synthetic_and_its_policy_is_unapprovable(eng
     c, ids = TestClient(app), user_ids(engine)
     sessions = {who: session_headers(app, ids[who]) for who in ("ma", "md")}   # demo mode uses real sign-in
     h = lambda who: sessions[who]  # noqa: E731
-    prog = c.post("/api/programs", json={"year": 2026}, headers=h("ma")).json()
-    ok = c.post(f"/api/programs/{prog['id']}/approve", headers=h("ma")).json()
+    prog = c.post("/api/v1/programs", json={"year": 2026}, headers=h("ma")).json()
+    ok = c.post(f"/api/v1/programs/{prog['id']}/approve", headers=h("ma")).json()
     assert ok["status"] == "APPROVED" and ok["policy_basis"] == "synthetic-demo" and ok["label"].startswith("SYNTHETIC")
-    notes = c.get("/api/notifications", headers=h("ma")).json()
+    notes = c.get("/api/v1/notifications", headers=h("ma")).json()
     assert notes[0]["subject"].startswith("[SYNTHETIC]") and "not an organisational programme" in notes[0]["body"]
-    assert c.post("/api/policy/submit", json={}, headers=h("ma")).status_code == 422
-    assert c.get("/api/policy", headers=h("md")).json()["state"] == "synthetic-demo"
+    assert c.post("/api/v1/policy/submit", json={}, headers=h("ma")).status_code == 422
+    assert c.get("/api/v1/policy", headers=h("md")).json()["state"] == "synthetic-demo"
 
 
 # ---------- R-9: final approval by Top Management only, bound to exact content ----------
@@ -138,39 +138,39 @@ def test_demo_programme_is_labelled_synthetic_and_its_policy_is_unapprovable(eng
 def test_only_top_management_gives_final_approval(op):
     op.write()
     o = op.start()
-    sub = o.as_("ma").post("/api/policy/submit", {"note": "prepared by MA"}).json()
+    sub = o.as_("ma").post("/api/v1/policy/submit", {"note": "prepared by MA"}).json()
     body = {"fingerprint": sub["fingerprint"], "confirm_version": "t1"}
-    url = f"/api/policy/submissions/{sub['id']}/approve"
+    url = f"/api/v1/policy/submissions/{sub['id']}/approve"
     assert o.as_("ma").post(url, body).status_code == 403                  # MA prepares, never finally approves
     assert o.as_("qa_head").post(url, body).status_code == 403
     assert o.as_("md").post(url, body | {"confirm_version": "t2"}).status_code == 422
     _held(o.as_("md").post(url, body | {"fingerprint": "0" * 64}), "stale_review")
-    _held(o.as_("ma").post("/api/programs", {"year": 2026}), "policy_unapproved")
+    _held(o.as_("ma").post("/api/v1/programs", {"year": 2026}), "policy_unapproved")
     ok = o.as_("md").post(url, body).json()
     assert (ok["status"], ok["decided_role"], ok["decided_by_name"]) == ("APPROVED", "MD", "Fixture Top Management")
-    st = o.as_("ma").get("/api/policy").json()
+    st = o.as_("ma").get("/api/v1/policy").json()
     assert st["state"] == "approved" and st["approval"]["effective_date"] == "2026-01-01"
-    prog = o.as_("ma").post("/api/programs", {"year": 2026}).json()
+    prog = o.as_("ma").post("/api/v1/programs", {"year": 2026}).json()
     assert prog["policy_basis"] == "organisation" and prog["label"] is None
     assert prog["policy_fingerprint"] == sub["fingerprint"] and prog["policy_submission_id"] == sub["id"]
-    assert o.as_("ma").post(f"/api/programs/{prog['id']}/approve").json()["status"] == "APPROVED"
+    assert o.as_("ma").post(f"/api/v1/programs/{prog['id']}/approve").json()["status"] == "APPROVED"
 
 
 def test_nobody_approves_their_own_submission(op):
     op.write()
     o = op.start()
-    sub = o.as_("md").post("/api/policy/submit", {"note": "MD prepared it"}).json()   # the only Top Management user
-    st = o.as_("ma").get("/api/policy").json()
+    sub = o.as_("md").post("/api/v1/policy/submit", {"note": "MD prepared it"}).json()   # the only Top Management user
+    st = o.as_("ma").get("/api/v1/policy").json()
     assert st["state"] == "policy_unapproved" and st["submission"]["pending_organisational_decision"] is True
-    r = o.as_("md").post(f"/api/policy/submissions/{sub['id']}/approve",
+    r = o.as_("md").post(f"/api/v1/policy/submissions/{sub['id']}/approve",
                          {"fingerprint": sub["fingerprint"], "confirm_version": "t1"})
     assert r.status_code == 422 and "held pending an organisational decision" in r.json()["detail"]
-    assert o.as_("ma").get("/api/policy").json()["state"] == "policy_unapproved"
+    assert o.as_("ma").get("/api/v1/policy").json()["state"] == "policy_unapproved"
     o.add_user("tessa", "MD")                                                          # a distinct approver
-    assert o.as_("ma").get("/api/policy").json()["submission"]["pending_organisational_decision"] is False
-    ok = o.as_("tessa").post(f"/api/policy/submissions/{sub['id']}/approve",
+    assert o.as_("ma").get("/api/v1/policy").json()["submission"]["pending_organisational_decision"] is False
+    ok = o.as_("tessa").post(f"/api/v1/policy/submissions/{sub['id']}/approve",
                              {"fingerprint": sub["fingerprint"], "confirm_version": "t1"})
-    assert ok.status_code == 200 and o.as_("ma").get("/api/policy").json()["state"] == "approved"
+    assert ok.status_code == 200 and o.as_("ma").get("/api/v1/policy").json()["state"] == "approved"
 
 
 @pytest.mark.parametrize("change", [{"_comment": "edited after approval"}, {"policy_version": "t2"}])
@@ -179,18 +179,18 @@ def test_any_change_to_the_file_or_version_invalidates_approval(op, change):
     op.start().approve_policy()
     op.write(**change)
     o = op.start()                                                                    # restart, same database
-    st = o.as_("ma").get("/api/policy").json()
+    st = o.as_("ma").get("/api/v1/policy").json()
     assert st["state"] == "policy_unapproved" and st["changed_since_approval"] is True
-    _held(o.as_("ma").post("/api/programs", {"year": 2026}), "policy_unapproved")
+    _held(o.as_("ma").post("/api/v1/programs", {"year": 2026}), "policy_unapproved")
 
 
 def test_file_changed_between_submission_and_approval(op):
     op.write()
     o = op.start()
-    sub = o.as_("ma").post("/api/policy/submit", {}).json()
+    sub = o.as_("ma").post("/api/v1/policy/submit", {}).json()
     op.write(policy_version="t1b")
     o = op.start()
-    _held(o.as_("md").post(f"/api/policy/submissions/{sub['id']}/approve",
+    _held(o.as_("md").post(f"/api/v1/policy/submissions/{sub['id']}/approve",
                            {"fingerprint": sub["fingerprint"], "confirm_version": "t1"}),
           "policy_changed_since_submission")
 
@@ -199,28 +199,28 @@ def test_approved_policy_is_not_in_force_before_its_effective_date(op, clock):
     op.write(effective_date="2026-06-01")
     o = op.start()
     o.approve_policy()
-    assert o.as_("ma").get("/api/policy").json()["state"] == "policy_not_effective"
-    _held(o.as_("ma").post("/api/programs", {"year": 2026}), "policy_not_effective")
+    assert o.as_("ma").get("/api/v1/policy").json()["state"] == "policy_not_effective"
+    _held(o.as_("ma").post("/api/v1/programs", {"year": 2026}), "policy_not_effective")
     clock.d = date(2026, 6, 1)
-    assert o.as_("ma").post("/api/programs", {"year": 2026}).status_code == 200
+    assert o.as_("ma").post("/api/v1/programs", {"year": 2026}).status_code == 200
 
 
 def test_programme_drafted_under_superseded_policy_cannot_be_approved(op):
     op.write()
     op.start().approve_policy()
-    prog = op.as_("ma").post("/api/programs", {"year": 2026}).json()
+    prog = op.as_("ma").post("/api/v1/programs", {"year": 2026}).json()
     op.write(policy_version="t2")
     o = op.start()
     o.approve_policy()
-    _held(o.as_("ma").post(f"/api/programs/{prog['id']}/approve"), "policy_changed_since_draft")
+    _held(o.as_("ma").post(f"/api/v1/programs/{prog['id']}/approve"), "policy_changed_since_draft")
     with o.session() as s:
         assert s.get(AuditProgram, prog["id"]).status == "DRAFT"
 
 
 def test_policy_holds_are_recorded_durably(op, tmp_path):
     o = op.start(policy_file=tmp_path / "absent.json")
-    o.as_("ma").post("/api/programs", {"year": 2026})
-    o.as_("ma").post("/api/notifications/reminders")
+    o.as_("ma").post("/api/v1/programs", {"year": 2026})
+    o.as_("ma").post("/api/v1/notifications/reminders")
     with o.session() as s:
         rules = [(e.detail["rule"], e.detail["attempted"]) for e in
                  s.scalars(select(AuditEvent).where(AuditEvent.action == "transition.held"))]
@@ -230,6 +230,6 @@ def test_policy_holds_are_recorded_durably(op, tmp_path):
 def test_policy_state_never_exposes_values_without_authentication(op):
     op.write()
     o = op.start()
-    assert set(o.client.get("/api/health").json()) == {"ok", "mode", "policy_state"}
-    assert o.client.get("/api/policy").status_code == 401
-    assert json.dumps(o.client.get("/api/health").json()).find("TEST-ONLY") == -1
+    assert set(o.client.get("/api/v1/health").json()) == {"ok", "mode", "policy_state"}
+    assert o.client.get("/api/v1/policy").status_code == 401
+    assert json.dumps(o.client.get("/api/v1/health").json()).find("TEST-ONLY") == -1

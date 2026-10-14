@@ -204,10 +204,10 @@ def op(tmp_path, clock):
 
         def approve_policy(self, submitter="ma", approver="md"):
             """Submit the loaded policy and have Top Management approve it (happy path helper)."""
-            sub = self.as_(submitter).post("/api/policy/submit", {"note": "for approval"})
+            sub = self.as_(submitter).post("/api/v1/policy/submit", {"note": "for approval"})
             assert sub.status_code == 200, sub.text
             b = sub.json()
-            r = self.as_(approver).post(f"/api/policy/submissions/{b['id']}/approve",
+            r = self.as_(approver).post(f"/api/v1/policy/submissions/{b['id']}/approve",
                                         {"fingerprint": b["fingerprint"], "confirm_version": b["policy_version"]})
             assert r.status_code == 200, r.text
             return r.json()

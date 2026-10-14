@@ -26,7 +26,7 @@ from ..services.common import (
 )
 from .deps import current_user, get_session, policy, public, step_up_user, today
 
-router = APIRouter(prefix="/api")
+router = APIRouter(prefix="/api/v1")
 
 
 # ---------- identity & reference data ----------

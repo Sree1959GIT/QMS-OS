@@ -15,7 +15,7 @@ from qms_os.timeutil import utcnow
 
 ADMIN = "it_head"                     # any person may hold the platform role; it is not a QMS role
 STALE = {"X-Test-Step-Up": "stale"}
-BASE = "/api/admin/providers"
+BASE = "/api/v1/admin/providers"
 
 
 @pytest.fixture

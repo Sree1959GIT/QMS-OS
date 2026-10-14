@@ -2,7 +2,7 @@
 
 Seeds a temporary SQLite database with the synthetic fixture, starts the real server as a separate process
 (``python -m uvicorn qms_os.main:create_app --factory``) in ``demo`` mode on 127.0.0.1, and checks that
-``/api/health`` reports the synthetic policy state without exposing any policy content. Localhost only; no
+``/api/v1/health`` reports the synthetic policy state without exposing any policy content. Localhost only; no
 secrets; ``QMS_POLICY_FILE`` is removed from the child environment (see the guard in conftest.py). The PostgreSQL
 counterpart is ``tests/test_startup_smoke_pg.py``; the shared helpers are in ``tests/server_process.py``.
 """

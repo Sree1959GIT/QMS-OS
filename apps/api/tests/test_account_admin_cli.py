@@ -52,10 +52,10 @@ def test_grant_gives_admin_access_and_revoke_takes_it_away(h):
     rc, out = _grant(h, md.email, typed="  MD@Fixture-Org.Example ")       # case and spaces do not matter
     assert rc == 0 and out[-1] == f"{md.email} is now an account admin." and _role(h, "md") == AS.ACCOUNT_ADMIN
     md.login()
-    assert md.get("/api/admin/accounts").status_code == 200
+    assert md.get("/api/v1/admin/accounts").status_code == 200
     rc, out = _revoke(h, md.email)
     assert rc == 0 and out[-1] == f"{md.email} is no longer an account admin." and _role(h, "md") == "none"
-    assert md.get("/api/admin/accounts").status_code == 403            # takes effect on the next request
+    assert md.get("/api/v1/admin/accounts").status_code == 403            # takes effect on the next request
 
 
 def test_audit_events_record_operator_cli_target_and_roles_only(h):
@@ -91,10 +91,10 @@ def test_grant_refused_without_an_active_account(h, state, expected):
     if state == "unknown":
         email = "nobody@fixture-org.example"
     elif state == "invited":
-        assert admin.post(f"/api/admin/accounts/{h.uid('qa_head')}/invite").status_code == 200
+        assert admin.post(f"/api/v1/admin/accounts/{h.uid('qa_head')}/invite").status_code == 200
     elif state == "disabled":
         h.onboard(admin, "qa_head")
-        assert admin.post(f"/api/admin/accounts/{h.uid('qa_head')}/disable").status_code == 200
+        assert admin.post(f"/api/v1/admin/accounts/{h.uid('qa_head')}/disable").status_code == 200
     rc, out = _grant(h, email)
     assert rc == 1 and out[-1].startswith("Refused:") and expected in out[-1]
     assert _role_events(h) == []
@@ -105,7 +105,7 @@ def test_revoke_refused_for_a_disabled_admin_and_for_a_non_admin(h):
     md = h.onboard(admin, "md")
     h.onboard(admin, "ma")
     _grant(h, md.email)
-    assert admin.post(f"/api/admin/accounts/{h.uid('md')}/disable").status_code == 200
+    assert admin.post(f"/api/v1/admin/accounts/{h.uid('md')}/disable").status_code == 200
     rc, out = _revoke(h, md.email)
     assert rc == 1 and "has an account that is disabled" in out[-1] and _role(h, "md") == AS.ACCOUNT_ADMIN
     rc, out = _revoke(h, "ma@fixture-org.example")
@@ -118,7 +118,7 @@ def test_revoking_the_last_active_account_admin_is_refused(h):
     assert rc == 1 and "only active account admin" in out[-1]
     md = h.onboard(admin, "md")
     _grant(h, md.email)
-    assert admin.post(f"/api/admin/accounts/{h.uid('md')}/disable").status_code == 200
+    assert admin.post(f"/api/v1/admin/accounts/{h.uid('md')}/disable").status_code == 200
     rc, out = _revoke(h, admin.email)                                # the other admin is not active
     assert rc == 1 and "only active account admin" in out[-1]
     with h.db() as s:
@@ -144,8 +144,8 @@ def test_no_qms_role_reaches_the_admin_routes(api):
     assert {role for _, _, role, *_ in USERS} == set(QMS_ROLES)            # every QMS role is represented
     for _, local, role, *_ in USERS:
         person = api.as_(local)
-        assert person.get("/api/admin/accounts").status_code == 403, (local, role)
-        assert person.post(f"/api/admin/accounts/{api.users['qa_head']}/invite").status_code == 403, (local, role)
+        assert person.get("/api/v1/admin/accounts").status_code == 403, (local, role)
+        assert person.post(f"/api/v1/admin/accounts/{api.users['qa_head']}/invite").status_code == 403, (local, role)
 
 
 def test_platform_role_is_set_only_by_the_bootstrap_and_the_operator_cli():

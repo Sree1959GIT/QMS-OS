@@ -37,33 +37,33 @@ def test_no_runtime_dependency_on_reference_repository():
 
 def test_governance_flow(api):
     ma, auditee, viewer = api.as_("ma"), api.as_("qa_head"), api.as_("viewer")
-    src = ma.post("/api/knowledge/sources",
+    src = ma.post("/api/v1/knowledge/sources",
                   {"name": "Synthetic controlled documents", "kind": "controlled-document"}).json()
-    assert auditee.post("/api/knowledge/sources", {"name": "x"}).status_code == 403
-    assert auditee.post("/api/knowledge/items", {"source_id": src["id"], "title": "t", "body": "b",
+    assert auditee.post("/api/v1/knowledge/sources", {"name": "x"}).status_code == 403
+    assert auditee.post("/api/v1/knowledge/items", {"source_id": src["id"], "title": "t", "body": "b",
                                                  "origin": " "}).status_code == 422
-    v1 = auditee.post("/api/knowledge/items", {
+    v1 = auditee.post("/api/v1/knowledge/items", {
         "source_id": src["id"], "doc_number": "SYN/PROC/DOC", "doc_type": "PROC", "title": "Document control",
         "body": "Documents are reviewed on a defined schedule.", "origin": "authored in QMS OS",
         "version": "1.0"}).json()
     assert v1["status"] == "candidate"
-    assert viewer.get("/api/knowledge/items?q=Document").json() == []          # candidates are not citable
-    assert viewer.get("/api/knowledge/items?include_unapproved=true").status_code == 403
-    assert ma.post(f"/api/knowledge/items/{v1['id']}/decide", {"approve": True}).json()["status"] == "approved"
-    assert [i["id"] for i in viewer.get("/api/knowledge/items?q=Document").json()] == [v1["id"]]
+    assert viewer.get("/api/v1/knowledge/items?q=Document").json() == []          # candidates are not citable
+    assert viewer.get("/api/v1/knowledge/items?include_unapproved=true").status_code == 403
+    assert ma.post(f"/api/v1/knowledge/items/{v1['id']}/decide", {"approve": True}).json()["status"] == "approved"
+    assert [i["id"] for i in viewer.get("/api/v1/knowledge/items?q=Document").json()] == [v1["id"]]
 
-    v2 = auditee.post("/api/knowledge/items", {
+    v2 = auditee.post("/api/v1/knowledge/items", {
         "source_id": src["id"], "doc_number": "SYN/PROC/DOC", "doc_type": "PROC", "title": "Document control",
         "body": "Documents are reviewed on a revised schedule.", "origin": "change request CR-7", "version": "2.0",
         "supersedes_id": v1["id"]}).json()
-    ma.post(f"/api/knowledge/items/{v2['id']}/decide", {"approve": True})
-    rows = {i["id"]: i["status"] for i in ma.get("/api/knowledge/items?include_unapproved=true").json()}
+    ma.post(f"/api/v1/knowledge/items/{v2['id']}/decide", {"approve": True})
+    rows = {i["id"]: i["status"] for i in ma.get("/api/v1/knowledge/items?include_unapproved=true").json()}
     assert rows == {v1["id"]: "obsolete", v2["id"]: "approved"}
 
 
 def test_capturer_cannot_self_approve(api):
     ma = api.as_("ma")
-    src = ma.post("/api/knowledge/sources", {"name": "S"}).json()
-    item = ma.post("/api/knowledge/items", {"source_id": src["id"], "title": "t", "body": "b", "origin": "o"}).json()
-    r = ma.post(f"/api/knowledge/items/{item['id']}/decide", {"approve": True})
+    src = ma.post("/api/v1/knowledge/sources", {"name": "S"}).json()
+    item = ma.post("/api/v1/knowledge/items", {"source_id": src["id"], "title": "t", "body": "b", "origin": "o"}).json()
+    r = ma.post(f"/api/v1/knowledge/items/{item['id']}/decide", {"approve": True})
     assert r.status_code == 422 and "differ" in r.json()["detail"]

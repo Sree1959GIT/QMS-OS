@@ -13,5 +13,5 @@ def test_fixture_identities_are_visibly_synthetic():
 
 
 def test_seeded_users_carry_only_the_reserved_domain(api):
-    emails = [u["email"] for u in api.as_("ma").get("/api/users").json()]
+    emails = [u["email"] for u in api.as_("ma").get("/api/v1/users").json()]
     assert emails and all(e.endswith("@" + FX.MAIL_DOMAIN) for e in emails)

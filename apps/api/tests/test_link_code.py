@@ -37,7 +37,7 @@ def _two_admins(h):
 
 
 def _setup(h, token, code, password=TA.GOOD):
-    return h.client().post("/api/auth/setup", json={"token": token, "verification_code": code, "password": password})
+    return h.client().post("/api/v1/auth/setup", json={"token": token, "verification_code": code, "password": password})
 
 
 def _action(h, action_id) -> AccountAction:
@@ -52,12 +52,12 @@ def _events(h, prefix):
 
 def test_initiator_gets_only_the_code_and_approver_only_the_link(h):
     first, second = _two_admins(h)
-    req = first.post(f"/api/admin/accounts/{h.uid('qa_head')}/invite").json()
+    req = first.post(f"/api/v1/admin/accounts/{h.uid('qa_head')}/invite").json()
     assert req["status"] == "pending_approval" and req["split_knowledge"] is True
     assert re.fullmatch(r"[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{5}-[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{5}",
                         req["verification_code"]) and "link_token" not in req
-    assert first.post(f"/api/admin/account-actions/{req['id']}/approve").status_code == 403   # not the initiator
-    ok = second.post(f"/api/admin/account-actions/{req['id']}/approve").json()
+    assert first.post(f"/api/v1/admin/account-actions/{req['id']}/approve").status_code == 403   # not the initiator
+    ok = second.post(f"/api/v1/admin/account-actions/{req['id']}/approve").json()
     assert ok["status"] == "link_issued" and ok["link_token"] and "verification_code" not in ok
     assert _setup(h, ok["link_token"], req["verification_code"].lower().replace("-", " ")).status_code == 200
     qa_events = [e.action for e in _events(h, "auth.invite.") if e.entity_id == h.uid("qa_head")]
@@ -66,16 +66,16 @@ def test_initiator_gets_only_the_code_and_approver_only_the_link(h):
 
 def test_neither_part_alone_redeems_the_link(h):
     first, second = _two_admins(h)
-    req = first.post(f"/api/admin/accounts/{h.uid('qa_head')}/invite").json()
-    ok = second.post(f"/api/admin/account-actions/{req['id']}/approve").json()
+    req = first.post(f"/api/v1/admin/accounts/{h.uid('qa_head')}/invite").json()
+    ok = second.post(f"/api/v1/admin/account-actions/{req['id']}/approve").json()
     assert _setup(h, ok["link_token"], "").json() == INVALID_LINK                       # the approver alone
     assert _setup(h, "not-the-link-token", req["verification_code"]).json() == INVALID_LINK   # the initiator alone
 
 
 def test_the_code_is_checked_only_after_the_token_matches(h):
     first, second = _two_admins(h)
-    req = first.post(f"/api/admin/accounts/{h.uid('qa_head')}/invite").json()
-    second.post(f"/api/admin/account-actions/{req['id']}/approve")
+    req = first.post(f"/api/v1/admin/accounts/{h.uid('qa_head')}/invite").json()
+    second.post(f"/api/v1/admin/account-actions/{req['id']}/approve")
     for _ in range(6):                                                # wrong token, right code: nothing counted
         assert _setup(h, "not-the-link-token", req["verification_code"]).json() == INVALID_LINK
     assert _action(h, req["id"]).code_attempts == 0 and _events(h, "auth.link.") == []
@@ -83,8 +83,8 @@ def test_the_code_is_checked_only_after_the_token_matches(h):
 
 def test_five_wrong_codes_void_the_link(h):
     first, second = _two_admins(h)
-    req = first.post(f"/api/admin/accounts/{h.uid('qa_head')}/invite").json()
-    token = second.post(f"/api/admin/account-actions/{req['id']}/approve").json()["link_token"]
+    req = first.post(f"/api/v1/admin/accounts/{h.uid('qa_head')}/invite").json()
+    token = second.post(f"/api/v1/admin/account-actions/{req['id']}/approve").json()["link_token"]
     for _ in range(5):
         assert _setup(h, token, "22222-22222").json() == INVALID_LINK
     action = _action(h, req["id"])
@@ -96,7 +96,7 @@ def test_five_wrong_codes_void_the_link(h):
 
 def test_single_admin_bootstrap_invitation_gives_both_parts_and_is_flagged(h):
     admin = h.bootstrap()
-    issued = admin.post(f"/api/admin/accounts/{h.uid('qa_head')}/invite").json()
+    issued = admin.post(f"/api/v1/admin/accounts/{h.uid('qa_head')}/invite").json()
     assert issued["split_knowledge"] is False and issued["link_token"] and issued["verification_code"]
     assert issued["status"] == "link_issued"
     flagged = _events(h, "auth.invite.single_admin")
@@ -105,8 +105,8 @@ def test_single_admin_bootstrap_invitation_gives_both_parts_and_is_flagged(h):
 
 def test_disabling_the_second_admin_does_not_reopen_the_exception(h):
     first, second = _two_admins(h)
-    assert first.post(f"/api/admin/accounts/{h.uid('md')}/disable").status_code == 200
-    r = first.post(f"/api/admin/accounts/{h.uid('qa_head')}/invite")
+    assert first.post(f"/api/v1/admin/accounts/{h.uid('md')}/disable").status_code == 200
+    r = first.post(f"/api/v1/admin/accounts/{h.uid('qa_head')}/invite")
     assert r.status_code == 409 and r.json()["rule"] == "second_admin_required"
     assert "link_token" not in r.text and "verification_code" not in r.text
     assert _events(h, "auth.invite.single_admin")[1:] == []                          # only md's own bootstrap invite
@@ -117,16 +117,16 @@ def test_disabling_the_second_admin_does_not_reopen_the_exception(h):
 
 def test_pending_request_expires_after_72_hours(h):
     first, second = _two_admins(h)
-    req = first.post(f"/api/admin/accounts/{h.uid('qa_head')}/invite").json()
+    req = first.post(f"/api/v1/admin/accounts/{h.uid('qa_head')}/invite").json()
     h.now.tick(hours=72)
     second.login()
-    r = second.post(f"/api/admin/account-actions/{req['id']}/approve")
+    r = second.post(f"/api/v1/admin/account-actions/{req['id']}/approve")
     assert r.status_code == 422 and "expired" in r.json()["detail"]
 
 
 def test_code_expires_with_the_link(h):
     admin = h.bootstrap()
-    issued = admin.post(f"/api/admin/accounts/{h.uid('qa_head')}/invite").json()
+    issued = admin.post(f"/api/v1/admin/accounts/{h.uid('qa_head')}/invite").json()
     h.now.tick(hours=24)
     assert _setup(h, issued["link_token"], issued["verification_code"]).json() == INVALID_LINK
 
@@ -134,7 +134,7 @@ def test_code_expires_with_the_link(h):
 def test_links_issued_without_a_code_are_refused(h):
     """Links from before this slice (no code_hash) cannot be redeemed; they must be issued again."""
     admin = h.bootstrap()
-    issued = admin.post(f"/api/admin/accounts/{h.uid('qa_head')}/invite").json()
+    issued = admin.post(f"/api/v1/admin/accounts/{h.uid('qa_head')}/invite").json()
     with h.db() as s:
         s.get(AccountAction, issued["id"]).code_hash = None                         # as a pre-upgrade row
         s.commit()
@@ -143,8 +143,8 @@ def test_links_issued_without_a_code_are_refused(h):
 
 def test_code_is_stored_only_as_argon2id_and_never_logged(h):
     first, second = _two_admins(h)
-    req = first.post(f"/api/admin/accounts/{h.uid('qa_head')}/invite").json()
-    ok = second.post(f"/api/admin/account-actions/{req['id']}/approve").json()
+    req = first.post(f"/api/v1/admin/accounts/{h.uid('qa_head')}/invite").json()
+    ok = second.post(f"/api/v1/admin/account-actions/{req['id']}/approve").json()
     _setup(h, ok["link_token"], "22222-22222")
     _setup(h, ok["link_token"], req["verification_code"])
     action = _action(h, req["id"])
