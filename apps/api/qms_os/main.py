@@ -8,7 +8,7 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from .api import (
@@ -118,13 +118,17 @@ def create_app(engine=None, today: Callable[[], date] = date.today, mode: str | 
     app.include_router(evidence_routes.router)
     app.include_router(workflow_routes.router)
 
-    dist = Path(__file__).resolve().parents[3] / "frontend" / "dist"
+    # R-66: the built admin web UI on the same origin, mounted after every API route. It is a static mount, not a
+    # catch-all route: an unknown /api/v1 path still answers 404 (never the UI's index.html), and the UI's deep links
+    # use the URL fragment, so no server-side fallback is needed.
+    dist = admin_web_dist()
     if dist.is_dir():
-        app.mount("/assets", StaticFiles(directory=dist / "assets"), name="assets")
-
-        @app.get("/{path:path}", include_in_schema=False)
-        def spa(path: str):
-            return FileResponse(dist / "index.html")
+        app.mount("/", StaticFiles(directory=dist, html=True), name="admin-web")
 
     return app
+
+
+def admin_web_dist() -> Path:
+    """Where ``pnpm build`` in apps/admin-web puts the UI (docs/adr/0007-admin-web-frontend.md)."""
+    return Path(__file__).resolve().parents[2] / "admin-web" / "dist"
 # Run with:  uvicorn qms_os.main:create_app --factory
