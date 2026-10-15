@@ -11,7 +11,15 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from .api import auth_routes, evidence_routes, knowledge_routes, org_routes, provider_routes, routes
+from .api import (
+    auth_routes,
+    evidence_routes,
+    knowledge_routes,
+    org_routes,
+    provider_routes,
+    routes,
+    workflow_routes,
+)
 from .auth.keys import KEY_ENV, SecretBox, load_key_file
 from .auth.limits import AuthConfigError, AuthLimits
 from .auth.service import AuthContext
@@ -89,6 +97,7 @@ def create_app(engine=None, today: Callable[[], date] = date.today, mode: str | 
     app.include_router(provider_routes.router)
     app.include_router(org_routes.router)
     app.include_router(evidence_routes.router)
+    app.include_router(workflow_routes.router)
 
     dist = Path(__file__).resolve().parents[3] / "frontend" / "dist"
     if dist.is_dir():

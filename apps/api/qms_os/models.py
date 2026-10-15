@@ -627,3 +627,116 @@ class ModelEgressLog(Base):
     actor_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     actor_kind: Mapped[str | None] = mapped_column(String(16))
     channel: Mapped[str | None] = mapped_column(String(16))
+
+
+# ---------- workflow engine (MVP-1 slices 6 to 9; R-56 to R-64; docs/adr/0006-workflow-engine.md) ----------
+# Guideline -> template -> versioned template (graph as canonical JSON) -> case instance. Nothing is deleted. A
+# baselined or superseded version's content is frozen and approval rows are append-only: the service refuses the
+# change and database triggers refuse UPDATE and DELETE (R-58); TRUNCATE or DROP by a database owner is not
+# prevented.
+
+VERSION_STATUSES = ("draft", "proposed", "baselined", "superseded")
+
+
+class WorkflowGuideline(Base):
+    """An approved process area owned by one department, with its reference citations (free text or IDs only; never
+    licensed standard text)."""
+    __tablename__ = "workflow_guidelines"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str] = mapped_column(String(200))
+    department_id: Mapped[int] = mapped_column(ForeignKey("departments.id"))
+    references: Mapped[list] = mapped_column(JSON, default=list)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=sa_true())
+    created_by_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=now)
+
+
+class WorkflowTemplate(Base):
+    __tablename__ = "workflow_templates"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    guideline_id: Mapped[int] = mapped_column(ForeignKey("workflow_guidelines.id"))
+    title: Mapped[str] = mapped_column(String(200))
+    created_by_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=now)
+
+
+class WorkflowTemplateVersion(Base):
+    """One version of a template. ``graph_json`` is the canonical JSON of the node and edge graph; ``digest`` is set
+    on submission (``qms_os.workflow.digest``). Editable only while ``draft``."""
+    __tablename__ = "workflow_template_versions"
+    __table_args__ = (
+        UniqueConstraint("template_id", "version_no", name="uq_workflow_template_versions_no"),
+        CheckConstraint("status IN ('draft', 'proposed', 'baselined', 'superseded')",
+                        name="ck_workflow_template_versions_status"),
+        CheckConstraint("origin IN ('manual', 'proposal', 'finding')", name="ck_workflow_template_versions_origin"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    template_id: Mapped[int] = mapped_column(ForeignKey("workflow_templates.id"))
+    version_no: Mapped[int] = mapped_column(Integer)
+    title: Mapped[str] = mapped_column(String(200))
+    graph_json: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(16), default="draft")
+    digest: Mapped[str | None] = mapped_column(String(64))
+    origin: Mapped[str] = mapped_column(String(16), default="manual")
+    origin_ref: Mapped[int | None] = mapped_column(Integer)                 # finding id or proposal id
+    created_by_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=now)
+    submitted_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    submitted_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    effective_date: Mapped[date | None] = mapped_column(Date)
+    superseded_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+
+
+class WorkflowApproval(Base):
+    """One decision on a proposed version, bound to the digest the approver confirmed (R-32, R-59). Append-only."""
+    __tablename__ = "workflow_approvals"
+    __table_args__ = (
+        CheckConstraint("decision IN ('approved', 'rejected')", name="ck_workflow_approvals_decision"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    version_id: Mapped[int] = mapped_column(ForeignKey("workflow_template_versions.id"))
+    decision: Mapped[str] = mapped_column(String(16))
+    digest: Mapped[str] = mapped_column(String(64))
+    effective_date: Mapped[date | None] = mapped_column(Date)
+    validator_version: Mapped[int | None] = mapped_column(Integer)
+    reason: Mapped[str | None] = mapped_column(String(500))
+    decided_by_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    decided_at: Mapped[datetime] = mapped_column(UTCDateTime, default=now)
+
+
+# The same statements as migration 0e0fc698155b (PostgreSQL); SQLite test and demo databases get theirs here.
+WORKFLOW_IMMUTABLE_PG = (
+    "CREATE FUNCTION workflow_rows_immutable() RETURNS trigger LANGUAGE plpgsql AS "
+    "$$ BEGIN RAISE EXCEPTION 'workflow rows are immutable (R-58)'; END $$",
+    "CREATE FUNCTION workflow_version_frozen() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN "
+    "IF OLD.status = 'baselined' AND NEW.status = 'superseded' AND NEW.superseded_at IS NOT NULL "
+    "AND NEW.template_id = OLD.template_id AND NEW.version_no = OLD.version_no AND NEW.title = OLD.title "
+    "AND NEW.graph_json = OLD.graph_json AND NEW.digest = OLD.digest "
+    "AND NEW.effective_date IS NOT DISTINCT FROM OLD.effective_date THEN RETURN NEW; END IF; "
+    "RAISE EXCEPTION 'a baselined or superseded workflow version is frozen (R-58)'; END $$",
+    "CREATE TRIGGER workflow_version_frozen BEFORE UPDATE ON workflow_template_versions FOR EACH ROW "
+    "WHEN (OLD.status IN ('baselined', 'superseded')) EXECUTE FUNCTION workflow_version_frozen()",
+    "CREATE TRIGGER workflow_versions_no_delete BEFORE DELETE ON workflow_template_versions FOR EACH ROW "
+    "EXECUTE FUNCTION workflow_rows_immutable()",
+    "CREATE TRIGGER workflow_approvals_immutable BEFORE UPDATE OR DELETE ON workflow_approvals FOR EACH ROW "
+    "EXECUTE FUNCTION workflow_rows_immutable()",
+)
+WORKFLOW_IMMUTABLE_SQLITE = (
+    "CREATE TRIGGER workflow_version_frozen BEFORE UPDATE ON workflow_template_versions "
+    "WHEN OLD.status IN ('baselined', 'superseded') AND NOT (OLD.status = 'baselined' AND NEW.status = 'superseded' "
+    "AND NEW.superseded_at IS NOT NULL AND NEW.template_id = OLD.template_id AND NEW.version_no = OLD.version_no "
+    "AND NEW.title = OLD.title AND NEW.graph_json = OLD.graph_json AND NEW.digest = OLD.digest "
+    "AND NEW.effective_date IS OLD.effective_date) "
+    "BEGIN SELECT RAISE(ABORT, 'a baselined or superseded workflow version is frozen (R-58)'); END",
+    "CREATE TRIGGER workflow_versions_no_delete BEFORE DELETE ON workflow_template_versions "
+    "BEGIN SELECT RAISE(ABORT, 'workflow_template_versions rows are immutable (R-58)'); END",
+    "CREATE TRIGGER workflow_approvals_no_update BEFORE UPDATE ON workflow_approvals "
+    "BEGIN SELECT RAISE(ABORT, 'workflow_approvals rows are immutable (R-58)'); END",
+    "CREATE TRIGGER workflow_approvals_no_delete BEFORE DELETE ON workflow_approvals "
+    "BEGIN SELECT RAISE(ABORT, 'workflow_approvals rows are immutable (R-58)'); END",
+)
+# Attached to workflow_approvals, which is created after workflow_template_versions (foreign key order).
+for _stmt in WORKFLOW_IMMUTABLE_PG:
+    event.listen(WorkflowApproval.__table__, "after_create", DDL(_stmt).execute_if(dialect="postgresql"))
+for _stmt in WORKFLOW_IMMUTABLE_SQLITE:
+    event.listen(WorkflowApproval.__table__, "after_create", DDL(_stmt).execute_if(dialect="sqlite"))
