@@ -3,8 +3,10 @@
 Records are never deleted (docs/DECISIONS.md D-14): no migration drops a table or column or deletes rows, and every
 downgrade() raises instead of undoing the schema. Upgrades are additive: they only create tables, keys and indexes or
 add columns that existing rows can satisfy (nullable or with a server default). The one raw-SQL exception is
-``op.execute`` of a literal ``CREATE FUNCTION`` or ``CREATE TRIGGER`` statement (R-52: the triggers that make
-evidence_objects rows immutable); ``CREATE OR REPLACE``, any other statement and any non-literal argument fail here.
+``op.execute`` of a literal ``CREATE FUNCTION`` or ``CREATE TRIGGER`` statement whose name is in ``DB_OBJECTS`` (R-52,
+R-63: the triggers that make evidence and workflow rows immutable); ``CREATE OR REPLACE``, any other statement, any
+other name and any non-literal argument fail here. Function bodies are not inspected: a new name needs a reviewed
+change to ``DB_OBJECTS``.
 """
 import ast
 import re
@@ -13,7 +15,13 @@ from pathlib import Path
 VERSIONS = Path(__file__).resolve().parents[1] / "migrations" / "versions"
 DESTRUCTIVE_OPS = {"drop_table", "drop_column"}
 ADDITIVE_OPS = {"create_table", "add_column", "create_foreign_key", "create_index", "create_unique_constraint"}
-EXECUTE_ALLOWED = re.compile(r"CREATE (FUNCTION|TRIGGER) [a-z_]+")
+EXECUTE_ALLOWED = re.compile(r"CREATE (FUNCTION|TRIGGER) ([a-z_]+)[ (]")
+DB_OBJECTS = {                    # R-63: every function and trigger a migration may create, by name
+    "evidence_objects_immutable",                                                       # R-52
+    "workflow_rows_immutable", "workflow_version_frozen", "workflow_versions_no_delete",
+    "workflow_approvals_immutable",                                                     # R-58
+    "workflow_case_migrations_decided", "workflow_case_migrations_no_delete",           # R-61
+}
 DESTRUCTIVE_SQL = re.compile(r"\b(drop\s+table|drop\s+schema|delete\s+from|truncate)\b", re.I)
 
 
@@ -42,13 +50,18 @@ def _literal_string(node) -> str | None:
     return None
 
 
-def test_execute_rule_accepts_only_literal_create_function_or_trigger():
+def _allowed(sql: str | None) -> bool:
+    m = EXECUTE_ALLOWED.match(sql) if sql is not None else None
+    return m is not None and m.group(2) in DB_OBJECTS
+
+
+def test_execute_rule_accepts_only_literal_create_function_or_trigger_with_a_listed_name():
     def ok(src: str) -> bool:
-        call = ast.parse(src).body[0].value
-        sql = _literal_string(call.args[0])
-        return sql is not None and EXECUTE_ALLOWED.match(sql) is not None
-    assert ok('op.execute("CREATE TRIGGER t BEFORE UPDATE ON x FOR EACH ROW EXECUTE FUNCTION f()")')
-    assert ok('op.execute("CREATE FUNCTION f() RETURNS trigger " "LANGUAGE plpgsql AS $$ BEGIN END $$")')
+        return _allowed(_literal_string(ast.parse(src).body[0].value.args[0]))
+    assert ok('op.execute("CREATE TRIGGER workflow_version_frozen BEFORE UPDATE ON x FOR EACH ROW EXECUTE F()")')
+    assert ok('op.execute("CREATE FUNCTION workflow_rows_immutable() RETURNS trigger " "LANGUAGE plpgsql AS $$ $$")')
+    assert not ok('op.execute("CREATE TRIGGER t BEFORE UPDATE ON x FOR EACH ROW EXECUTE FUNCTION f()")')  # unlisted
+    assert not ok('op.execute("CREATE FUNCTION workflow_rows_immutable_x() RETURNS trigger AS $$ $$")')
     assert not ok('op.execute("CREATE OR REPLACE FUNCTION f() RETURNS trigger AS $$ $$")')
     assert not ok('op.execute("ALTER TABLE x DROP CONSTRAINT y")')
     assert not ok('op.execute("UPDATE x SET y = 1")')
@@ -84,10 +97,26 @@ def test_upgrades_are_additive():
         assert ops and used <= ADDITIVE_OPS | {"execute"}, f"{name}: {sorted(used)}"
         for c in (c for c in ops if c.func.attr == "execute"):
             sql = _literal_string(c.args[0]) if len(c.args) == 1 and not c.keywords else None
-            assert sql is not None and EXECUTE_ALLOWED.match(sql), \
-                f"{name}: op.execute is allowed only for a literal CREATE FUNCTION or CREATE TRIGGER statement"
+            assert _allowed(sql), f"{name}: op.execute is allowed only for a literal CREATE FUNCTION or CREATE " \
+                "TRIGGER statement whose name is in DB_OBJECTS"
         for c in (c for c in ops if c.func.attr == "add_column"):
             col = c.args[1]
             kw = {k.arg: k.value for k in col.keywords}
             nullable = isinstance(kw.get("nullable"), ast.Constant) and kw["nullable"].value is True
             assert nullable or "server_default" in kw, f"{name}: add_column needs nullable=True or a server_default"
+
+
+def test_trigger_statements_in_migrations_equal_the_models():
+    """The SQLite test databases get their triggers from the models; PostgreSQL gets them from the migrations. Both
+    must carry the same PostgreSQL statements, so a test on either dialect tests what a migration creates."""
+    from qms_os.models import CASE_MIGRATIONS_IMMUTABLE_PG, EVIDENCE_IMMUTABLE_PG, WORKFLOW_IMMUTABLE_PG
+    expected = {"1145709a6ca6_evidence_store.py": EVIDENCE_IMMUTABLE_PG,
+                "0e0fc698155b_workflow_versions.py": WORKFLOW_IMMUTABLE_PG,
+                "08e8ac87f38c_workflow_cases.py": CASE_MIGRATIONS_IMMUTABLE_PG}
+    found = {}
+    for name, tree in _migrations():
+        executed = tuple(_literal_string(c.args[0]) for c in ast.walk(tree) if isinstance(c, ast.Call)
+                         and isinstance(c.func, ast.Attribute) and c.func.attr == "execute")
+        if executed:
+            found[name] = executed
+    assert found == expected

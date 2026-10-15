@@ -627,3 +627,190 @@ class ModelEgressLog(Base):
     actor_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     actor_kind: Mapped[str | None] = mapped_column(String(16))
     channel: Mapped[str | None] = mapped_column(String(16))
+
+
+# ---------- workflow engine (MVP-1 slices 6 to 9; R-56 to R-64; docs/adr/0006-workflow-engine.md) ----------
+# Guideline -> template -> versioned template (graph as canonical JSON) -> case instance. Nothing is deleted. A
+# baselined or superseded version's content is frozen and approval rows are append-only: the service refuses the
+# change and database triggers refuse UPDATE and DELETE (R-58); TRUNCATE or DROP by a database owner is not
+# prevented.
+
+VERSION_STATUSES = ("draft", "proposed", "baselined", "superseded")
+
+
+class WorkflowGuideline(Base):
+    """An approved process area owned by one department, with its reference citations (free text or IDs only; never
+    licensed standard text)."""
+    __tablename__ = "workflow_guidelines"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str] = mapped_column(String(200))
+    department_id: Mapped[int] = mapped_column(ForeignKey("departments.id"))
+    references: Mapped[list] = mapped_column(JSON, default=list)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=sa_true())
+    created_by_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=now)
+
+
+class WorkflowTemplate(Base):
+    __tablename__ = "workflow_templates"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    guideline_id: Mapped[int] = mapped_column(ForeignKey("workflow_guidelines.id"))
+    title: Mapped[str] = mapped_column(String(200))
+    created_by_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=now)
+
+
+class WorkflowTemplateVersion(Base):
+    """One version of a template. ``graph_json`` is the canonical JSON of the node and edge graph; ``digest`` is set
+    on submission (``qms_os.workflow.digest``). Editable only while ``draft``."""
+    __tablename__ = "workflow_template_versions"
+    __table_args__ = (
+        UniqueConstraint("template_id", "version_no", name="uq_workflow_template_versions_no"),
+        CheckConstraint("status IN ('draft', 'proposed', 'baselined', 'superseded')",
+                        name="ck_workflow_template_versions_status"),
+        CheckConstraint("origin IN ('manual', 'proposal', 'finding')", name="ck_workflow_template_versions_origin"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    template_id: Mapped[int] = mapped_column(ForeignKey("workflow_templates.id"))
+    version_no: Mapped[int] = mapped_column(Integer)
+    title: Mapped[str] = mapped_column(String(200))
+    graph_json: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(16), default="draft")
+    digest: Mapped[str | None] = mapped_column(String(64))
+    origin: Mapped[str] = mapped_column(String(16), default="manual")
+    origin_ref: Mapped[int | None] = mapped_column(Integer)                 # finding id or proposal id
+    created_by_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=now)
+    submitted_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    submitted_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    effective_date: Mapped[date | None] = mapped_column(Date)
+    superseded_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+
+
+class WorkflowApproval(Base):
+    """One decision on a proposed version, bound to the digest the approver confirmed (R-32, R-59). Append-only."""
+    __tablename__ = "workflow_approvals"
+    __table_args__ = (
+        CheckConstraint("decision IN ('approved', 'rejected')", name="ck_workflow_approvals_decision"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    version_id: Mapped[int] = mapped_column(ForeignKey("workflow_template_versions.id"))
+    decision: Mapped[str] = mapped_column(String(16))
+    digest: Mapped[str] = mapped_column(String(64))
+    effective_date: Mapped[date | None] = mapped_column(Date)
+    validator_version: Mapped[int | None] = mapped_column(Integer)
+    reason: Mapped[str | None] = mapped_column(String(500))
+    decided_by_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    decided_at: Mapped[datetime] = mapped_column(UTCDateTime, default=now)
+
+
+# The same statements as migration 0e0fc698155b (PostgreSQL); SQLite test and demo databases get theirs here.
+WORKFLOW_IMMUTABLE_PG = (
+    "CREATE FUNCTION workflow_rows_immutable() RETURNS trigger LANGUAGE plpgsql AS "
+    "$$ BEGIN RAISE EXCEPTION 'workflow rows are immutable (R-58)'; END $$",
+    "CREATE FUNCTION workflow_version_frozen() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN "
+    "IF OLD.status = 'baselined' AND NEW.status = 'superseded' AND NEW.superseded_at IS NOT NULL "
+    "AND NEW.template_id = OLD.template_id AND NEW.version_no = OLD.version_no AND NEW.title = OLD.title "
+    "AND NEW.graph_json = OLD.graph_json AND NEW.digest = OLD.digest "
+    "AND NEW.effective_date IS NOT DISTINCT FROM OLD.effective_date THEN RETURN NEW; END IF; "
+    "RAISE EXCEPTION 'a baselined or superseded workflow version is frozen (R-58)'; END $$",
+    "CREATE TRIGGER workflow_version_frozen BEFORE UPDATE ON workflow_template_versions FOR EACH ROW "
+    "WHEN (OLD.status IN ('baselined', 'superseded')) EXECUTE FUNCTION workflow_version_frozen()",
+    "CREATE TRIGGER workflow_versions_no_delete BEFORE DELETE ON workflow_template_versions FOR EACH ROW "
+    "EXECUTE FUNCTION workflow_rows_immutable()",
+    "CREATE TRIGGER workflow_approvals_immutable BEFORE UPDATE OR DELETE ON workflow_approvals FOR EACH ROW "
+    "EXECUTE FUNCTION workflow_rows_immutable()",
+)
+WORKFLOW_IMMUTABLE_SQLITE = (
+    "CREATE TRIGGER workflow_version_frozen BEFORE UPDATE ON workflow_template_versions "
+    "WHEN OLD.status IN ('baselined', 'superseded') AND NOT (OLD.status = 'baselined' AND NEW.status = 'superseded' "
+    "AND NEW.superseded_at IS NOT NULL AND NEW.template_id = OLD.template_id AND NEW.version_no = OLD.version_no "
+    "AND NEW.title = OLD.title AND NEW.graph_json = OLD.graph_json AND NEW.digest = OLD.digest "
+    "AND NEW.effective_date IS OLD.effective_date) "
+    "BEGIN SELECT RAISE(ABORT, 'a baselined or superseded workflow version is frozen (R-58)'); END",
+    "CREATE TRIGGER workflow_versions_no_delete BEFORE DELETE ON workflow_template_versions "
+    "BEGIN SELECT RAISE(ABORT, 'workflow_template_versions rows are immutable (R-58)'); END",
+    "CREATE TRIGGER workflow_approvals_no_update BEFORE UPDATE ON workflow_approvals "
+    "BEGIN SELECT RAISE(ABORT, 'workflow_approvals rows are immutable (R-58)'); END",
+    "CREATE TRIGGER workflow_approvals_no_delete BEFORE DELETE ON workflow_approvals "
+    "BEGIN SELECT RAISE(ABORT, 'workflow_approvals rows are immutable (R-58)'); END",
+)
+# Attached to workflow_approvals, which is created after workflow_template_versions (foreign key order).
+for _stmt in WORKFLOW_IMMUTABLE_PG:
+    event.listen(WorkflowApproval.__table__, "after_create", DDL(_stmt).execute_if(dialect="postgresql"))
+for _stmt in WORKFLOW_IMMUTABLE_SQLITE:
+    event.listen(WorkflowApproval.__table__, "after_create", DDL(_stmt).execute_if(dialect="sqlite"))
+
+
+class WorkflowCase(Base):
+    """A case instance (MVP-1 slice 8; R-61): pinned to one baselined version, which never changes on its own; it
+    changes only through an approved migration (``workflow_case_migrations``)."""
+    __tablename__ = "workflow_cases"
+    __table_args__ = (CheckConstraint("status IN ('running', 'closed')", name="ck_workflow_cases_status"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    template_id: Mapped[int] = mapped_column(ForeignKey("workflow_templates.id"))
+    version_id: Mapped[int] = mapped_column(ForeignKey("workflow_template_versions.id"))
+    title: Mapped[str] = mapped_column(String(200))
+    status: Mapped[str] = mapped_column(String(16), default="running")
+    start_date: Mapped[date] = mapped_column(Date)
+    assignments: Mapped[dict] = mapped_column(JSON, default=dict)          # QMS role -> person id
+    started_by_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    started_at: Mapped[datetime] = mapped_column(UTCDateTime, default=now)
+
+
+class WorkflowCaseMigration(Base):
+    """A request to move a case to a newer baselined version, and its decision. Once decided, the row cannot change,
+    and no row is deleted (database triggers, R-61)."""
+    __tablename__ = "workflow_case_migrations"
+    __table_args__ = (
+        CheckConstraint("decision IN ('pending', 'approved', 'rejected')", name="ck_workflow_case_migrations_decision"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    case_id: Mapped[int] = mapped_column(ForeignKey("workflow_cases.id"))
+    from_version_id: Mapped[int] = mapped_column(ForeignKey("workflow_template_versions.id"))
+    to_version_id: Mapped[int] = mapped_column(ForeignKey("workflow_template_versions.id"))
+    reason: Mapped[str] = mapped_column(String(500))
+    requested_by_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    requested_at: Mapped[datetime] = mapped_column(UTCDateTime, default=now)
+    decision: Mapped[str] = mapped_column(String(16), default="pending")
+    decided_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    decided_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    decision_reason: Mapped[str | None] = mapped_column(String(500))
+
+
+# The same statements as migration 08e8ac87f38c (PostgreSQL; the function comes from migration 0e0fc698155b).
+CASE_MIGRATIONS_IMMUTABLE_PG = (
+    "CREATE TRIGGER workflow_case_migrations_decided BEFORE UPDATE ON workflow_case_migrations FOR EACH ROW "
+    "WHEN (OLD.decision <> 'pending') EXECUTE FUNCTION workflow_rows_immutable()",
+    "CREATE TRIGGER workflow_case_migrations_no_delete BEFORE DELETE ON workflow_case_migrations FOR EACH ROW "
+    "EXECUTE FUNCTION workflow_rows_immutable()",
+)
+CASE_MIGRATIONS_IMMUTABLE_SQLITE = (
+    "CREATE TRIGGER workflow_case_migrations_decided BEFORE UPDATE ON workflow_case_migrations "
+    "WHEN OLD.decision <> 'pending' "
+    "BEGIN SELECT RAISE(ABORT, 'a decided case migration is immutable (R-61)'); END",
+    "CREATE TRIGGER workflow_case_migrations_no_delete BEFORE DELETE ON workflow_case_migrations "
+    "BEGIN SELECT RAISE(ABORT, 'workflow_case_migrations rows are immutable (R-61)'); END",
+)
+for _stmt in CASE_MIGRATIONS_IMMUTABLE_PG:
+    event.listen(WorkflowCaseMigration.__table__, "after_create", DDL(_stmt).execute_if(dialect="postgresql"))
+for _stmt in CASE_MIGRATIONS_IMMUTABLE_SQLITE:
+    event.listen(WorkflowCaseMigration.__table__, "after_create", DDL(_stmt).execute_if(dialect="sqlite"))
+
+
+class WorkflowProposal(Base):
+    """A natural-language workflow request turned into a structured graph by rules (MVP-1 slice 9; R-33, R-62). Unknown
+    facts stay ``"?"`` in the graph and are listed as questions. It can only become a draft version; it never submits
+    or baselines anything. The request text is stored here and never copied into an audit event."""
+    __tablename__ = "workflow_proposals"
+    __table_args__ = (CheckConstraint("status IN ('open', 'drafted')", name="ck_workflow_proposals_status"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    request_text: Mapped[str] = mapped_column(Text)
+    rule: Mapped[str | None] = mapped_column(String(32))
+    graph_json: Mapped[str | None] = mapped_column(Text)
+    department_id: Mapped[int | None] = mapped_column(ForeignKey("departments.id"))
+    questions: Mapped[list] = mapped_column(JSON, default=list)
+    status: Mapped[str] = mapped_column(String(16), default="open")
+    version_id: Mapped[int | None] = mapped_column(ForeignKey("workflow_template_versions.id"))
+    created_by_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=now)

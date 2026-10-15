@@ -411,6 +411,135 @@ def test_evidence_rows_refuse_update_and_delete_and_the_truncate_clean_up_still_
         assert c.scalar(text("SELECT count(*) FROM evidence_objects")) == 0
 
 
+# ---------- two approvals of one workflow version never both succeed (R-58, R-59) ----------
+
+def test_concurrent_approvals_of_one_workflow_version_baseline_it_exactly_once(engine):
+    """Deterministic, as above: the first approval holds the version's row lock (uncommitted) while the second, by
+    the other qualified approver in another session, is shown to be waiting for it; only then does the first commit.
+    The second must then see a baselined version and be refused."""
+    import queue
+    from datetime import date
+
+    from workflow_support import GRAPH
+
+    from qms_os.models import Department, WorkflowApproval, WorkflowTemplateVersion
+    from qms_os.workflow import service as W
+    from qms_os.workflow.service import Conflict
+
+    maker = make_sessionmaker(engine)
+    with maker() as s:
+        ids = {u.email.split("@")[0]: u.id for u in s.scalars(select(User))}
+        qa = s.scalar(select(Department.id).where(Department.code == "qa"))
+        author = s.get(User, ids["eng_head"])
+        g = W.create_guideline(s, author, "Synthetic process", qa, list(GRAPH["references"]))
+        t = W.create_template(s, author, g.id, "Synthetic template")
+        v = W.create_version(s, author, t.id, "Synthetic template", GRAPH)
+        W.submit_version(s, author, v.id)
+        s.commit()
+        vid, digest = v.id, v.digest
+    pids: queue.Queue[int] = queue.Queue()
+    outcome: dict[str, str] = {}
+
+    def other() -> None:
+        with maker() as s2:
+            pids.put(s2.execute(text("SELECT pg_backend_pid()")).scalar())
+            try:
+                W.approve_version(s2, s2.get(User, ids["qa_head"]), vid, digest=digest,
+                                  effective_date=date(2026, 1, 2), today=date(2026, 1, 2))
+                s2.commit()
+                outcome["second"] = "approved"
+            except Conflict as e:
+                s2.rollback()
+                outcome["second"] = f"refused: {e}"
+
+    s1 = maker()
+    try:
+        W.approve_version(s1, s1.get(User, ids["ma"]), vid, digest=digest, effective_date=date(2026, 1, 2),
+                          today=date(2026, 1, 2))
+        s1.flush()
+        t2 = threading.Thread(target=other)
+        t2.start()
+        pid = pids.get(timeout=10)
+        assert _wait_until_waiting_on_a_lock(engine, pid), "the second approval did not wait for the version's lock"
+        s1.commit()
+    finally:
+        s1.close()
+    t2.join(timeout=30)
+    assert not t2.is_alive()
+    assert outcome["second"].startswith("refused") and "baselined" in outcome["second"], outcome
+    with maker() as s:
+        assert s.get(WorkflowTemplateVersion, vid).status == "baselined"
+        assert [a.decided_by_id for a in s.scalars(select(WorkflowApproval))] == [ids["ma"]]
+
+
+# ---------- two decisions on one case migration never both apply (R-61) ----------
+
+def test_concurrent_decisions_on_one_case_migration_apply_exactly_one(engine):
+    """Deterministic, as above: an approval holds the case's row lock (uncommitted) while a rejection of the same
+    request, in another session, is shown to be waiting for it; only then does the approval commit. The rejection
+    must then see a decided request and be refused, and the trace holds one decision."""
+    import queue
+    from datetime import date
+
+    from workflow_support import GRAPH
+
+    from qms_os.models import Department, WorkflowCase, WorkflowCaseMigration
+    from qms_os.workflow import cases as C
+    from qms_os.workflow import service as W
+    from qms_os.workflow.service import Conflict
+
+    day = date(2026, 1, 2)
+    maker = make_sessionmaker(engine)
+    with maker() as s:
+        ids = {u.email.split("@")[0]: u.id for u in s.scalars(select(User))}
+        qa = s.scalar(select(Department.id).where(Department.code == "qa"))
+        author, ma = s.get(User, ids["eng_head"]), s.get(User, ids["ma"])
+        g = W.create_guideline(s, author, "Synthetic process", qa, list(GRAPH["references"]))
+        t = W.create_template(s, author, g.id, "Synthetic template")
+        versions = []
+        for _ in range(2):
+            v = W.create_version(s, author, t.id, "Synthetic template", GRAPH)
+            W.submit_version(s, author, v.id)
+            W.approve_version(s, ma, v.id, digest=v.digest, effective_date=day, today=day)
+            versions.append(v.id)
+            if len(versions) == 1:
+                case = C.start_case(s, ma, t.id, "Synthetic case", day, None, day)
+        m = C.request_migration(s, ma, case.id, versions[1], "Adopt the newer version", day)
+        s.commit()
+        case_id, mid = case.id, m.id
+    pids: queue.Queue[int] = queue.Queue()
+    outcome: dict[str, str] = {}
+
+    def other() -> None:
+        with maker() as s2:
+            pids.put(s2.execute(text("SELECT pg_backend_pid()")).scalar())
+            try:
+                C.reject_migration(s2, s2.get(User, ids["qa_head"]), case_id, mid, "Not now")
+                s2.commit()
+                outcome["second"] = "rejected"
+            except Conflict as e:
+                s2.rollback()
+                outcome["second"] = f"refused: {e}"
+
+    s1 = maker()
+    try:
+        C.approve_migration(s1, s1.get(User, ids["qa_head"]), case_id, mid, day)
+        s1.flush()
+        t2 = threading.Thread(target=other)
+        t2.start()
+        pid = pids.get(timeout=10)
+        assert _wait_until_waiting_on_a_lock(engine, pid), "the rejection did not wait for the case's lock"
+        s1.commit()
+    finally:
+        s1.close()
+    t2.join(timeout=30)
+    assert not t2.is_alive()
+    assert outcome["second"].startswith("refused") and "approved" in outcome["second"], outcome
+    with maker() as s:
+        assert s.get(WorkflowCase, case_id).version_id == versions[1]
+        assert [m.decision for m in s.scalars(select(WorkflowCaseMigration))] == ["approved"]
+
+
 # ---------- super admin scripts are read-only on PostgreSQL too (R-46) ----------
 
 def test_superadmin_session_cannot_write_on_postgres(engine):
