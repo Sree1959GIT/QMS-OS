@@ -13,14 +13,21 @@ from sqlalchemy.exc import OperationalError
 from qms_os.db import create_all, make_engine, make_sessionmaker
 from qms_os.fixtures import load
 from qms_os.models import AgentProfile, User
-from qms_superadmin import access_segregation, housekeeping, knowledge_integrity, review_org
+from qms_superadmin import (
+    access_segregation,
+    housekeeping,
+    knowledge_integrity,
+    review_org,
+    workflow_completeness,
+)
 from qms_superadmin.readonly import Refused, read_only_session
 
 API = Path(__file__).resolve().parents[1]
 REPO = API.parents[1]
 PKG = API / "qms_superadmin"
 SKILLS = REPO / ".claude" / "skills"
-SKILL_NAMES = ("housekeeping-check", "review-org", "access-segregation", "knowledge-integrity")
+SKILL_NAMES = ("housekeeping-check", "review-org", "access-segregation", "knowledge-integrity",
+               "inspect-workflow-completeness")
 
 
 @pytest.fixture
@@ -36,7 +43,7 @@ def demo_db(tmp_path) -> dict[str, str]:
 
 
 def test_database_reviews_are_deterministic_and_find_nothing_on_the_fixture(demo_db):
-    for review in (review_org.review, access_segregation.review):
+    for review in (review_org.review, access_segregation.review, workflow_completeness.review):
         with read_only_session(demo_db) as (s, mode):
             first = review(s)
         with read_only_session(demo_db) as (s, _):
@@ -198,3 +205,60 @@ def test_knowledge_integrity_finds_nothing_on_a_sound_store_and_reports_damage(d
     assert any("has no database row (orphan" in line for line in report)
     assert not any(good_sha in line for line in report)
     assert store.path_of(bad_sha).read_bytes() == b"damaged"      # nothing was repaired or removed
+
+
+def test_inspect_workflow_completeness_checks_digests_completeness_findings_and_cases(demo_db):
+    """R-56 to R-62: a sound baselined version passes. Reported: a proposed version that has become incomplete (nobody
+    holds a role it uses) and whose content no longer matches its digest, a baselined version whose content no longer
+    matches its approved digest, and a case pinned to a draft. A change proposed from a finding is listed as not
+    published."""
+    from datetime import date
+
+    from workflow_support import GRAPH, graph
+
+    from qms_os.models import Department, WorkflowCase, WorkflowTemplateVersion
+    from qms_os.workflow import cases as C
+    from qms_os.workflow import service as W
+
+    day = date(2026, 1, 2)
+    eng = make_engine(demo_db["QMS_DATABASE_URL"])
+    with make_sessionmaker(eng)() as s:
+        people = {u.email.split("@")[0]: s.get(User, u.id) for u in s.scalars(select(User))}
+        qa = s.scalar(select(Department.id).where(Department.code == "qa"))
+        author, ma = people["eng_head"], people["ma"]
+        g = W.create_guideline(s, author, "Synthetic process", qa, list(GRAPH["references"]))
+        t = W.create_template(s, author, g.id, "Synthetic template")
+        good = W.create_version(s, author, t.id, "Synthetic template", GRAPH)
+        W.submit_version(s, author, good.id)
+        W.approve_version(s, ma, good.id, digest=good.digest, effective_date=day, today=day)
+        case = C.start_case(s, ma, t.id, "Synthetic case", day, None, day)
+        s.commit()
+        good_id, case_id = good.id, case.id
+    with read_only_session(demo_db) as (s, _):
+        first = workflow_completeness.review(s)
+    assert "findings: 0" in first and any(f"version {good_id} " in ln and "digest matches" in ln for ln in first)
+
+    with make_sessionmaker(eng)() as s:
+        incomplete = W.create_version(s, author, t.id, "Synthetic template", graph())
+        W.submit_version(s, author, incomplete.id)
+        s.flush()
+        s.execute(text("DROP TRIGGER workflow_version_frozen"))       # a damaged database, for this test only
+        s.execute(text(f"UPDATE workflow_template_versions SET graph_json = replace(graph_json, 'Do the work', "
+                       f"'Do other work') WHERE id IN ({good_id}, {incomplete.id})"))
+        from_finding = W.create_version(s, author, t.id, "Synthetic template", GRAPH, origin="finding", origin_ref=7)
+        draft = W.create_version(s, author, t.id, "Synthetic template", GRAPH)
+        s.get(WorkflowCase, case_id).version_id = draft.id
+        s.execute(text("UPDATE users SET role = 'AUDITEE' WHERE role = 'MA'"))     # the approval step's role
+        s.commit()
+        incomplete_id = incomplete.id
+        assert s.get(WorkflowTemplateVersion, from_finding.id).status == "draft"
+    eng.dispose()
+    with read_only_session(demo_db) as (s, _):
+        report = workflow_completeness.review(s)
+    assert "findings: 4" in report
+    assert any(f"version {incomplete_id} " in ln and "proposed but incomplete (no_qualified_owner)" in ln
+               for ln in report)
+    assert any(f"version {good_id} " in ln and "digest mismatch" in ln for ln in report)
+    assert any(f"version {incomplete_id} " in ln and "stored digest does not match" in ln for ln in report)
+    assert any(f"case {case_id} is pinned to version {draft.id}" in ln for ln in report)
+    assert any("change proposed from finding 7: awaiting review; not published" in ln for ln in report)
