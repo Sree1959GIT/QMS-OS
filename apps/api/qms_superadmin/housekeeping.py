@@ -63,5 +63,6 @@ def check(repo: Path = REPO, main_hash: str | None = None, branch: str | None = 
            f"findings: {len(findings)}"]
     out += [f"- {f}" for f in findings]
     out.append("database reviews: run the review-org and access-segregation skills on the synthetic demo or test "
-               "database (QMS_DATABASE_URL, QMS_MODE=demo or test)")
+               "database (QMS_DATABASE_URL, QMS_MODE=demo or test), and knowledge-integrity on the interim evidence "
+               "store (also QMS_EVIDENCE_DIR)")
     return out

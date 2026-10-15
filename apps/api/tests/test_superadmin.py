@@ -13,14 +13,14 @@ from sqlalchemy.exc import OperationalError
 from qms_os.db import create_all, make_engine, make_sessionmaker
 from qms_os.fixtures import load
 from qms_os.models import AgentProfile, User
-from qms_superadmin import access_segregation, housekeeping, review_org
+from qms_superadmin import access_segregation, housekeeping, knowledge_integrity, review_org
 from qms_superadmin.readonly import Refused, read_only_session
 
 API = Path(__file__).resolve().parents[1]
 REPO = API.parents[1]
 PKG = API / "qms_superadmin"
 SKILLS = REPO / ".claude" / "skills"
-SKILL_NAMES = ("housekeeping-check", "review-org", "access-segregation")
+SKILL_NAMES = ("housekeeping-check", "review-org", "access-segregation", "knowledge-integrity")
 
 
 @pytest.fixture
@@ -151,3 +151,49 @@ def test_agents_are_reviewed_and_an_agent_of_an_inactive_person_is_reported(demo
     assert any(line.startswith(f"- agent 1 for person {people['ma']}, ceiling internal: department ") for line in seg)
     assert "findings: 1" in seg and any("/api/v1/org/agents/2/revoke" in line for line in seg)
     assert not any("reads more than" in line for line in seg)
+
+
+def test_knowledge_integrity_finds_nothing_on_a_sound_store_and_reports_damage(demo_db, tmp_path, monkeypatch):
+    """R-34, R-50 to R-54: hashes, synthetic marking, orphans and unreadable objects; refusals give exit code 2."""
+    import stat as st
+
+    from qms_os.auth.keys import git_work_tree_of
+    from qms_os.evidence import local as L
+    from qms_os.evidence.service import store_object
+
+    if git_work_tree_of(tmp_path) is not None:             # workstation only (see tests/test_evidence.py)
+        monkeypatch.setattr(L, "git_work_tree_of", lambda _p: None)
+    root = L.init_store(tmp_path / "store", "test")
+    store = L.LocalContentStore(root, qms_mode="test")
+    eng = make_engine(demo_db["QMS_DATABASE_URL"])
+    with make_sessionmaker(eng)() as s:
+        owner = s.scalar(select(User.id).limit(1))
+        good, _ = store_object(s, store, data=b"sound fixture", mime="text/plain", owner_id=owner,
+                               classification="internal", synthetic=True)
+        bad, _ = store_object(s, store, data=b"fixture to damage", mime="text/plain", owner_id=owner,
+                              classification="confidential", synthetic=True)
+        good_sha, bad_sha = good.sha256, bad.sha256
+        s.commit()
+    eng.dispose()
+    with pytest.raises(Refused, match="QMS_EVIDENCE_DIR"):
+        knowledge_integrity.open_store("demo", {})
+    with pytest.raises(Refused, match="operational"):
+        knowledge_integrity.open_store("operational", {L.EVIDENCE_ENV: str(root)})
+    env = {L.EVIDENCE_ENV: str(root)}
+    with read_only_session(demo_db) as (s, mode):
+        first = knowledge_integrity.review(s, knowledge_integrity.open_store(mode, env))
+    assert "objects in the database: 2; files in the store: 2" in first
+    assert [line for line in first if line.startswith("- ")] == [
+        f"- object {bad_sha} is classified confidential, above every evidence grant, so no role can read it -> "
+        "confirm, or propose an evidence grant"]
+    path = store.path_of(bad_sha)
+    path.chmod(st.S_IREAD | st.S_IWRITE)
+    path.write_bytes(b"damaged")
+    store.put(b"orphan fixture")                           # a file without a database row
+    with read_only_session(demo_db) as (s, mode):
+        report = knowledge_integrity.review(s, knowledge_integrity.open_store(mode, env))
+    assert "findings: 3" in report
+    assert any(f"object {bad_sha} no longer matches its SHA-256" in line for line in report)
+    assert any("has no database row (orphan" in line for line in report)
+    assert not any(good_sha in line for line in report)
+    assert store.path_of(bad_sha).read_bytes() == b"damaged"      # nothing was repaired or removed

@@ -4,6 +4,7 @@ from __future__ import annotations
 from datetime import date, datetime
 
 from sqlalchemy import (
+    DDL,
     JSON,
     Boolean,
     CheckConstraint,
@@ -16,6 +17,7 @@ from sqlalchemy import (
     Table,
     Text,
     UniqueConstraint,
+    event,
     text,
 )
 from sqlalchemy import false as sa_false
@@ -497,6 +499,80 @@ class AgentProfile(Base):
     revoked_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     revoke_reason: Mapped[str | None] = mapped_column(String(200))
 
+
+
+# ---------- original evidence (MVP-1 slice 5; R-34, R-50 to R-54) ----------
+# Metadata of the objects in the interim local content-addressed store (qms_os/evidence). Synthetic fixtures only.
+# Rows are immutable: database triggers refuse UPDATE and DELETE (R-52); they do not stop TRUNCATE or DROP by a
+# database owner, so true append-only enforcement is still open (docs/HANDOFF.md).
+
+def _hex_only(column: str) -> str:
+    """SQL that is the empty string when ``column`` holds only 0-9 and a-f (portable: SQLite has no regex)."""
+    for c in "0123456789abcdef":
+        column = f"replace({column}, '{c}', '')"
+    return column
+
+
+EVIDENCE_HEX_CHECK = f"length(sha256) = 64 AND {_hex_only('sha256')} = ''"
+EVIDENCE_MIME_CHECK = ("mime IN ('text/plain', 'text/markdown', 'application/json', 'application/pdf', "
+                       "'image/png')")
+
+
+class EvidenceObject(Base):
+    """One stored original, named by its SHA-256 (lower-case hex). Reads go through ``services/access.py``
+    (resource kind ``evidence``, classified by ``classification``); the owner has no bypass (R-51)."""
+    __tablename__ = "evidence_objects"
+    __table_args__ = (
+        CheckConstraint(EVIDENCE_HEX_CHECK, name="ck_evidence_objects_sha256"),
+        CheckConstraint("size >= 0 AND size <= 10485760", name="ck_evidence_objects_size"),
+        CheckConstraint(EVIDENCE_MIME_CHECK, name="ck_evidence_objects_mime"),
+        CheckConstraint("classification IN ('public', 'internal', 'confidential')",
+                        name="ck_evidence_objects_classification"),
+        CheckConstraint("synthetic = true", name="ck_evidence_objects_synthetic"),
+    )
+    sha256: Mapped[str] = mapped_column(String(64), primary_key=True)
+    size: Mapped[int] = mapped_column(Integer)
+    mime: Mapped[str] = mapped_column(String(64))
+    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    classification: Mapped[str] = mapped_column(String(16))
+    synthetic: Mapped[bool] = mapped_column(Boolean)
+    stored_at: Mapped[datetime] = mapped_column(UTCDateTime, default=now)
+    stored_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))      # NULL when stored by the CLI
+
+
+class EvidenceGrant(Base):
+    """What every person with QMS ``role`` may read of the evidence store: objects classified at or below
+    ``max_classification`` (R-51). A table of its own: ``role_grants`` is unchanged (additive-only migrations)."""
+    __tablename__ = "evidence_grants"
+    __table_args__ = (
+        CheckConstraint("role IN ('MA', 'AUDITOR', 'AUDITEE', 'MD', 'VIEWER')", name="ck_evidence_grants_role"),
+        CheckConstraint("max_classification IN ('public', 'internal', 'confidential')",
+                        name="ck_evidence_grants_max_classification"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    role: Mapped[str] = mapped_column(String(16))
+    max_classification: Mapped[str] = mapped_column(String(16))
+    granted_at: Mapped[datetime] = mapped_column(UTCDateTime, default=now)
+    revoked_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+
+
+# The same statements as migration 1145709a6ca6 (PostgreSQL); SQLite test and demo databases get theirs here.
+EVIDENCE_IMMUTABLE_PG = (
+    "CREATE FUNCTION evidence_objects_immutable() RETURNS trigger LANGUAGE plpgsql AS "
+    "$$ BEGIN RAISE EXCEPTION 'evidence_objects rows are immutable (R-52)'; END $$",
+    "CREATE TRIGGER evidence_objects_immutable BEFORE UPDATE OR DELETE ON evidence_objects "
+    "FOR EACH ROW EXECUTE FUNCTION evidence_objects_immutable()",
+)
+EVIDENCE_IMMUTABLE_SQLITE = (
+    "CREATE TRIGGER evidence_objects_no_update BEFORE UPDATE ON evidence_objects "
+    "BEGIN SELECT RAISE(ABORT, 'evidence_objects rows are immutable (R-52)'); END",
+    "CREATE TRIGGER evidence_objects_no_delete BEFORE DELETE ON evidence_objects "
+    "BEGIN SELECT RAISE(ABORT, 'evidence_objects rows are immutable (R-52)'); END",
+)
+for _stmt in EVIDENCE_IMMUTABLE_PG:
+    event.listen(EvidenceObject.__table__, "after_create", DDL(_stmt).execute_if(dialect="postgresql"))
+for _stmt in EVIDENCE_IMMUTABLE_SQLITE:
+    event.listen(EvidenceObject.__table__, "after_create", DDL(_stmt).execute_if(dialect="sqlite"))
 
 # ---------- model providers (docs/adr/0005-provider-contract-and-egress.md, R-17 to R-21) ----------
 # Rows are never deleted (D-14): an allow-list entry is disabled, not removed; the egress log is append-only.

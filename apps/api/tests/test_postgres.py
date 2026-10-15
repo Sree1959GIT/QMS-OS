@@ -384,6 +384,33 @@ def test_concurrent_enrolments_for_one_person_enrol_exactly_one_agent(engine):
     assert [(a.person_id, a.label, a.revoked_at) for a in rows] == [(ids["md"], "first", None)]
 
 
+# ---------- evidence rows are immutable; the test clean-up does not depend on DELETE (R-52) ----------
+
+def test_evidence_rows_refuse_update_and_delete_and_the_truncate_clean_up_still_empties_them(engine):
+    """The migration's row trigger refuses UPDATE and DELETE. It does not fire on TRUNCATE, which is how
+    pg_support.empty_tables clears the database between tests; a database owner can also drop the table, so the
+    triggers are not append-only enforcement (R-52; open item in docs/HANDOFF.md)."""
+    from sqlalchemy.exc import DBAPIError
+
+    with make_sessionmaker(engine)() as s:
+        owner = s.scalar(select(User.id).limit(1))
+    with engine.begin() as c:
+        c.execute(text("INSERT INTO evidence_objects (sha256, size, mime, owner_id, classification, synthetic, "
+                       "stored_at) VALUES (:h, 1, 'text/plain', :o, 'internal', true, now())"),
+                  {"h": "a" * 64, "o": owner})
+    for stmt in ("UPDATE evidence_objects SET classification = 'public'", "DELETE FROM evidence_objects"):
+        with pytest.raises(DBAPIError, match="immutable"), engine.begin() as c:
+            c.execute(text(stmt))
+    with engine.connect() as c:
+        triggers = set(c.scalars(text("SELECT tgname FROM pg_trigger WHERE tgrelid = 'evidence_objects'::regclass "
+                                      "AND NOT tgisinternal")))
+        assert triggers == {"evidence_objects_immutable"}
+        assert c.scalar(text("SELECT classification FROM evidence_objects")) == "internal"
+    PG.empty_tables(engine)
+    with engine.connect() as c:
+        assert c.scalar(text("SELECT count(*) FROM evidence_objects")) == 0
+
+
 # ---------- super admin scripts are read-only on PostgreSQL too (R-46) ----------
 
 def test_superadmin_session_cannot_write_on_postgres(engine):

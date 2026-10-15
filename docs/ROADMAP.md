@@ -166,17 +166,25 @@ Slice notes (decisions recorded with their slice, not as R-rows):
   and reads capped at what the person reads. Refusals (oneself, an inactive person, a second agent) are audited.
   Revocation is final. No runtime, tool, Telegram, mailbox or credential; agent principals get 403 on every org
   route. `review-org` and `access-segregation` report agents.
+- Slice 5 (R-50 to R-54): the interim evidence store (`qms_os/evidence`, integration mode `test`) keeps synthetic
+  fixtures under their SHA-256 in the folder named by `QMS_EVIDENCE_DIR` (outside Git, with a marker file); objects
+  are stored only by `python -m qms_os.evidence put ... --synthetic`, read through `/api/v1/evidence/{sha256}`
+  under `evidence_grants`, re-hashed before every read, and never overwritten or deleted (database triggers refuse
+  UPDATE and DELETE; TRUNCATE or DROP by a database owner is not prevented). The `knowledge-integrity` skill checks
+  the store. The product for real evidence is still to be chosen (R-15, R-34).
 - Skills (D13): the claims-register generator is `apps/api/qms_superadmin/claims_register.py`; the
   `housekeeping-check` skill runs its read-only check. Replacing the register in `docs/UPSTREAMS.md` is a
   development step in a reviewed pull request (`python -m qms_superadmin claims-register --print`), never a skill.
-  Skill scripts: `scripts\run-superadmin.bat` with `housekeeping`, `review-org` or `access-segregation` (R-46).
+  Skill scripts: `scripts\run-superadmin.bat` with `housekeeping`, `review-org`, `access-segregation` or
+  `knowledge-integrity` (R-46).
 
 ### Super admin skills and documentation (approved (Admin, 2026-10-14))
 
 Super admin operations are Claude Code project skills under `.claude/skills/`, run by a human with the Admin's own
 login; they read and propose, they never approve or publish (R-38; `docs/SPECIFICATION.md` line 152), and approvals
 stay in the application. Each skill ships in the pull request whose feature it operates, with its documentation.
-The three of pull request 2 exist (`housekeeping-check`, `review-org`, `access-segregation`). A skill's
+The three of pull request 2 exist (`housekeeping-check`, `review-org`, `access-segregation`), and pull request 3
+adds `knowledge-integrity` and extends `access-segregation` with agents. A skill's
 `allowed-tools` only pre-approves tools and does not restrict them; each skill sets `disallowed-tools` (Write,
 Edit, NotebookEdit), and the boundary is the read-only scripts (R-46), the `SKILL.md` rules and the Claude Code
 permission settings (R-38 note). Activities are taken from `docs/SPECIFICATION.md` journeys 1 and 2 (lines 176 and

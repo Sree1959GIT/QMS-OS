@@ -22,7 +22,7 @@ def review(s: Session) -> list[str]:
     for u in people:
         p = ACC.preview(s, u)
         counts = ", ".join(f"{k} {len(p['readable'][k])}/{len(p['readable'][k]) + len(p['denied'][k])}"
-                           for k in ACC.KINDS)
+                           for k in ACC.PREVIEW_KINDS)
         out.append(f"- person {u.id} role {u.role}{'' if u.active else ' (inactive)'}: {counts}")
         if u.active and not p["grants"]:
             findings.append(f"person {u.id} (role {u.role}) has no role grant and reads nothing -> propose a role "
@@ -45,7 +45,7 @@ def review(s: Session) -> list[str]:
         p = ACC.agent_preview(s, a)
         person = s.get(User, a.person_id)
         counts = ", ".join(f"{k} {len(p['readable'][k])}/{len(p['readable'][k]) + len(p['denied'][k])}"
-                           for k in ACC.KINDS)
+                           for k in ACC.PREVIEW_KINDS)
         out.append(f"- agent {a.id} for person {a.person_id}, ceiling {a.max_classification}: {counts}")
         if person is not None and not person.active:
             findings.append(f"agent {a.id} is enrolled for inactive person {a.person_id} and reads nothing -> "
@@ -54,7 +54,7 @@ def review(s: Session) -> list[str]:
             findings.append(f"agent {a.id} reads nothing at ceiling {a.max_classification} -> confirm the ceiling "
                             f"or propose POST /api/v1/org/agents/{a.id}/revoke")
         person_reads = ACC.preview(s, person)["readable"] if person is not None else {}
-        if any(set(p["readable"][k]) - set(person_reads.get(k, [])) for k in ACC.KINDS):
+        if any(set(p["readable"][k]) - set(person_reads.get(k, [])) for k in ACC.PREVIEW_KINDS):
             findings.append(f"agent {a.id} reads more than person {a.person_id}; this must never happen (R-48)")
     out.append(f"findings: {len(findings)}")
     out += [f"- {f}" for f in findings]

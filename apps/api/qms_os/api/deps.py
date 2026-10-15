@@ -38,7 +38,7 @@ def get_session(request: Request) -> Iterator[Session]:
     except AuditedRefusal as r:
         s.rollback()
         s.add(AuditEvent(actor_id=r.actor_id, action=r.action, entity=r.entity, entity_id=r.entity_id,
-                         detail={"reason": r.reason}, actor_kind=s.info.get("actor_kind"),
+                         detail=r.detail, actor_kind=s.info.get("actor_kind"),
                          channel=s.info.get("channel")))
         s.commit()
         raise

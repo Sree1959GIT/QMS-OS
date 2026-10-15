@@ -153,7 +153,7 @@ def test_agent_reads_at_most_its_person_capped_at_its_ceiling(api, oa, engine):
     agent = oa.get(f"{ORG}/access-preview/agents/{a['id']}").json()
     assert agent["active"] is True and agent["readable"]["department"] == [depts[0]]
     assert agent["grants"]["department"]["max_classification"] == "public"
-    for kind in ACC.KINDS:
+    for kind in ACC.PREVIEW_KINDS:
         assert set(agent["readable"][kind]) <= set(person["readable"][kind])
         assert set(agent["readable"][kind]) | set(agent["denied"][kind]) == \
             set(person["readable"][kind]) | set(person["denied"][kind])

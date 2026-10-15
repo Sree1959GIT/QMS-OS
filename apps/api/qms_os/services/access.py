@@ -13,6 +13,9 @@ Agents (MVP-1 slice 4; R-48): ``agent_access`` is the assigned person's ``effect
 at the agent's ``max_classification``, decided by the same ``decide``; an agent never reads more than its person. A
 revoked agent, or one whose person is inactive, reads nothing. No agent can call the API in MVP-1 (agent principals
 are refused on every human route); the preview and the super admin review use this path.
+
+Evidence (MVP-1 slice 5; R-51): objects in the evidence store are resources of kind ``evidence``, classified by their
+metadata row; a role's ceiling for them comes from ``evidence_grants`` (scope ``all``). The owner has no bypass.
 """
 from __future__ import annotations
 
@@ -21,12 +24,24 @@ from dataclasses import dataclass, field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..models import AgentProfile, Delegation, Department, MailboxScope, Project, ProjectMember, RoleGrant, User
+from ..models import (
+    AgentProfile,
+    Delegation,
+    Department,
+    EvidenceGrant,
+    EvidenceObject,
+    MailboxScope,
+    Project,
+    ProjectMember,
+    RoleGrant,
+    User,
+)
 from ..providers.contract import DataClass
 from .common import NotFound
 
 LEVELS = [c.value for c in DataClass]               # ordered: public < internal < confidential
-KINDS = ("department", "person", "project")
+KINDS = ("department", "person", "project")                   # kinds governed by role_grants
+PREVIEW_KINDS = (*KINDS, "evidence")                         # evidence: evidence_grants (R-51)
 SCOPES = ("all", "member")
 MODELS: dict[str, type[Department] | type[User] | type[Project]] = {"department": Department, "person": User,
                                                                   "project": Project}
@@ -35,7 +50,7 @@ MODELS: dict[str, type[Department] | type[User] | type[Project]] = {"department"
 @dataclass(frozen=True)
 class Resource:
     kind: str
-    id: int
+    id: int | str                     # an evidence object is identified by its SHA-256
     classification: str
 
 
@@ -54,6 +69,10 @@ def _level(classification: str) -> int:
     return LEVELS.index(classification)
 
 
+def evidence_resource(o: EvidenceObject) -> Resource:
+    return Resource("evidence", o.sha256, o.classification)
+
+
 def resource_of(obj) -> Resource:
     kind = next(k for k, m in MODELS.items() if isinstance(obj, m))
     return Resource(kind, obj.id, obj.classification)
@@ -70,6 +89,11 @@ def effective_access(s: Session, user: User) -> AccessSet:
             else current[0]
         scope = "all" if g.scope == "all" or (current is not None and current[1] == "all") else "member"
         ceilings[g.resource_kind] = (level, scope)
+    for eg in s.scalars(select(EvidenceGrant).where(EvidenceGrant.role == user.role,
+                                                    EvidenceGrant.revoked_at.is_(None))):
+        current = ceilings.get("evidence")
+        if current is None or _level(eg.max_classification) > _level(current[0]):
+            ceilings["evidence"] = (eg.max_classification, "all")
     members = set(s.scalars(select(ProjectMember.project_id).where(
         ProjectMember.user_id == user.id, ProjectMember.removed_at.is_(None))))
     members |= set(s.scalars(select(Project.id).where(Project.manager_user_id == user.id)))
@@ -126,12 +150,15 @@ def require_read(s: Session, user: User, kind: str, obj_id: int):
 # ---------- preview ----------
 
 def _matrix(s: Session, access: AccessSet) -> dict:
-    readable_ids: dict[str, list[int]] = {}
-    denied_ids: dict[str, list[int]] = {}
+    readable_ids: dict[str, list] = {}
+    denied_ids: dict[str, list] = {}
     for kind, model in MODELS.items():
         rows: list[Department | User | Project] = list(s.scalars(select(model).order_by(model.id)))
         readable_ids[kind] = [r.id for r in rows if decide(access, resource_of(r))]
         denied_ids[kind] = [r.id for r in rows if not decide(access, resource_of(r))]
+    objects = list(s.scalars(select(EvidenceObject).order_by(EvidenceObject.sha256)))
+    readable_ids["evidence"] = [o.sha256 for o in objects if decide(access, evidence_resource(o))]
+    denied_ids["evidence"] = [o.sha256 for o in objects if not decide(access, evidence_resource(o))]
     return {"active": access.active,
             "grants": {k: {"max_classification": c, "scope": sc} for k, (c, sc) in sorted(access.ceilings.items())},
             "member_projects": sorted(access.member_projects),

@@ -23,6 +23,20 @@ def _no_organisation_policy_in_tests():
     assert "QMS_POLICY_FILE" not in os.environ, "unset QMS_POLICY_FILE before running tests"
 
 
+# Runtime settings the Admin may have set in the terminal for a super admin skill run (docs/superadmin/). An app built
+# without an explicit ``env`` reads them, so a test run would otherwise depend on that terminal: with QMS_EVIDENCE_DIR
+# naming a missing folder, every create_app() refused to start. Tests that need one set it themselves
+# (monkeypatch.setenv or an explicit env). QMS_TEST_POSTGRES_URL and QMS_TEST_FULL_SUITE_ON_POSTGRES are not touched.
+SEALED_ENV = ("QMS_MODE", "QMS_DATABASE_URL", "QMS_EVIDENCE_DIR")
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _no_runtime_settings_from_the_terminal():
+    saved = {k: os.environ.pop(k) for k in SEALED_ENV if k in os.environ}
+    yield
+    os.environ.update(saved)
+
+
 class Clock:
     def __init__(self, d: date):
         self.d = d

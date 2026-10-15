@@ -25,6 +25,12 @@ Sign-in (R-3; `docs/adr/0003-auth-dev-identity.md`)
 - Give or remove the account admin role on the host, with `QMS_DATABASE_URL` set: `python -m qms_os.auth grant-account-admin <email>` (asks you to type the e-mail address again) or `python -m qms_os.auth revoke-account-admin <email>`. The person needs an active account, the last active account admin cannot be revoked, and each change is recorded as an audit event. No key file is needed.
 - Give or remove the org admin permission (MVP-1; R-30, R-39) the same way: `python -m qms_os.auth grant-org-admin <email>` (asks you to type the e-mail address again) or `python -m qms_os.auth revoke-org-admin <email>`. The person needs an active account; an account admin cannot also be an org admin (R-40). Org admins administer departments and people under `/api/v1/org/` with a fresh step-up (R-41). No fixture person holds it by default.
 
+Interim evidence store (MVP-1 slice 5; R-34, R-50 to R-54; synthetic fixtures only)
+- The store keeps synthetic fixture files under their SHA-256 in one folder outside the repository. Create it once with `python -m qms_os.evidence init-store <absolute folder outside Git>` (from `apps\api`, with `QMS_MODE=demo` or `test`); it writes a marker file and refuses any folder inside a Git work tree, including git-ignored ones. Then set `QMS_EVIDENCE_DIR` to that folder; without it the store is off and evidence reads answer 404. Operational mode refuses the store.
+- Store a synthetic file, with `QMS_MODE`, `QMS_DATABASE_URL` and `QMS_EVIDENCE_DIR` set: `python -m qms_os.evidence put <file> --mime text/markdown --owner-email <address> --classification internal --synthetic`. Allowed types: `text/plain`, `text/markdown`, `application/json`, `application/pdf`, `image/png`; at most 10 MiB. Storing the same file again changes nothing; there is no command to overwrite or delete an object.
+- Read through the API (`GET /api/v1/evidence/{sha256}` and `/content`); reads follow the evidence grants. Check the store with the `knowledge-integrity` skill (`scripts\run-superadmin.bat knowledge-integrity`).
+- Never put real organisation evidence in this store: it cannot tell real content from synthetic (R-54).
+
 Keeping files in the project folder
 - `scripts\env.bat` redirects TEMP, TMP, the pip cache and `__pycache__` into `.tmp\` and `.cache\` inside the repo.
   To keep them outside the repo instead, set `QMS_TEMP_ROOT` to an absolute folder on a drive other than C: (for
