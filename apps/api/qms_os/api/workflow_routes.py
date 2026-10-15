@@ -112,6 +112,12 @@ def version_diff(version_id: int, against: int, u: User = Depends(current_user),
     return W.diff(s, version_id, against)
 
 
+@router.post("/versions/{version_id}/validate")
+def validate_version(version_id: int, u: User = Depends(current_user), s: Session = Depends(get_session)):
+    """The completeness validator's findings (slice 7, R-60); changes nothing."""
+    return W.validation(s, version_id)
+
+
 @router.post("/versions/{version_id}/submit")
 def submit_version(version_id: int, u: User = Depends(current_user), s: Session = Depends(get_session)):
     return W.version_row(W.submit_version(s, u, version_id))

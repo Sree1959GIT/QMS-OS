@@ -52,7 +52,8 @@ def events(engine, prefix: str) -> list[AuditEvent]:
 
 def new_template(api, engine, author: str = "eng_head", dept: str = "qa") -> int:
     g = api.as_(author).post(f"{WF}/guidelines", {"title": "Synthetic process (fixture)",
-                                                   "department_id": dept_id(engine, dept)})
+                                                   "department_id": dept_id(engine, dept),
+                                                   "references": list(GRAPH["references"])})
     assert g.status_code == 200, g.text
     t = api.as_(author).post(f"{WF}/guidelines/{g.json()['id']}/templates", {"title": "Synthetic template"})
     assert t.status_code == 200, t.text

@@ -10,8 +10,9 @@ account needs both an org admin and an account admin, who are never the same per
 
 States (R-58): draft -> proposed (submit; digest computed) -> baselined (approve) -> superseded (when a newer version
 of the same template is baselined). proposed -> draft by withdrawal (a contributor) or rejection (a qualified
-approver). Only drafts can be edited. "Today" for the effective date is the application clock (``create_app(today=)``,
-by default the host's local calendar date; the same clock as policy effective dates).
+approver). Only drafts can be edited. Submission and approval both run the completeness validator (slice 7,
+R-60) and are refused while it reports an error. "Today" for the effective date is the application clock
+(``create_app(today=)``, by default the host's local calendar date; the same clock as policy effective dates).
 """
 from __future__ import annotations
 
@@ -38,6 +39,7 @@ from ..services.common import AuditedRefusal, Forbidden, NotFound, RuleViolation
 from ..timeutil import utcnow
 from .digest import graph_text, version_digest
 from .graph import GraphError, check_shape
+from .validator import VALIDATOR_VERSION, errors, validate
 
 EMPTY_GRAPH: dict[str, list] = {"nodes": [], "edges": []}
 CONTRIBUTOR_ACTIONS = ("workflow.version.created", "workflow.version.updated", "workflow.version.submitted",
@@ -46,6 +48,31 @@ CONTRIBUTOR_ACTIONS = ("workflow.version.created", "workflow.version.updated", "
 
 class Conflict(ServiceError):
     status_code = 409
+
+
+class Incomplete(ServiceError):
+    """Submission refused: the validator reports errors (422, with the findings)."""
+    status_code = 422
+
+    def __init__(self, findings: list[dict]):
+        super().__init__(f"the workflow is incomplete: {len(findings)} error(s); fix them and submit again")
+        self.findings = findings
+
+    def body(self) -> dict:
+        return {"detail": str(self), "findings": self.findings}
+
+
+class IncompleteRefused(AuditedRefusal):
+    """Approval refused because the validator reports errors: rolled back and audited (``validation_failed``)."""
+
+    def __init__(self, actor: User, v: WorkflowTemplateVersion, findings: list[dict]):
+        super().__init__(422, f"the workflow is incomplete: {len(findings)} error(s); it cannot be baselined",
+                         actor=actor, action="workflow.version.approval_refused", entity="workflow_version",
+                         entity_id=v.id, reason="validation_failed")
+        self.findings = findings
+
+    def body(self) -> dict:
+        return {"detail": str(self), "findings": self.findings}
 
 
 # ---------- who may do what ----------
@@ -135,6 +162,18 @@ def _guideline_of(s: Session, v: WorkflowTemplateVersion) -> WorkflowGuideline:
     g = s.get(WorkflowGuideline, t.guideline_id)
     assert g is not None
     return g
+
+
+def findings_of(s: Session, v: WorkflowTemplateVersion) -> list[dict]:
+    return validate(s, json.loads(v.graph_json), _guideline_of(s, v))
+
+
+def validation(s: Session, version_id: int) -> dict:
+    """A dry run: the validator's findings for the version as it is now (changes nothing)."""
+    v = get_or_404(s, WorkflowTemplateVersion, version_id)
+    found = findings_of(s, v)
+    return {"version_id": v.id, "valid": not errors(found), "findings": found,
+            "validator_version": VALIDATOR_VERSION}
 
 
 def digest_of(s: Session, v: WorkflowTemplateVersion) -> str:
@@ -242,6 +281,9 @@ def submit_version(s: Session, actor: User, version_id: int) -> WorkflowTemplate
     v = _locked_version(s, version_id)
     if v.status != "draft":
         raise Conflict(f"version {v.id} is {v.status}; only a draft can be submitted")
+    failing = errors(findings_of(s, v))
+    if failing:
+        raise Incomplete(failing)
     v.digest = digest_of(s, v)
     v.status, v.submitted_by_id, v.submitted_at = "proposed", actor.id, utcnow()
     log(s, actor, "workflow.version.submitted", "workflow_version", v.id, digest=v.digest)
@@ -285,19 +327,22 @@ def approve_version(s: Session, actor: User, version_id: int, *, digest: str, ef
                            "its digest", actor, v, "digest_mismatch")
     if not isinstance(effective_date, date) or effective_date < today:
         raise RuleViolation("effective_date must be today or later")
+    failing = errors(findings_of(s, v))
+    if failing:
+        raise IncompleteRefused(actor, v, failing)
     current = s.scalar(select(WorkflowTemplateVersion).where(
         WorkflowTemplateVersion.template_id == v.template_id, WorkflowTemplateVersion.status == "baselined")
         .with_for_update())
     if current is not None and current.version_no > v.version_no:
         raise Conflict(f"version {current.version_no} is already baselined; an older version cannot replace it")
     s.add(WorkflowApproval(version_id=v.id, decision="approved", digest=v.digest, effective_date=effective_date,
-                           validator_version=None, decided_by_id=actor.id))
+                           validator_version=VALIDATOR_VERSION, decided_by_id=actor.id))
     if current is not None:
         current.status, current.superseded_at = "superseded", utcnow()
         log(s, actor, "workflow.version.superseded", "workflow_version", current.id, by_version_id=v.id)
     v.status, v.effective_date = "baselined", effective_date
     log(s, actor, "workflow.version.approved", "workflow_version", v.id, digest=v.digest,
-        effective_date=effective_date.isoformat(), validator_version=None)
+        effective_date=effective_date.isoformat(), validator_version=VALIDATOR_VERSION)
     return v
 
 

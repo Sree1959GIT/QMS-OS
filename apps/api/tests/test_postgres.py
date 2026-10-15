@@ -431,7 +431,7 @@ def test_concurrent_approvals_of_one_workflow_version_baseline_it_exactly_once(e
         ids = {u.email.split("@")[0]: u.id for u in s.scalars(select(User))}
         qa = s.scalar(select(Department.id).where(Department.code == "qa"))
         author = s.get(User, ids["eng_head"])
-        g = W.create_guideline(s, author, "Synthetic process", qa)
+        g = W.create_guideline(s, author, "Synthetic process", qa, list(GRAPH["references"]))
         t = W.create_template(s, author, g.id, "Synthetic template")
         v = W.create_version(s, author, t.id, "Synthetic template", GRAPH)
         W.submit_version(s, author, v.id)
