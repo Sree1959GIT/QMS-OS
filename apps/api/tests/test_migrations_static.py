@@ -20,6 +20,7 @@ DB_OBJECTS = {                    # R-63: every function and trigger a migration
     "evidence_objects_immutable",                                                       # R-52
     "workflow_rows_immutable", "workflow_version_frozen", "workflow_versions_no_delete",
     "workflow_approvals_immutable",                                                     # R-58
+    "workflow_case_migrations_decided", "workflow_case_migrations_no_delete",           # R-61
 }
 DESTRUCTIVE_SQL = re.compile(r"\b(drop\s+table|drop\s+schema|delete\s+from|truncate)\b", re.I)
 
@@ -103,3 +104,19 @@ def test_upgrades_are_additive():
             kw = {k.arg: k.value for k in col.keywords}
             nullable = isinstance(kw.get("nullable"), ast.Constant) and kw["nullable"].value is True
             assert nullable or "server_default" in kw, f"{name}: add_column needs nullable=True or a server_default"
+
+
+def test_trigger_statements_in_migrations_equal_the_models():
+    """The SQLite test databases get their triggers from the models; PostgreSQL gets them from the migrations. Both
+    must carry the same PostgreSQL statements, so a test on either dialect tests what a migration creates."""
+    from qms_os.models import CASE_MIGRATIONS_IMMUTABLE_PG, EVIDENCE_IMMUTABLE_PG, WORKFLOW_IMMUTABLE_PG
+    expected = {"1145709a6ca6_evidence_store.py": EVIDENCE_IMMUTABLE_PG,
+                "0e0fc698155b_workflow_versions.py": WORKFLOW_IMMUTABLE_PG,
+                "08e8ac87f38c_workflow_cases.py": CASE_MIGRATIONS_IMMUTABLE_PG}
+    found = {}
+    for name, tree in _migrations():
+        executed = tuple(_literal_string(c.args[0]) for c in ast.walk(tree) if isinstance(c, ast.Call)
+                         and isinstance(c.func, ast.Attribute) and c.func.attr == "execute")
+        if executed:
+            found[name] = executed
+    assert found == expected

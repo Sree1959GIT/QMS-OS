@@ -10,8 +10,9 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..models import User, WorkflowGuideline, WorkflowTemplate, WorkflowTemplateVersion
+from ..models import User, WorkflowCase, WorkflowGuideline, WorkflowTemplate, WorkflowTemplateVersion
 from ..services.common import get_or_404
+from ..workflow import cases as C
 from ..workflow import service as W
 from .deps import current_user, get_session, step_up_user, today
 
@@ -139,3 +140,47 @@ def approve_version(version_id: int, body: ApproveIn, u: User = Depends(step_up_
 def reject_version(version_id: int, body: RejectIn, u: User = Depends(step_up_user),
                    s: Session = Depends(get_session)):
     return W.version_row(W.reject_version(s, u, version_id, body.reason))
+
+
+# ---------- cases (slice 8; R-61) ----------
+
+class CaseIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    title: str = Field(max_length=200)
+    start_date: date
+    assignments: dict[str, int] | None = None
+
+
+class MigrationIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    to_version_id: int
+    reason: str = Field(max_length=500)
+
+
+@router.post("/templates/{template_id}/cases")
+def start_case(template_id: int, body: CaseIn, u: User = Depends(current_user), s: Session = Depends(get_session),
+               d: date = Depends(today)):
+    return C.case_row(s, C.start_case(s, u, template_id, body.title, body.start_date, body.assignments, d))
+
+
+@router.get("/cases/{case_id}")
+def case(case_id: int, u: User = Depends(current_user), s: Session = Depends(get_session)):
+    return C.case_row(s, get_or_404(s, WorkflowCase, case_id))
+
+
+@router.post("/cases/{case_id}/migrations")
+def request_migration(case_id: int, body: MigrationIn, u: User = Depends(current_user),
+                      s: Session = Depends(get_session), d: date = Depends(today)):
+    return C.migration_row(C.request_migration(s, u, case_id, body.to_version_id, body.reason, d))
+
+
+@router.post("/cases/{case_id}/migrations/{migration_id}/approve")
+def approve_migration(case_id: int, migration_id: int, u: User = Depends(step_up_user),
+                      s: Session = Depends(get_session), d: date = Depends(today)):
+    return C.case_row(s, C.approve_migration(s, u, case_id, migration_id, d))
+
+
+@router.post("/cases/{case_id}/migrations/{migration_id}/reject")
+def reject_migration(case_id: int, migration_id: int, body: RejectIn, u: User = Depends(step_up_user),
+                     s: Session = Depends(get_session)):
+    return C.case_row(s, C.reject_migration(s, u, case_id, migration_id, body.reason))

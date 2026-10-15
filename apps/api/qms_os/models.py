@@ -740,3 +740,59 @@ for _stmt in WORKFLOW_IMMUTABLE_PG:
     event.listen(WorkflowApproval.__table__, "after_create", DDL(_stmt).execute_if(dialect="postgresql"))
 for _stmt in WORKFLOW_IMMUTABLE_SQLITE:
     event.listen(WorkflowApproval.__table__, "after_create", DDL(_stmt).execute_if(dialect="sqlite"))
+
+
+class WorkflowCase(Base):
+    """A case instance (MVP-1 slice 8; R-61): pinned to one baselined version, which never changes on its own; it
+    changes only through an approved migration (``workflow_case_migrations``)."""
+    __tablename__ = "workflow_cases"
+    __table_args__ = (CheckConstraint("status IN ('running', 'closed')", name="ck_workflow_cases_status"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    template_id: Mapped[int] = mapped_column(ForeignKey("workflow_templates.id"))
+    version_id: Mapped[int] = mapped_column(ForeignKey("workflow_template_versions.id"))
+    title: Mapped[str] = mapped_column(String(200))
+    status: Mapped[str] = mapped_column(String(16), default="running")
+    start_date: Mapped[date] = mapped_column(Date)
+    assignments: Mapped[dict] = mapped_column(JSON, default=dict)          # QMS role -> person id
+    started_by_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    started_at: Mapped[datetime] = mapped_column(UTCDateTime, default=now)
+
+
+class WorkflowCaseMigration(Base):
+    """A request to move a case to a newer baselined version, and its decision. Once decided, the row cannot change,
+    and no row is deleted (database triggers, R-61)."""
+    __tablename__ = "workflow_case_migrations"
+    __table_args__ = (
+        CheckConstraint("decision IN ('pending', 'approved', 'rejected')", name="ck_workflow_case_migrations_decision"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    case_id: Mapped[int] = mapped_column(ForeignKey("workflow_cases.id"))
+    from_version_id: Mapped[int] = mapped_column(ForeignKey("workflow_template_versions.id"))
+    to_version_id: Mapped[int] = mapped_column(ForeignKey("workflow_template_versions.id"))
+    reason: Mapped[str] = mapped_column(String(500))
+    requested_by_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    requested_at: Mapped[datetime] = mapped_column(UTCDateTime, default=now)
+    decision: Mapped[str] = mapped_column(String(16), default="pending")
+    decided_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    decided_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    decision_reason: Mapped[str | None] = mapped_column(String(500))
+
+
+# The same statements as migration 08e8ac87f38c (PostgreSQL; the function comes from migration 0e0fc698155b).
+CASE_MIGRATIONS_IMMUTABLE_PG = (
+    "CREATE TRIGGER workflow_case_migrations_decided BEFORE UPDATE ON workflow_case_migrations FOR EACH ROW "
+    "WHEN (OLD.decision <> 'pending') EXECUTE FUNCTION workflow_rows_immutable()",
+    "CREATE TRIGGER workflow_case_migrations_no_delete BEFORE DELETE ON workflow_case_migrations FOR EACH ROW "
+    "EXECUTE FUNCTION workflow_rows_immutable()",
+)
+CASE_MIGRATIONS_IMMUTABLE_SQLITE = (
+    "CREATE TRIGGER workflow_case_migrations_decided BEFORE UPDATE ON workflow_case_migrations "
+    "WHEN OLD.decision <> 'pending' "
+    "BEGIN SELECT RAISE(ABORT, 'a decided case migration is immutable (R-61)'); END",
+    "CREATE TRIGGER workflow_case_migrations_no_delete BEFORE DELETE ON workflow_case_migrations "
+    "BEGIN SELECT RAISE(ABORT, 'workflow_case_migrations rows are immutable (R-61)'); END",
+)
+for _stmt in CASE_MIGRATIONS_IMMUTABLE_PG:
+    event.listen(WorkflowCaseMigration.__table__, "after_create", DDL(_stmt).execute_if(dialect="postgresql"))
+for _stmt in CASE_MIGRATIONS_IMMUTABLE_SQLITE:
+    event.listen(WorkflowCaseMigration.__table__, "after_create", DDL(_stmt).execute_if(dialect="sqlite"))
