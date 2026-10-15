@@ -35,11 +35,11 @@ refused. Nothing is repaired automatically: a damaged object is restored from a 
 
 ## Boundary
 
-The skill's instructions name one command, and its `allowed-tools` pre-approves that command; `allowed-tools`
-does not restrict other tools. `disallowed-tools` removes Write, Edit and NotebookEdit while the skill is
-active. The boundary is the read-only script (R-46: read-only database transaction, synthetic database
-only, no network, no file writes), the rules in the `SKILL.md` and the Claude Code permission settings of the
-session.
+The skill's instructions name one command, and its `allowed-tools` pre-approves that command; `allowed-tools` is not
+relied on as a restriction of other tools (public documentation describes it as pre-approval only; the installed
+Claude Code schema wording is ambiguous). `disallowed-tools` removes Write, Edit and NotebookEdit while the skill is
+active. The boundary is the read-only script (R-46: read-only database transaction, synthetic database only, no
+network, no file writes), the rules in the `SKILL.md` and the Claude Code permission settings of the session.
 
 ## What it never does
 

@@ -12,12 +12,12 @@
 
 ## Current baseline
 
-A synthetic-data backend prototype on `main` at `ded0fe8` (pull request #37, MVP-1 pull request 1, on top of
-`59d4d5e`): `324 passed, 2 skipped` on SQLite (`scripts\run-tests.bat`) and `348 passed` on PostgreSQL
-(`scripts\run-pg-tests.bat full`), local runs on 2026-10-14 at `5fe7631`, whose tree is identical to `ded0fe8`
+A synthetic-data backend prototype on `main` at `6aa5246` (pull request #38, MVP-1 pull request 2, on top of
+`ded0fe8`): `368 passed, 2 skipped` on SQLite (`scripts\run-tests.bat`) and `395 passed` on PostgreSQL
+(`scripts\run-pg-tests.bat full`), local runs on 2026-10-14 at `284650c`, whose tree is identical to `6aa5246`
 (Windows, Python 3.12.7); CI on GitHub Actions with six jobs (`test`, `test-py311`, `lint`, `types`, `postgres`,
-`secret-scan`), all required on a protected `main` branch (R-13), all passed on `main` at `ded0fe8` (run
-38578074918, as shown in the Admin's screenshot). MVP-0: declared met (R-29). MVP-1: in progress (*MVP-1 plan*
+`secret-scan`), all required on a protected `main` branch (R-13), all passed on `main` at `6aa5246` (run
+38598563188, as shown in the Admin's screenshot). MVP-0: declared met (R-29). MVP-1: in progress (*MVP-1 plan*
 below). See *Verified state* and *Not verified* in `docs/HANDOFF.md`.
 
 ## MVP-0
@@ -63,7 +63,7 @@ no unverified feature claim.
    required status checks, with the up-to-date rule on (R-13, Admin, 2026-10-07). No formatter is enforced (Admin
    decision, 2026-10-07).
 
-### Remaining before the MVP-0 exit (as of `ded0fe8`)
+### Remaining before the MVP-0 exit (as of `6aa5246`)
 
 The exit is read as written in the specification (R-28): one safe fixture startup and no unverified feature claim.
 No slices remain for the exit: MVP-0 is declared met (R-29). Slice 6 (the review) is done (pull request #35,
@@ -113,7 +113,7 @@ conclusion Success, total 1m 37s; jobs `test` (50s), `test-py311` (55s), `lint` 
 
 | Stage | Specification scope (summary) | Specification exit criteria | Known dependencies |
 |---|---|---|---|
-| MVP-1 | Authentication (API only, merged in pull request #10, one-time link code in pull request #18; no UI) and organisation Admin UI (departments, people, role and grant preview, selective agent enablement); PostgreSQL and object store; auditable, versioned workflow and template engine with human approvals; admin workflow proposal form using local model or rules | No self-approval; a proposed audit workflow fails completeness until the missing control is fixed | R-2, R-3; R-15 (with R-34); R-30 to R-38 (*MVP-1 plan* below) |
+| MVP-1 | Authentication (API only, merged in pull request #10, one-time link code in pull request #18; no UI) and organisation Admin UI (departments, people, role and grant preview, selective agent enablement); PostgreSQL and object store; auditable, versioned workflow and template engine with human approvals; admin workflow proposal form using local model or rules | No self-approval; a proposed audit workflow fails completeness until the missing control is fixed | R-2, R-3; R-15 (with R-34); R-30 to R-54 (*MVP-1 plan* below) |
 | MVP-2 | Evidence ingestion with citations for mixed document fixtures; QMS evidence; initial skills and agent profiles; messaging text simulator | Exact cited answer; approved-revision filter; cross-role denial | approved data classes |
 | MVP-3 | Voice messaging; local speech recognition and synthesis; full written answer plus a separately composed brief spoken explanation; human correction and provenance | Spoken and typed numerical consistency; read-it mode; reboot recovery | provider approvals |
 | MVP-4 | Read-only fixture mail, then one authorised live provider; isolated agent-memory banks and knowledge sync; corrective-action and customer-complaint flow end to end; limited role pack | Duplicate mail or update replay is safe; cross-bank memory access denied; external messages stay drafts until human review | provider approvals; scope statement below |
@@ -125,10 +125,11 @@ conclusion Success, total 1m 37s; jobs `test` (50s), `test-py311` (55s), `lint` 
 Scope and exit as in `docs/SPECIFICATION.md` line 160: "Auth and org Admin UI (departments, humans, role/grant
 preview, selective agents), Postgres+object store, auditable versioned workflow/template engine with human approvals
 and admin workflow proposal form using local model or rules. Exit: no self-approval; proposed audit workflow fails
-completeness until missing control fixed." Decisions for MVP-1: R-30 to R-38 (`docs/DECISIONS.md`). One commit per
+completeness until missing control fixed." Decisions for MVP-1: R-30 to R-54 (`docs/DECISIONS.md`). One commit per
 slice in a bundle; each slice's tests pass at its own commit. No dates. Status: pull request 1 (slice 1) merged as
-`ded0fe8` (pull request #37); pull request 2 (the `/api/v1` move, slices 2 and 3, the first three skills) in progress
-on branch `feat/mvp1-org-grants`; the others not started.
+`ded0fe8` (pull request #37); pull request 2 (the `/api/v1` move, slices 2 and 3, the first three skills) merged as
+`6aa5246` (pull request #38); pull request 3 (slices 4 and 5, the `knowledge-integrity` skill) in progress on branch
+`feat/mvp1-agents-store`; the others not started.
 
 | Pull request | Slice | Goal | Exit criterion (testable) |
 |---|---|---|---|
@@ -185,8 +186,9 @@ login; they read and propose, they never approve or publish (R-38; `docs/SPECIFI
 stay in the application. Each skill ships in the pull request whose feature it operates, with its documentation.
 The three of pull request 2 exist (`housekeeping-check`, `review-org`, `access-segregation`), and pull request 3
 adds `knowledge-integrity` and extends `access-segregation` with agents. A skill's
-`allowed-tools` only pre-approves tools and does not restrict them; each skill sets `disallowed-tools` (Write,
-Edit, NotebookEdit), and the boundary is the read-only scripts (R-46), the `SKILL.md` rules and the Claude Code
+`allowed-tools` is not relied on as a restriction (public documentation describes it as pre-approval only; the
+installed Claude Code schema wording is ambiguous); each skill sets `disallowed-tools` (Write, Edit, NotebookEdit),
+and the boundary is the read-only scripts (R-46), the `SKILL.md` rules and the Claude Code
 permission settings (R-38 note). Activities are taken from `docs/SPECIFICATION.md` journeys 1 and 2 (lines 176 and
 177) and the decision rows named; skill names follow the specification's list (line 152) where one fits.
 
