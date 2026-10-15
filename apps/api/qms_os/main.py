@@ -46,6 +46,15 @@ def _auth_key(mode: Mode, env: Mapping[str, str], auth_key: bytes | None) -> byt
     raise AuthConfigError(f"{KEY_ENV} must name the authentication key file ({mode} mode)")
 
 
+# R-69 (docs/adr/0007-admin-web-frontend.md): the admin web UI is served from this origin and loads nothing else.
+SECURITY_HEADERS = {
+    "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; "
+                               "connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+    "Referrer-Policy": "no-referrer",
+    "X-Content-Type-Options": "nosniff",
+}
+
+
 def _evidence_store(mode: Mode, env: Mapping[str, str], store):
     if store is not None:
         if mode is Mode.OPERATIONAL:
@@ -79,6 +88,16 @@ def create_app(engine=None, today: Callable[[], date] = date.today, mode: str | 
     app.state.test_identity = identity_provider
     app.state.providers = ProviderGateway(default_registry(policy_ctx.mode), app.state.sessionmaker)
     app.state.evidence_store = _evidence_store(policy_ctx.mode, os.environ if env is None else env, evidence_store)
+
+    @app.middleware("http")
+    async def _security_headers(request: Request, call_next):
+        """R-69: on every response, including errors and the single-page app's files. ``no-store`` keeps API
+        responses (records, CSRF tokens) out of every cache."""
+        response = await call_next(request)
+        response.headers.update(SECURITY_HEADERS)
+        if request.url.path.startswith("/api/"):
+            response.headers["Cache-Control"] = "no-store"
+        return response
 
     @app.exception_handler(ServiceError)
     async def _service_error(_: Request, exc: ServiceError):
