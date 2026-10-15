@@ -12,12 +12,12 @@
 
 ## Current baseline
 
-A synthetic-data backend prototype on `main` at `6aa5246` (pull request #38, MVP-1 pull request 2, on top of
-`ded0fe8`): `368 passed, 2 skipped` on SQLite (`scripts\run-tests.bat`) and `395 passed` on PostgreSQL
-(`scripts\run-pg-tests.bat full`), local runs on 2026-10-14 at `284650c`, whose tree is identical to `6aa5246`
+A synthetic-data backend prototype on `main` at `caabb11` (pull request #39, MVP-1 pull request 3, on top of
+`6aa5246`): `440 passed, 2 skipped` on SQLite (`scripts\run-tests.bat`) and `469 passed` on PostgreSQL
+(`scripts\run-pg-tests.bat full`), local runs on 2026-10-15 at `c6c93d4`, whose tree is identical to `caabb11`
 (Windows, Python 3.12.7); CI on GitHub Actions with six jobs (`test`, `test-py311`, `lint`, `types`, `postgres`,
-`secret-scan`), all required on a protected `main` branch (R-13), all passed on `main` at `6aa5246` (run
-38598563188, as shown in the Admin's screenshot). MVP-0: declared met (R-29). MVP-1: in progress (*MVP-1 plan*
+`secret-scan`), all required on a protected `main` branch (R-13), all passed on `main` at `caabb11` (run
+38681512256, as shown in the Admin's screenshot). MVP-0: declared met (R-29). MVP-1: in progress (*MVP-1 plan*
 below). See *Verified state* and *Not verified* in `docs/HANDOFF.md`.
 
 ## MVP-0
@@ -63,7 +63,7 @@ no unverified feature claim.
    required status checks, with the up-to-date rule on (R-13, Admin, 2026-10-07). No formatter is enforced (Admin
    decision, 2026-10-07).
 
-### Remaining before the MVP-0 exit (as of `6aa5246`)
+### Remaining before the MVP-0 exit (as of `caabb11`)
 
 The exit is read as written in the specification (R-28): one safe fixture startup and no unverified feature claim.
 No slices remain for the exit: MVP-0 is declared met (R-29). Slice 6 (the review) is done (pull request #35,
@@ -113,7 +113,7 @@ conclusion Success, total 1m 37s; jobs `test` (50s), `test-py311` (55s), `lint` 
 
 | Stage | Specification scope (summary) | Specification exit criteria | Known dependencies |
 |---|---|---|---|
-| MVP-1 | Authentication (API only, merged in pull request #10, one-time link code in pull request #18; no UI) and organisation Admin UI (departments, people, role and grant preview, selective agent enablement); PostgreSQL and object store; auditable, versioned workflow and template engine with human approvals; admin workflow proposal form using local model or rules | No self-approval; a proposed audit workflow fails completeness until the missing control is fixed | R-2, R-3; R-15 (with R-34); R-30 to R-54 (*MVP-1 plan* below) |
+| MVP-1 | Authentication (API only, merged in pull request #10, one-time link code in pull request #18; no UI) and organisation Admin UI (departments, people, role and grant preview, selective agent enablement); PostgreSQL and object store; auditable, versioned workflow and template engine with human approvals; admin workflow proposal form using local model or rules | No self-approval; a proposed audit workflow fails completeness until the missing control is fixed | R-2, R-3; R-15 (with R-34); R-30 to R-64 (*MVP-1 plan* below) |
 | MVP-2 | Evidence ingestion with citations for mixed document fixtures; QMS evidence; initial skills and agent profiles; messaging text simulator | Exact cited answer; approved-revision filter; cross-role denial | approved data classes |
 | MVP-3 | Voice messaging; local speech recognition and synthesis; full written answer plus a separately composed brief spoken explanation; human correction and provenance | Spoken and typed numerical consistency; read-it mode; reboot recovery | provider approvals |
 | MVP-4 | Read-only fixture mail, then one authorised live provider; isolated agent-memory banks and knowledge sync; corrective-action and customer-complaint flow end to end; limited role pack | Duplicate mail or update replay is safe; cross-bank memory access denied; external messages stay drafts until human review | provider approvals; scope statement below |
@@ -125,11 +125,13 @@ conclusion Success, total 1m 37s; jobs `test` (50s), `test-py311` (55s), `lint` 
 Scope and exit as in `docs/SPECIFICATION.md` line 160: "Auth and org Admin UI (departments, humans, role/grant
 preview, selective agents), Postgres+object store, auditable versioned workflow/template engine with human approvals
 and admin workflow proposal form using local model or rules. Exit: no self-approval; proposed audit workflow fails
-completeness until missing control fixed." Decisions for MVP-1: R-30 to R-54 (`docs/DECISIONS.md`). One commit per
+completeness until missing control fixed." Decisions for MVP-1: R-30 to R-64 (`docs/DECISIONS.md`); the bundle
+plan is R-37 as amended by R-55. One commit per
 slice in a bundle; each slice's tests pass at its own commit. No dates. Status: pull request 1 (slice 1) merged as
 `ded0fe8` (pull request #37); pull request 2 (the `/api/v1` move, slices 2 and 3, the first three skills) merged as
-`6aa5246` (pull request #38); pull request 3 (slices 4 and 5, the `knowledge-integrity` skill) in progress on branch
-`feat/mvp1-agents-store`; the others not started.
+`6aa5246` (pull request #38); pull request 3 (slices 4 and 5, the `knowledge-integrity` skill) merged as `caabb11`
+(pull request #39); pull request 4 (slices 6 to 9, the `inspect-workflow-completeness` skill; R-55) in progress on
+branch `feat/mvp1-workflow`; the others not started.
 
 | Pull request | Slice | Goal | Exit criterion (testable) |
 |---|---|---|---|
@@ -139,10 +141,10 @@ slice in a bundle; each slice's tests pass at its own commit. No dates. Status: 
 | 3 | 4 | Selective agent enablement: an agent profile record, zero by default, explicit enrolment with scope (no agent runtime) | No agent exists without explicit enrolment by an org admin; enrolment is audited; the preview shows the agent's scope |
 | 3 | 5 | Original-evidence store: adapter interface and an interim local content-addressed store for synthetic fixtures only (R-34) | Store, read back and verify the SHA-256; no overwrite or delete; access goes through grants |
 | 4 | 6 | Workflow guideline and versioned template, with baseline approval bound to the version's digest (R-32) | Self-approval is refused (author = approver is refused and audited); a baselined version cannot be edited, only superseded; a changed version needs a new approval |
-| 4 | 7 | Completeness validator (the checks in `docs/SPECIFICATION.md` line 57; which checks are in MVP-1 is still open) | A proposed audit workflow with a missing control fails completeness and passes once the control is added (the exit criterion) |
-| 5 | 8 | Case instances pinned to a template version; migration explicit and owner-approved | A running case keeps its version when the template changes; migration needs owner approval and keeps the trace |
-| 5 | 9 | Admin workflow proposal form, rules only (R-33) | Fixture requests produce structured proposals and questions for missing criteria; nothing is baselined without slice 6's approval |
-| 6 and 7 | 10 | Admin web UI (after the frontend ADR, R-36): departments, people, role and grant preview, agent enablement, proposal form, validator results, baseline approval | Each screen performs its flow against the synthetic fixture; end-to-end tests pass |
+| 4 | 7 | Completeness validator (the checks in `docs/SPECIFICATION.md` line 57; those in MVP-1 are R-60) | A proposed audit workflow with a missing control fails completeness and passes once the control is added (the exit criterion) |
+| 4 | 8 | Case instances pinned to a template version; migration explicit and owner-approved | A running case keeps its version when the template changes; migration needs owner approval and keeps the trace |
+| 4 | 9 | Admin workflow proposal form, rules only (R-33) | Fixture requests produce structured proposals and questions for missing criteria; nothing is baselined without slice 6's approval |
+| 5 and 6 | 10 | Admin web UI (after the frontend ADR, R-36): departments, people, role and grant preview, agent enablement, proposal form, validator results, baseline approval | Each screen performs its flow against the synthetic fixture; end-to-end tests pass |
 | last | 11 | MVP-1 exit evidence and review (documentation) | An evidence row for each exit criterion; the Admin decides |
 
 Slice notes (decisions recorded with their slice, not as R-rows):
@@ -173,11 +175,18 @@ Slice notes (decisions recorded with their slice, not as R-rows):
   under `evidence_grants`, re-hashed before every read, and never overwritten or deleted (database triggers refuse
   UPDATE and DELETE; TRUNCATE or DROP by a database owner is not prevented). The `knowledge-integrity` skill checks
   the store. The product for real evidence is still to be chosen (R-15, R-34).
+- Slices 6 to 9 (R-55 to R-64; `docs/adr/0006-workflow-engine.md`): guideline, template and versions with the graph
+  as canonical JSON; submission sets the digest; a qualified owner (`MA` or the guideline's department head) who
+  did not contribute approves the exact digest with a step-up; baselined versions are frozen (service and
+  database triggers) and only superseded. The completeness validator (R-60) gates submission and approval. Cases pin
+  a baselined version; migration needs a different qualified owner and keeps the trace (R-61). The rules-only
+  proposal form turns a request into a graph with questions and can only make a draft (R-62). Workflow reads are
+  not grant-governed in MVP-1 (R-64). `tests/test_mvp1_exit.py` demonstrates both exit criteria across the slices.
 - Skills (D13): the claims-register generator is `apps/api/qms_superadmin/claims_register.py`; the
   `housekeeping-check` skill runs its read-only check. Replacing the register in `docs/UPSTREAMS.md` is a
   development step in a reviewed pull request (`python -m qms_superadmin claims-register --print`), never a skill.
-  Skill scripts: `scripts\run-superadmin.bat` with `housekeeping`, `review-org`, `access-segregation` or
-  `knowledge-integrity` (R-46).
+  Skill scripts: `scripts\run-superadmin.bat` with `housekeeping`, `review-org`, `access-segregation`,
+  `knowledge-integrity` or `inspect-workflow-completeness` (R-46).
 
 ### Super admin skills and documentation (approved (Admin, 2026-10-14))
 
@@ -185,7 +194,8 @@ Super admin operations are Claude Code project skills under `.claude/skills/`, r
 login; they read and propose, they never approve or publish (R-38; `docs/SPECIFICATION.md` line 152), and approvals
 stay in the application. Each skill ships in the pull request whose feature it operates, with its documentation.
 The three of pull request 2 exist (`housekeeping-check`, `review-org`, `access-segregation`), and pull request 3
-adds `knowledge-integrity` and extends `access-segregation` with agents. A skill's
+adds `knowledge-integrity` and extends `access-segregation` with agents; pull request 4 adds
+`inspect-workflow-completeness`. A skill's
 `allowed-tools` is not relied on as a restriction (public documentation describes it as pre-approval only; the
 installed Claude Code schema wording is ambiguous); each skill sets `disallowed-tools` (Write, Edit, NotebookEdit),
 and the boundary is the read-only scripts (R-46), the `SKILL.md` rules and the Claude Code
@@ -198,8 +208,8 @@ permission settings (R-38 note). Activities are taken from `docs/SPECIFICATION.m
 | Review departments and people after the Admin adds them; confirm no agent is assigned by default (journey 1; R-30) | `review-org` | pull request 2 | `docs/superadmin/review-org.md` |
 | Review effective grants: what each person and agent can and cannot read; a non-assigned user has no agent access (journey 1; R-31; `docs/SPECIFICATION.md` line 53) | `access-segregation` | pull request 2, extended in pull request 3 (agent enrolment) | `docs/superadmin/access-segregation.md` |
 | Check that the interim evidence store holds synthetic fixtures only and that stored originals match their hashes (R-34) | `knowledge-integrity` | pull request 3 | `docs/superadmin/knowledge-integrity.md` |
-| Inspect a proposed audit workflow for missing criteria, an eligible independent auditor and completeness before baselining; check that a baselined version's digest matches its approval (journey 2; R-32) | `inspect-workflow-completeness` | pull request 4, extended in pull request 5 (proposal form) | `docs/superadmin/inspect-workflow-completeness.md` |
-| Review a finding's proposed change to a future workflow, which is never auto-published (journey 2) | `inspect-workflow-completeness` | pull request 5 (case pinning) | same file |
+| Inspect a proposed audit workflow for missing criteria, an eligible independent auditor and completeness before baselining; check that a baselined version's digest matches its approval (journey 2; R-32) | `inspect-workflow-completeness` | pull request 4 (with the proposal form, R-55) | `docs/superadmin/inspect-workflow-completeness.md` |
+| Review a finding's proposed change to a future workflow, which is never auto-published (journey 2) | `inspect-workflow-completeness` | pull request 4 (with case pinning, R-55) | same file |
 
 Not in MVP-1 (no MVP-1 slice operates them), listed as suggestions only: a read-only review of account administration
 (R-3: operator CLI, two-admin invitations and resets); `model-provider-review` for provider entries and the cloud

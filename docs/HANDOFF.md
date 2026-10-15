@@ -6,10 +6,10 @@
 
 - Repository: this repository (`QMS-OS`); confirm the remote with `git remote -v`.
 - Specification: `docs/SPECIFICATION.md`, v3.0 dated 29 September 2026. Verify title and version locally.
-- Baseline recorded here: `main` at `6aa5246d881f1a155d5a006da2608e47910683f6` (2026-10-14; "MVP-1 PR 2: /api/v1,
-  org administration, grants and access preview, super admin skills (#38)").
-  Work in progress: branch `feat/mvp1-agents-store` from `6aa5246` (MVP-1 pull request 3: slice 4 agent enablement,
-  slice 5 interim evidence store, the `knowledge-integrity` skill; R-48 to R-54; local, not pushed).
+- Baseline recorded here: `main` at `caabb11a11b947d424b505e7d95d7874ebdc7d4e` (2026-10-15; "MVP-1 PR 3: agent
+  profiles, interim evidence store, knowledge-integrity skill (#39)").
+  Work in progress: branch `feat/mvp1-workflow` from `caabb11` (MVP-1 pull request 4: slices 6 to 9, the workflow
+  engine, and the `inspect-workflow-completeness` skill; R-55 to R-64; local, not pushed).
   Re-verify branch, HEAD and working tree with Git at session start; this file may be stale.
 - Stage: MVP-0 declared met (R-29), by the Admin on 2026-10-13, on the narrow reading of the exit (R-28). Of the
   eight items in the ROADMAP's MVP-0 table, five are done (Git scaffold, CI and protected `main`; synthetic fixtures;
@@ -19,7 +19,7 @@
   and the accepted gaps are in *MVP-0 exit evidence* in `docs/ROADMAP.md`. MVP-1: planned as bundled pull requests
   (R-37; *MVP-1 plan* in `docs/ROADMAP.md`); pull request 1 (slice 1) merged as `ded0fe8`; pull request 2 (the
   `/api/v1` move, slices 2 and 3, the first three skills) merged as `6aa5246`; pull request 3 (slices 4 and 5)
-  in progress on `feat/mvp1-agents-store`.
+  merged as `caabb11`; pull request 4 (slices 6 to 9, R-55) in progress on `feat/mvp1-workflow`.
 - Mode: synthetic only. No live connectors, staff accounts or model credentials are configured in this repository,
   and none has been verified; do not claim they are configured.
 
@@ -27,7 +27,15 @@
 
 Each item says how it was verified.
 
-- **Git:** on 2026-10-14 `git pull --ff-only` brought local `main` to `6aa5246d881f1a155d5a006da2608e47910683f6`
+- **Git:** on 2026-10-15 `git pull --ff-only` brought local `main` to `caabb11a11b947d424b505e7d95d7874ebdc7d4e`
+  (= `origin/main`), working tree clean; its tree is identical to the tip of `feat/mvp1-agents-store` (`c6c93d4`).
+  Pull request #39 (MVP-1 pull request 3) was merged as `caabb11`. Pull request run (run id not recorded): job
+  `postgres` "468 passed, 1 skipped, 1 warning" (from the Admin's pasted log); the skip is the Windows-only
+  `test_rename_publish_never_replaces_on_windows`, skipped on the Linux runner. `main` run 38681512256 (shown as #82,
+  push to `main` at `caabb11`): Success, 2m 3s; jobs `test` (1m 13s), `test-py311` (57s), `lint` (21s), `types`
+  (34s), `postgres` (1m 59s) and `secret-scan` (6s). Both from the Admin's pasted log and screenshot, not read from
+  GitHub by Claude Code. Branch `feat/mvp1-workflow` was created from `caabb11` (local only).
+  Earlier: on 2026-10-14 `git pull --ff-only` brought local `main` to `6aa5246d881f1a155d5a006da2608e47910683f6`
   (= `origin/main`), working tree clean, no commits after it; its tree is identical to the tip of
   `feat/mvp1-org-grants` (`284650c`). Pull request #38 (MVP-1 pull request 2) was merged as `6aa5246`. Pull request
   run (run id not recorded): job `postgres` "395 passed", no skips (from the Admin's pasted log), so the org-admin,
@@ -295,7 +303,17 @@ Each item says how it was verified.
   with a folder inside a work tree; CI runs it unpatched). No backup of the store folder is set up.
 - Migration guard (R-52; Admin decision 2026-10-15): the additive-only guard accepts `op.execute` when the literal
   starts with `CREATE FUNCTION` or `CREATE TRIGGER`; it checks only how the literal starts, so a function body is not
-  inspected. Tighten it with a name-based allowlist when a second migration needs the exception.
+  inspected. Since MVP-1 pull request 4 the name must also be on the guard's allowlist (R-63); function bodies are
+  still not inspected.
+- Skills (MVP-1 pull request 3 skill run): the Skill tool loaded `knowledge-integrity` although pull request 2's
+  check refused skills marked `disable-model-invocation`; the cause is unknown, so "only a human invokes the skills"
+  is not established. Write and Edit stayed denied after the skill run for longer than the frontmatter schema says,
+  while Bash could still write files, so `disallowed-tools` is not the boundary.
+- Workflow engine (MVP-1 pull request 4): workflow reads are not grant-governed (R-64; must become grant-governed
+  before any non-synthetic use); one human with two `users` rows cannot be detected as the same approver (R-57);
+  calendar availability, absence and working-day due dates are not validated (R-60); the proposal form knows three
+  rule templates only (R-62); approver qualification (`MA`, department head) is a candidate until R-4. The
+  workflow triggers do not stop TRUNCATE or DROP by a database owner (R-58, R-61).
 - Windows file-publish path (`os.rename`, slice 5): tested locally only; there is no Windows CI job.
 - Mutation M8 (slice 5, Linux publish path changed to `os.replace`): the no-overwrite test failed after the
   overwrite had happened (`FileNotFoundError` on the temporary file), not on its first assertion.
@@ -768,14 +786,21 @@ made.
   (database triggers), and the `knowledge-integrity` skill. (D) This housekeeping: baselines to `6aa5246`, the PR 2
   CI evidence, and the `allowed-tools` wording (not relied on as a restriction; public documentation describes it as
   pre-approval only, the installed Claude Code schema wording is ambiguous; boundary unchanged).
-- Next: MVP-1 pull request 3 review and CI; then pull request 4 (slices 6 and 7: workflow guideline and template
-  with digest-bound baseline approval, completeness validator). Admin decisions still open: which completeness
-  checks are in MVP-1 (slice 7); benchmark thresholds (plan open items 1, 4 and 12), R-27 and the R-16 note; the
-  R-15 product before any real evidence (R-34). Also: the Cloudflare route on
-  the existing `ollama` container (open: dashboard route and any Access policy not checked); exit criteria for the
-  WeKnora spike (3b) before it starts; payload-bound approval beyond baselines (later slice); harness extensions for
-  B1 to B3 and tokens per second in the aggregate; the first benchmark results (the Admin's trial run of
-  2026-10-13 exists, untracked; no numbers are recorded).
+- Pull request #39 merged as `caabb11` (2026-10-15; see *Verified state*, Git).
+- Branch `feat/mvp1-workflow` from `caabb11` (2026-10-15; MVP-1 pull request 4, R-55; code, tests and
+  documentation; synthetic; one commit per slice, a skill commit and this housekeeping): (6) guideline, template and
+  versions, digest-bound baseline approval by a qualified non-contributor with step-up, frozen baselined versions
+  (R-56 to R-59, R-63, R-64; migration `0e0fc698155b`; ADR 0006); (7) the completeness validator gating submission
+  and approval (R-60); (8) cases pinned to a version, migration with a different qualified owner and a kept trace
+  (R-61; migration `08e8ac87f38c`); (9) the rules-only proposal form, drafts only (R-62; migration `03c084021bfa`),
+  and `tests/test_mvp1_exit.py`; (E) the `inspect-workflow-completeness` skill; (G) this housekeeping.
+- Next: MVP-1 pull request 4 review and CI; then the frontend ADR (R-36) and the UI (slice 10), then the exit evidence
+  (slice 11). Admin decisions still open: benchmark thresholds (plan open items 1, 4 and 12), R-27 and the R-16 note;
+  the R-15 product before any real evidence (R-34); R-4 owners for the approver roles (R-56). Also: the Cloudflare
+  route on the existing `ollama` container (open: dashboard route and any Access policy not checked); exit criteria
+  for the WeKnora spike (3b) before it starts; payload-bound approval beyond baselines (later slice); harness
+  extensions for B1 to B3 and tokens per second in the aggregate; the first benchmark results (the Admin's trial run
+  of 2026-10-13 exists, untracked; no numbers are recorded).
 
 ## End-of-session update template
 
