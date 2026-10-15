@@ -10,9 +10,17 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..models import User, WorkflowCase, WorkflowGuideline, WorkflowTemplate, WorkflowTemplateVersion
+from ..models import (
+    User,
+    WorkflowCase,
+    WorkflowGuideline,
+    WorkflowProposal,
+    WorkflowTemplate,
+    WorkflowTemplateVersion,
+)
 from ..services.common import get_or_404
 from ..workflow import cases as C
+from ..workflow import proposals as P
 from ..workflow import service as W
 from .deps import current_user, get_session, step_up_user, today
 
@@ -184,3 +192,44 @@ def approve_migration(case_id: int, migration_id: int, u: User = Depends(step_up
 def reject_migration(case_id: int, migration_id: int, body: RejectIn, u: User = Depends(step_up_user),
                      s: Session = Depends(get_session)):
     return C.case_row(s, C.reject_migration(s, u, case_id, migration_id, body.reason))
+
+
+# ---------- the rules-only proposal form (slice 9; R-33, R-62) ----------
+
+class ProposalIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    request: str = Field(max_length=2000)
+
+
+class AnswersIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    answers: dict[str, int | str]
+
+
+class DraftIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    template_id: int
+    title: str = Field(max_length=200)
+
+
+@router.post("/proposals")
+def create_proposal(body: ProposalIn, u: User = Depends(current_user), s: Session = Depends(get_session)):
+    return P.proposal_row(s, P.create_proposal(s, u, body.request))
+
+
+@router.get("/proposals/{proposal_id}")
+def proposal(proposal_id: int, u: User = Depends(current_user), s: Session = Depends(get_session)):
+    return P.proposal_row(s, get_or_404(s, WorkflowProposal, proposal_id))
+
+
+@router.post("/proposals/{proposal_id}/answers")
+def answer_proposal(proposal_id: int, body: AnswersIn, u: User = Depends(current_user),
+                    s: Session = Depends(get_session)):
+    return P.proposal_row(s, P.answer(s, u, proposal_id, body.answers))
+
+
+@router.post("/proposals/{proposal_id}/draft")
+def draft_from_proposal(proposal_id: int, body: DraftIn, u: User = Depends(current_user),
+                        s: Session = Depends(get_session)):
+    """Creates a draft version only; it is never submitted or baselined here (R-62)."""
+    return W.version_row(P.draft(s, u, proposal_id, body.template_id, body.title))

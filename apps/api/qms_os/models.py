@@ -796,3 +796,21 @@ for _stmt in CASE_MIGRATIONS_IMMUTABLE_PG:
     event.listen(WorkflowCaseMigration.__table__, "after_create", DDL(_stmt).execute_if(dialect="postgresql"))
 for _stmt in CASE_MIGRATIONS_IMMUTABLE_SQLITE:
     event.listen(WorkflowCaseMigration.__table__, "after_create", DDL(_stmt).execute_if(dialect="sqlite"))
+
+
+class WorkflowProposal(Base):
+    """A natural-language workflow request turned into a structured graph by rules (MVP-1 slice 9; R-33, R-62). Unknown
+    facts stay ``"?"`` in the graph and are listed as questions. It can only become a draft version; it never submits
+    or baselines anything. The request text is stored here and never copied into an audit event."""
+    __tablename__ = "workflow_proposals"
+    __table_args__ = (CheckConstraint("status IN ('open', 'drafted')", name="ck_workflow_proposals_status"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    request_text: Mapped[str] = mapped_column(Text)
+    rule: Mapped[str | None] = mapped_column(String(32))
+    graph_json: Mapped[str | None] = mapped_column(Text)
+    department_id: Mapped[int | None] = mapped_column(ForeignKey("departments.id"))
+    questions: Mapped[list] = mapped_column(JSON, default=list)
+    status: Mapped[str] = mapped_column(String(16), default="open")
+    version_id: Mapped[int | None] = mapped_column(ForeignKey("workflow_template_versions.id"))
+    created_by_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=now)
