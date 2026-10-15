@@ -7,11 +7,12 @@ import shutil
 from pathlib import Path
 
 import pytest
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.exc import OperationalError
 
 from qms_os.db import create_all, make_engine, make_sessionmaker
 from qms_os.fixtures import load
+from qms_os.models import AgentProfile, User
 from qms_superadmin import access_segregation, housekeeping, review_org
 from qms_superadmin.readonly import Refused, read_only_session
 
@@ -129,3 +130,24 @@ def test_each_skill_is_human_invoked_preapproves_only_its_script_and_removes_wri
     assert [t.strip() for t in removed.split(",")] == ["Write", "Edit", "NotebookEdit"]
     assert "does not restrict" in text_                     # the body states the limit of allowed-tools
     assert (REPO / "docs" / "superadmin" / f"{name}.md").is_file()
+
+
+def test_agents_are_reviewed_and_an_agent_of_an_inactive_person_is_reported(demo_db):
+    """review-org counts agents; access-segregation previews each agent through services/access.py (R-48, D11)."""
+    eng = make_engine(demo_db["QMS_DATABASE_URL"])
+    with make_sessionmaker(eng)() as s:
+        people = {u.email.split("@")[0]: u.id for u in s.scalars(select(User))}
+        s.add_all([AgentProfile(label="a", person_id=people["ma"], max_classification="internal",
+                                enrolled_by_id=people["viewer"]),
+                   AgentProfile(label="b", person_id=people["eng_pm"], max_classification="public",
+                                enrolled_by_id=people["viewer"])])
+        s.get(User, people["eng_pm"]).active = False
+        s.commit()
+    eng.dispose()
+    with read_only_session(demo_db) as (s, _):
+        org, seg = review_org.review(s), access_segregation.review(s)
+    assert any(line.startswith("agents: 2 active, 0 revoked") for line in org)
+    assert "findings: 1" in org and any("agent 2 is enrolled for inactive person" in line for line in org)
+    assert any(line.startswith(f"- agent 1 for person {people['ma']}, ceiling internal: department ") for line in seg)
+    assert "findings: 1" in seg and any("/api/v1/org/agents/2/revoke" in line for line in seg)
+    assert not any("reads more than" in line for line in seg)

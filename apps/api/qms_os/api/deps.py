@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from ..auth import service as AS
 from ..models import AuditEvent, AuthSession, User
 from ..policy import PolicyContext
-from ..services.common import AuthFailure, Forbidden, Held
+from ..services.common import AuditedRefusal, AuthFailure, Forbidden, Held
 
 SESSION_COOKIE = "qms_session"
 CSRF_HEADER = "X-QMS-CSRF"
@@ -20,8 +20,9 @@ UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 def get_session(request: Request) -> Iterator[Session]:
     """One transaction per request: commit on success, roll back on any error.
     A ``Held`` transition rolls back all business changes, then commits only the
-    ``transition.held`` audit event so the hold is durably traceable. An ``AuthFailure`` commits what the
-    failure recorded (attempt counter, lockout, audit event): nothing else is written on that path."""
+    ``transition.held`` audit event so the hold is durably traceable; an ``AuditedRefusal`` likewise commits only
+    its refusal event (R-49). An ``AuthFailure`` commits what the failure recorded (attempt counter, lockout, audit
+    event): nothing else is written on that path."""
     s = request.app.state.sessionmaker()
     try:
         yield s
@@ -32,6 +33,13 @@ def get_session(request: Request) -> Iterator[Session]:
                          detail={"rule": h.rule, "attempted": h.attempted, "message": str(h),
                                  "decision_needed": h.decision_needed},
                          actor_kind=s.info.get("actor_kind"), channel=s.info.get("channel")))
+        s.commit()
+        raise
+    except AuditedRefusal as r:
+        s.rollback()
+        s.add(AuditEvent(actor_id=r.actor_id, action=r.action, entity=r.entity, entity_id=r.entity_id,
+                         detail={"reason": r.reason}, actor_kind=s.info.get("actor_kind"),
+                         channel=s.info.get("channel")))
         s.commit()
         raise
     except AuthFailure:

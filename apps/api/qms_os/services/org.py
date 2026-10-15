@@ -3,23 +3,24 @@
 Departments and people are created, updated, deactivated and reactivated by an org admin (the caller is checked by
 the route's access level, ``deps.org_admin``); nothing is ever deleted. Every change writes one ``audit_events`` row.
 Personal fields (name, e-mail) are recorded only as changed, without values (R-42). A new person holds no grant and
-no agent (agents arrive in slice 4). An org admin cannot change their own person record (self-change of role,
-department or status would be granting oneself access).
+no agent: an agent exists only after an org admin enrols it (slice 4; R-48, R-49). An org admin cannot change their
+own person record (self-change of role, department or status would be granting oneself access).
 
 Deactivation rules (D4, slice documentation): a person cannot be deactivated while their login account is active
 (an account admin disables it first: two separate permissions); a department cannot be deactivated while it has
-active people or any project.
+active people or any project. A person cannot be deactivated while an agent is enrolled for them (revoke it first).
 """
 from __future__ import annotations
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ..models import Department, Project, ProjectMember, RoleGrant, User, UserCredential
+from ..auth.service import locked_person
+from ..models import AgentProfile, Department, Project, ProjectMember, RoleGrant, User, UserCredential
 from ..rules.findings import Role
 from ..timeutil import utcnow
-from .access import KINDS, LEVELS, SCOPES
-from .common import Forbidden, RuleViolation, get_or_404, log
+from .access import KINDS, LEVELS, SCOPES, active_agents
+from .common import AuditedRefusal, Forbidden, RuleViolation, get_or_404, log
 
 PERSONAL_FIELDS = ("name", "email")      # recorded as "changed" only (R-42)
 PERSON_FIELDS = ("name", "email", "role", "department_id", "trained_auditor", "classification")
@@ -31,10 +32,10 @@ def department_row(d: Department) -> dict:
             "classification": d.classification}
 
 
-def person_row(u: User) -> dict:
+def person_row(s: Session, u: User) -> dict:
     return {"id": u.id, "name": u.name, "email": u.email, "role": u.role, "department_id": u.department_id,
             "trained_auditor": u.trained_auditor, "active": u.active, "classification": u.classification,
-            "agents": []}
+            "agents": [a.id for a in active_agents(s, u.id)]}
 
 
 def list_departments(s: Session) -> list[dict]:
@@ -42,7 +43,7 @@ def list_departments(s: Session) -> list[dict]:
 
 
 def list_people(s: Session) -> list[dict]:
-    return [person_row(u) for u in s.scalars(select(User).order_by(User.id))]
+    return [person_row(s, u) for u in s.scalars(select(User).order_by(User.id))]
 
 
 # ---------- validation ----------
@@ -207,13 +208,18 @@ def update_person(s: Session, actor: User, person_id: int, changes: dict) -> Use
 
 
 def deactivate_person(s: Session, actor: User, person_id: int) -> User:
-    u = get_or_404(s, User, person_id)
-    _not_self(actor, u.id)
+    get_or_404(s, User, person_id)
+    _not_self(actor, person_id)
+    u = locked_person(s, person_id)          # an enrolment for this person waits, then sees the deactivation
+    assert u is not None
     if not u.active:
         raise RuleViolation("the person is already inactive")
     cred = s.get(UserCredential, u.id)
     if cred is not None and cred.status == "active":
         raise RuleViolation("the person's login account is active; an account admin must disable it first")
+    if active_agents(s, u.id):
+        raise RuleViolation("an agent is enrolled for the person; revoke it first "
+                            "(POST /api/v1/org/agents/{agent_id}/revoke)")
     u.active = False
     log(s, actor, "org.person.deactivated", "person", u.id)
     return u
@@ -295,3 +301,56 @@ def remove_project_member(s: Session, actor: User, project_id: int, user_id: int
     m.removed_at = utcnow()
     log(s, actor, "org.project_member.removed", "project", project_id, user_id=user_id)
     return m
+
+
+# ---------- agents (MVP-1 slice 4; R-48, R-49) ----------
+# Zero by default. An org admin enrols an agent for one active person, with a classification ceiling; the agent reads
+# at most what that person reads, capped at the ceiling (services/access.py, agent_access). Refused (and audited):
+# an agent for oneself, for an inactive person, or a second active agent for one person. The label and the revocation
+# reason are free text, recorded in the audit event as "set" only (as personal fields are, R-42). Revocation is
+# final: there is no reactivation; a later enrolment adds a new row.
+
+def agent_row(a: AgentProfile) -> dict:
+    return {"id": a.id, "label": a.label, "person_id": a.person_id, "max_classification": a.max_classification,
+            "active": a.revoked_at is None, "enrolled_at": a.enrolled_at, "enrolled_by_id": a.enrolled_by_id,
+            "revoked_at": a.revoked_at, "revoked_by_id": a.revoked_by_id, "revoke_reason": a.revoke_reason}
+
+
+def list_agents(s: Session) -> list[dict]:
+    return [agent_row(a) for a in s.scalars(select(AgentProfile).order_by(AgentProfile.id))]
+
+
+def _refuse(status: int, message: str, actor: User, person_id: int, reason: str) -> AuditedRefusal:
+    return AuditedRefusal(status, message, actor=actor, action="org.agent.refused", entity="person",
+                          entity_id=person_id, reason=reason)
+
+
+def enrol_agent(s: Session, actor: User, person_id, label, max_classification) -> AgentProfile:
+    label_v = _text(label, "label", 120)
+    ceiling = _classification(max_classification)
+    if not isinstance(person_id, int) or s.get(User, person_id) is None:
+        raise RuleViolation("person_id must name a person")
+    if person_id == actor.id:
+        raise _refuse(403, "an org admin cannot enrol an agent for themselves", actor, person_id, "self")
+    person = locked_person(s, person_id)     # two enrolments for one person run one after the other
+    assert person is not None
+    if not person.active:
+        raise _refuse(422, "the person is inactive", actor, person_id, "person_inactive")
+    if active_agents(s, person.id):
+        raise _refuse(422, "the person already has an active agent; revoke it first", actor, person_id,
+                      "already_enrolled")
+    a = AgentProfile(label=label_v, person_id=person.id, max_classification=ceiling, enrolled_by_id=actor.id)
+    s.add(a)
+    s.flush()
+    log(s, actor, "org.agent.enrolled", "agent", a.id, person_id=person.id, max_classification=ceiling, label="set")
+    return a
+
+
+def revoke_agent(s: Session, actor: User, agent_id: int, reason) -> AgentProfile:
+    a = get_or_404(s, AgentProfile, agent_id)
+    reason_v = _text(reason, "reason", 200)
+    if a.revoked_at is not None:
+        raise RuleViolation("the agent is already revoked; revocation is final")
+    a.revoked_at, a.revoked_by_id, a.revoke_reason = utcnow(), actor.id, reason_v
+    log(s, actor, "org.agent.revoked", "agent", a.id, person_id=a.person_id, reason="set")
+    return a

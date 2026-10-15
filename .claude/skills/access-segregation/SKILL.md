@@ -1,6 +1,6 @@
 ---
 name: access-segregation
-description: Review what each person can read in the synthetic QMS OS demo or test database, from the same code that enforces the reads, and check the separations that must hold (no person is both account admin and org admin). First version; agents join in MVP-1 slice 4. Read-only; run only when the Admin asks for it.
+description: Review what each person and each enrolled agent can read in the synthetic QMS OS demo or test database, from the same code that decides the reads, and check the separations that must hold (no person is both account admin and org admin; no agent reads more than its person). Read-only; run only when the Admin asks for it.
 disable-model-invocation: true
 allowed-tools: Bash(cmd //c "scripts\\run-superadmin.bat access-segregation")
 disallowed-tools: Write, Edit, NotebookEdit
@@ -9,7 +9,8 @@ disallowed-tools: Write, Edit, NotebookEdit
 # access-segregation
 
 Super admin skill (R-38; `docs/superadmin/access-segregation.md`). It reads and proposes; grants are changed by an org
-admin in the application (`/api/v1/org/role-grants`, project members; fresh step-up), never by this skill.
+admin in the application (`/api/v1/org/role-grants`, project members, agent revocation; fresh step-up), never by
+this skill.
 
 ## Before running
 

@@ -69,6 +69,18 @@ class Held(ServiceError):
         return {"detail": str(self), "held": True, "rule": self.rule, "decision_needed": self.decision_needed}
 
 
+class AuditedRefusal(ServiceError):
+    """A refused org-admin action that is recorded (R-49): the API rolls back the request, then commits one audit
+    event ``action`` with ``reason`` and nothing else. ``status_code`` is 403 or 422, as the refusal requires."""
+
+    def __init__(self, status_code: int, message: str, *, actor: User, action: str, entity: str,
+                 entity_id: int | None, reason: str):
+        super().__init__(message)
+        self.status_code = status_code
+        self.actor_id, self.action, self.entity, self.entity_id, self.reason = (actor.id, action, entity, entity_id,
+                                                                                reason)
+
+
 def log(s: Session, actor: User | None, action: str, entity: str, entity_id: int | None, **detail) -> None:
     """Actor kind and channel come from the authenticated principal of the request (``Session.info``)."""
     s.add(AuditEvent(actor_id=actor.id if actor else None, action=action, entity=entity,

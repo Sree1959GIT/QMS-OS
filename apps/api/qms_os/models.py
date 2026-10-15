@@ -3,7 +3,21 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from sqlalchemy import JSON, Boolean, Column, Date, ForeignKey, Integer, String, Table, Text, UniqueConstraint
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    CheckConstraint,
+    Column,
+    Date,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Table,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy import false as sa_false
 from sqlalchemy import true as sa_true
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -456,6 +470,32 @@ class Delegation(Base):
     to_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     starts_at: Mapped[datetime] = mapped_column(UTCDateTime)
     ends_at: Mapped[datetime] = mapped_column(UTCDateTime)
+
+
+# ---------- agents (MVP-1 slice 4; R-48, R-49) ----------
+# Zero by default: a profile exists only after an org admin enrols it. It holds no runtime, model, tool, Telegram,
+# mailbox or credential: it is the record of who the agent assists and its classification ceiling. Never deleted
+# (D-14); revocation is final, and a later enrolment adds a new row.
+
+class AgentProfile(Base):
+    """An agent enrolled for one person. It reads at most what that person reads, capped at ``max_classification``
+    (``services/access.py``, ``agent_access``). At most one active agent per person (partial unique index)."""
+    __tablename__ = "agent_profiles"
+    __table_args__ = (
+        CheckConstraint("max_classification IN ('public', 'internal', 'confidential')",
+                        name="ck_agent_profiles_max_classification"),
+        Index("uq_agent_profiles_active_person", "person_id", unique=True,
+              postgresql_where=text("revoked_at IS NULL"), sqlite_where=text("revoked_at IS NULL")),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    label: Mapped[str] = mapped_column(String(120))
+    person_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    max_classification: Mapped[str] = mapped_column(String(16))
+    enrolled_at: Mapped[datetime] = mapped_column(UTCDateTime, default=now)
+    enrolled_by_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    revoked_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    revoked_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    revoke_reason: Mapped[str | None] = mapped_column(String(200))
 
 
 # ---------- model providers (docs/adr/0005-provider-contract-and-egress.md, R-17 to R-21) ----------

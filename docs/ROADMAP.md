@@ -160,7 +160,12 @@ Slice notes (decisions recorded with their slice, not as R-rows):
   fixture people had before grants). An org admin cannot change the grants of their own QMS role or add themselves
   to a project (no self-widening of access).
 - Slice 3 (D11): the effective-access preview covers people in pull request 2; agents join it in pull request 3
-  with slice 4.
+  with slice 4 (`/api/v1/org/access-preview/agents/{agent_id}`; R-48).
+- Slice 4 (R-48, R-49): agents are rows of `agent_profiles`, enrolled and revoked by an org admin under
+  `/api/v1/org/agents`; zero by default, at most one active agent per person, a required classification ceiling,
+  and reads capped at what the person reads. Refusals (oneself, an inactive person, a second agent) are audited.
+  Revocation is final. No runtime, tool, Telegram, mailbox or credential; agent principals get 403 on every org
+  route. `review-org` and `access-segregation` report agents.
 - Skills (D13): the claims-register generator is `apps/api/qms_superadmin/claims_register.py`; the
   `housekeeping-check` skill runs its read-only check. Replacing the register in `docs/UPSTREAMS.md` is a
   development step in a reviewed pull request (`python -m qms_superadmin claims-register --print`), never a skill.

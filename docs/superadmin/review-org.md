@@ -1,8 +1,8 @@
 # Super admin: review-org
 
 Skill: `.claude/skills/review-org/SKILL.md`. Script: `python -m qms_superadmin review-org`
-(`apps/api/qms_superadmin/review_org.py`), run by `scripts\run-superadmin.bat review-org`. Decisions: R-30, R-38,
-R-46. Source: `docs/SPECIFICATION.md` journey 1 (line 176).
+(`apps/api/qms_superadmin/review_org.py`), run by `scripts\run-superadmin.bat review-org`. Decisions: R-30, R-48,
+R-38, R-46. Source: `docs/SPECIFICATION.md` journey 1 (line 176).
 
 ## Purpose
 
@@ -13,7 +13,8 @@ After the Admin adds departments and people, review the directory and propose wh
 - Counts of departments and people (active and inactive), org admins and account admins.
 - Active departments with no head, an inactive head, or a head who belongs to another department.
 - Active people (other than MD and VIEWER roles) without a department, and people in an inactive department.
-- Agents: none can exist before MVP-1 slice 4; the report says so.
+- Agents (R-48): how many are active and revoked, and how many people have none (zero by default); an active agent
+  enrolled for an inactive person (propose `POST /api/v1/org/agents/{agent_id}/revoke`).
 
 ## How to run
 
