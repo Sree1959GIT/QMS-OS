@@ -1,10 +1,16 @@
 """AES-GCM encryption of TOTP secrets. The 256-bit key lives in a file outside Git (QMS_AUTH_KEY_FILE) and must be
 backed up separately from the database: without it every person has to re-enrol TOTP. The ciphertext is bound to
 the user id, so a secret cannot be moved to another account row.
+
+The same key, through a separately derived sub-key, also derives each session's CSRF token from the session token
+(R-67): ``csrf_for`` is an HMAC-SHA256, so ``GET /api/v1/auth/session`` can return the token again after a page reload
+without storing it (only its SHA-256 is stored, as before).
 """
 from __future__ import annotations
 
 import base64
+import hashlib
+import hmac
 import os
 from pathlib import Path
 
@@ -21,6 +27,7 @@ class SecretBox:
         if len(key) != 32:
             raise AuthConfigError("the authentication key must be 32 bytes")
         self._aead = AESGCM(key)
+        self._csrf_key = hmac.new(key, b"qmsos-csrf-key:v1", hashlib.sha256).digest()      # domain-separated
 
     @staticmethod
     def _aad(user_id: int) -> bytes:
@@ -30,6 +37,11 @@ class SecretBox:
         nonce = os.urandom(12)
         return _PREFIX + base64.b64encode(
             nonce + self._aead.encrypt(nonce, secret.encode(), self._aad(user_id))).decode()
+
+    def csrf_for(self, session_token: str) -> str:
+        """The CSRF token of the session whose (secret, HttpOnly cookie) token is ``session_token``."""
+        mac = hmac.new(self._csrf_key, session_token.encode(), hashlib.sha256).digest()
+        return base64.urlsafe_b64encode(mac).decode().rstrip("=")
 
     def open(self, user_id: int, sealed: str) -> str:
         if not sealed.startswith(_PREFIX):

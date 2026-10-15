@@ -63,7 +63,8 @@ class IssuedSession:
 
 def issue_session(s: Session, ctx: AuthContext, user: User, method: str, *, mfa: bool) -> IssuedSession:
     now = ctx.now()
-    token, csrf = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
+    token = secrets.token_urlsafe(32)
+    csrf = ctx.box.csrf_for(token)          # R-67: derivable again by GET /auth/session
     sess = AuthSession(user_id=user.id, token_hash=_sha256(token), csrf_hash=_sha256(csrf), method=method,
                        created_at=now, last_seen_at=now, idle_expires_at=now + ctx.limits.session_idle,
                        absolute_expires_at=now + ctx.limits.session_absolute, mfa_at=now if mfa else None)

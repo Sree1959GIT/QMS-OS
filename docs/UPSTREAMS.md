@@ -192,6 +192,44 @@ request #20 (merged as `5b3e181`; CI run 37648488409, as reported by the Admin).
 - ruff, mypy, librt and ast-serialize ship compiled code on Windows (whether it is signed: not verified); Smart App
   Control can block unsigned code if it is turned on again (see *Authentication* above).
 
+## Admin web UI (`apps/admin-web`; added 2026-10-15)
+
+Checked 2026-10-15 on Windows 11 with Node 24.13.1 and pnpm 10.26.1 (CI: Node 24.13.1 through `actions/setup-node`
+v7.0.0 at commit `820762786026740c76f36085b0efc47a31fe5020`, pnpm 10.34.6 pinned by hash in `packageManager`).
+Exact versions in `apps/admin-web/package.json`, all resolved packages in `apps/admin-web/pnpm-lock.yaml`. Each
+version was the newest stable release at least 14 days old, except where an `engines` limit needed an older one
+(jsdom 29.1.1: jsdom 30 needs Node 24.15). Licences are the packages' own metadata (secondary), not read from the
+licence files: not verified (R-70). Only `react` and `react-dom` reach the built bundle; the rest are build and test
+tools.
+
+| Package | Version | Licence (package metadata) | Used for |
+|---|---|---|---|
+| react | 19.3.0 | MIT | UI components (in the bundle) |
+| react-dom | 19.3.0 | MIT | Rendering in the browser (in the bundle) |
+| vite | 8.3.2 | MIT | Development server and production build |
+| @vitejs/plugin-react | 6.1.1 | MIT | React support for Vite |
+| typescript | 6.0.3 | Apache-2.0 | Type checks (`tsc --noEmit`) |
+| vitest | 5.0.3 | MIT | Unit and component tests |
+| jsdom | 29.1.1 | MIT | Browser environment for the tests |
+| @testing-library/react | 16.3.3 | MIT | Component tests |
+| @testing-library/dom | 10.4.2 | MIT | Component tests |
+| @types/react | 19.3.0 | MIT | Type definitions |
+| @types/react-dom | 19.3.0 | MIT | Type definitions |
+| eslint | 10.11.0 | MIT | Lint |
+| @eslint/js | 10.0.1 | MIT | Lint rules |
+| typescript-eslint | 8.71.0 | MIT | Lint rules for TypeScript |
+| eslint-plugin-react-hooks | 7.1.1 | MIT | Lint rules for React hooks |
+| globals | 17.13.0 | MIT | Lint configuration |
+
+- Transitive packages: 218 in all (2026-10-15), checked by `apps/admin-web/scripts/check-licences.mjs` against an
+  allowlist of permissive licences from their metadata; production dependencies get no exception.
+- lightningcss 1.33.0 and lightningcss-win32-x64-msvc 1.33.0 (Vite's CSS tool, build time only, not in the bundle)
+  declare MPL-2.0, file-level copyleft; used unmodified and not distributed, like pathspec above. Kept as a named
+  build-only exception in the licence check (Admin, R-73, 2026-10-15); to be reviewed again if the package is
+  modified, vendored or shipped in a distributed artifact.
+- `pnpm audit --audit-level high` reported no known vulnerabilities on 2026-10-15 (registry advisory data).
+- None of these packages is loaded from a CDN; the UI makes requests to its own origin only (R-66, R-69).
+
 ## Model runtime and local models (Tier B; not adopted; added 2026-10-07)
 
 Ollama and `gemma4:12b` are the first evaluated candidate, not a fixed choice: the architecture does not fix a
@@ -393,51 +431,51 @@ were added to their existing rows. C-129 and C-130 are among the 9 flagged claim
 | C-65 | `UPSTREAMS.md:162` | actions/checkout and setup-python are licensed MIT | not verified | no source recorded (labelled in place) | MVP-0 (CI) |
 | C-66 | `UPSTREAMS.md:188` | ruff and mypy make no network calls | not verified — flagged | no source recorded; development tools only; Admin: kept as labelled (R-28) | none |
 | C-67 | `UPSTREAMS.md:190` | pathspec's MPL-2.0 is file-level copyleft | not verified — flagged | licence interpretation, not a legal opinion; no stage distributes QMS OS; Admin: kept as labelled (R-28) | none |
-| C-68 | `UPSTREAMS.md:215` | Ollama `v0.40.0`, published 2026-09-25 | verified | GitHub release API, read 2026-10-07 | slice 4 runs; MVP-2 and later |
-| C-69 | `UPSTREAMS.md:216` | Tag `v0.40.0` = commit `0d0720e5` | verified | GitHub ref API, 2026-10-07; `git ls-remote`, 2026-10-10 | slice 4 runs |
-| C-70 | `UPSTREAMS.md:217` | Ollama is licensed MIT | verified | `LICENSE` at the tag, read 2026-10-07 | slice 4 runs; MVP-2 and later |
-| C-71 | `UPSTREAMS.md:218`; `UPSTREAMS.md:219`; `UPSTREAMS.md:220` | Release asset SHA-256 digests | verified | release API `digest` fields, read 2026-10-07 | slice 4 runs |
-| C-72 | `UPSTREAMS.md:221`; `BENCHMARK-PLAN.md:142` | Image `ollama/ollama:0.40.0` index digest `1bef6397…` | verified | Docker Hub API, 2026-10-07; `docker buildx imagetools inspect`, 2026-10-12 | slice 4 runs |
-| C-73 | `UPSTREAMS.md:227` | Below 24 GiB VRAM the default context is 4K | verified | docs.ollama.com/context-length, read 2026-10-07; smoke test showed CONTEXT 4096 (Admin, 2026-10-12) | slice 4 runs |
-| C-74 | `UPSTREAMS.md:228` | `OLLAMA_CONTEXT_LENGTH` sets the default; `ollama ps` shows it | verified | docs.ollama.com/context-length, read 2026-10-07 | slice 4 runs |
-| C-75 | `UPSTREAMS.md:229`; `BENCHMARK-PLAN.md:27`; `BENCHMARK-PLAN.md:63`; `ROADMAP.md:37` | Native API accepts per-request `num_ctx`; a new value reloads the model; OpenAI-compatible routes cannot set it | verified | source and docs at `0d0720e5`, read 2026-10-10 | slice 4 runs |
-| C-76 | `UPSTREAMS.md:230` | Ollama binds 127.0.0.1:11434 by default | verified | docs.ollama.com/faq, read 2026-10-07 | slice 4 runs; MVP-2 and later |
-| C-77 | `UPSTREAMS.md:231` | Ollama does not see prompts when run locally | not verified | documentation statement only (`docs/faq.mdx:161` at `0d0720e5`, 2026-10-10); not checked at runtime | before the first live Ollama adapter |
-| C-78 | `UPSTREAMS.md:232`; `DECISIONS.md:84`; `HANDOFF.md:357`; `adr/0005-provider-contract-and-egress.md:54` | The daemon contacts ollama.com by default (recommendations, cloud-model cache), signed with the installation key | verified | source at `0d0720e5`, read 2026-10-10 | before the first live Ollama adapter (R-27) |
-| C-79 | `UPSTREAMS.md:233` | `OLLAMA_NO_CLOUD=1` or `disable_ollama_cloud` turns that off | verified | source and docs at `0d0720e5`, read 2026-10-10; set in `ollama-bench` (Admin check, 2026-10-12) | before the first live Ollama adapter (R-27) |
-| C-80 | `UPSTREAMS.md:234` | No other outbound calls or analytics in Ollama | not verified | grep of the tag's own code only, 2026-10-10; dependencies and runtime not verified (as stated) | before the first live Ollama adapter |
-| C-81 | `UPSTREAMS.md:235`; `DECISIONS.md:73` | The desktop app checks ollama.com for updates hourly; no setting disables the check; Docker image runs `ollama serve` | verified | FAQ and source at `0d0720e5`, read 2026-10-10 | before any shared deployment (R-16 note) |
-| C-82 | `UPSTREAMS.md:236` | The GPU is usable in a Linux container under Docker Desktop/WSL2 on the benchmark host | verified | Admin-supplied output, 2026-10-12 (`nvidia-smi` in `ollama-bench`; smoke test at 100% GPU); updated in place | slice 4 runs |
-| C-83 | `UPSTREAMS.md:237`; `DECISIONS.md:74` | Cloud tags exist (`gemma4:cloud`, `gemma4:31b-cloud`) | verified | ollama.com tags page, read 2026-10-07 | only if an admin enables cloud (R-17) |
-| C-84 | `UPSTREAMS.md:237`; `adr/0005-provider-contract-and-egress.md:50` | A general cloud-tag naming rule; Ollama's cloud terms | not verified | `docs/cloud.mdx` at `28a9f8c9` gives one example and no rule (read 2026-10-09); terms not read | before the first live Ollama adapter |
-| C-85 | `UPSTREAMS.md:243` | Tag `gemma4:12b` exists | verified | ollama.com library pages, read 2026-10-07; pulled in the smoke test (Admin, 2026-10-12) | slice 4 runs |
-| C-86 | `UPSTREAMS.md:244`; `ROADMAP.md:84` | `gemma4:12b` publishes a 256K context | verified | Ollama pages and Hugging Face model data, read 2026-10-07 (published value only; use on 12 GB is B1) | slice 4 runs |
-| C-87 | `UPSTREAMS.md:245` | Manifest layer digests of `gemma4:12b` | verified | registry manifest, read 2026-10-07; layer prefixes matched in the smoke test (Admin, 2026-10-12) | slice 4 runs |
-| C-88 | `UPSTREAMS.md:246`; `BENCHMARK-PLAN.md:189` | Which value Ollama's short model ID is derived from | not verified | two pages disagree (2026-10-07); smoke-test ID `6114515d63c1` matches neither (2026-10-12) | slice 4 runs |
-| C-89 | `UPSTREAMS.md:247`; `ROADMAP.md:84` | Ollama's `gemma4:12b` weights licence is Apache-2.0 | verified | licence blob downloaded and hashed, 2026-10-07 | slice 4 runs; any live use |
-| C-90 | `UPSTREAMS.md:248` | Publisher's Gemma 4 12B weights are Apache-2.0 | verified | Hugging Face API, revision `707f0a3b`, read 2026-10-07 | slice 4 runs; any live use |
-| C-91 | `UPSTREAMS.md:249`; `UPSTREAMS.md:251`; `BENCHMARK-PLAN.md:80` | `gemma4:12b` accepts audio input | not verified | sources conflict (2026-10-07, 2026-10-10); projector metadata read partially, hash not verified; not run | slice 4 (B7 probe); MVP-3 |
-| C-92 | `UPSTREAMS.md:250`; `ROADMAP.md:37` | Ollama `v0.40.0` has audio input paths | verified | source at `0d0720e5`, read 2026-10-10 | slice 4 (B7); MVP-3 |
-| C-93 | `UPSTREAMS.md:252` | `gemma4:12b` has native function calling | not verified | documentation statement only (Ollama family page, 2026-10-07); reliability is B4 | slice 4 (B4) |
-| C-94 | `UPSTREAMS.md:253` | Fit and throughput on the 12 GB VRAM host | not verified | a measurement (B1, B3, B5) | slice 4 runs (not an exit item, R-28) |
+| C-68 | `UPSTREAMS.md:253` | Ollama `v0.40.0`, published 2026-09-25 | verified | GitHub release API, read 2026-10-07 | slice 4 runs; MVP-2 and later |
+| C-69 | `UPSTREAMS.md:254` | Tag `v0.40.0` = commit `0d0720e5` | verified | GitHub ref API, 2026-10-07; `git ls-remote`, 2026-10-10 | slice 4 runs |
+| C-70 | `UPSTREAMS.md:255` | Ollama is licensed MIT | verified | `LICENSE` at the tag, read 2026-10-07 | slice 4 runs; MVP-2 and later |
+| C-71 | `UPSTREAMS.md:256`; `UPSTREAMS.md:257`; `UPSTREAMS.md:258` | Release asset SHA-256 digests | verified | release API `digest` fields, read 2026-10-07 | slice 4 runs |
+| C-72 | `UPSTREAMS.md:259`; `BENCHMARK-PLAN.md:142` | Image `ollama/ollama:0.40.0` index digest `1bef6397…` | verified | Docker Hub API, 2026-10-07; `docker buildx imagetools inspect`, 2026-10-12 | slice 4 runs |
+| C-73 | `UPSTREAMS.md:265` | Below 24 GiB VRAM the default context is 4K | verified | docs.ollama.com/context-length, read 2026-10-07; smoke test showed CONTEXT 4096 (Admin, 2026-10-12) | slice 4 runs |
+| C-74 | `UPSTREAMS.md:266` | `OLLAMA_CONTEXT_LENGTH` sets the default; `ollama ps` shows it | verified | docs.ollama.com/context-length, read 2026-10-07 | slice 4 runs |
+| C-75 | `UPSTREAMS.md:267`; `BENCHMARK-PLAN.md:27`; `BENCHMARK-PLAN.md:63`; `ROADMAP.md:37` | Native API accepts per-request `num_ctx`; a new value reloads the model; OpenAI-compatible routes cannot set it | verified | source and docs at `0d0720e5`, read 2026-10-10 | slice 4 runs |
+| C-76 | `UPSTREAMS.md:268` | Ollama binds 127.0.0.1:11434 by default | verified | docs.ollama.com/faq, read 2026-10-07 | slice 4 runs; MVP-2 and later |
+| C-77 | `UPSTREAMS.md:269` | Ollama does not see prompts when run locally | not verified | documentation statement only (`docs/faq.mdx:161` at `0d0720e5`, 2026-10-10); not checked at runtime | before the first live Ollama adapter |
+| C-78 | `UPSTREAMS.md:270`; `DECISIONS.md:84`; `HANDOFF.md:357`; `adr/0005-provider-contract-and-egress.md:54` | The daemon contacts ollama.com by default (recommendations, cloud-model cache), signed with the installation key | verified | source at `0d0720e5`, read 2026-10-10 | before the first live Ollama adapter (R-27) |
+| C-79 | `UPSTREAMS.md:271` | `OLLAMA_NO_CLOUD=1` or `disable_ollama_cloud` turns that off | verified | source and docs at `0d0720e5`, read 2026-10-10; set in `ollama-bench` (Admin check, 2026-10-12) | before the first live Ollama adapter (R-27) |
+| C-80 | `UPSTREAMS.md:272` | No other outbound calls or analytics in Ollama | not verified | grep of the tag's own code only, 2026-10-10; dependencies and runtime not verified (as stated) | before the first live Ollama adapter |
+| C-81 | `UPSTREAMS.md:273`; `DECISIONS.md:73` | The desktop app checks ollama.com for updates hourly; no setting disables the check; Docker image runs `ollama serve` | verified | FAQ and source at `0d0720e5`, read 2026-10-10 | before any shared deployment (R-16 note) |
+| C-82 | `UPSTREAMS.md:274` | The GPU is usable in a Linux container under Docker Desktop/WSL2 on the benchmark host | verified | Admin-supplied output, 2026-10-12 (`nvidia-smi` in `ollama-bench`; smoke test at 100% GPU); updated in place | slice 4 runs |
+| C-83 | `UPSTREAMS.md:275`; `DECISIONS.md:74` | Cloud tags exist (`gemma4:cloud`, `gemma4:31b-cloud`) | verified | ollama.com tags page, read 2026-10-07 | only if an admin enables cloud (R-17) |
+| C-84 | `UPSTREAMS.md:275`; `adr/0005-provider-contract-and-egress.md:50` | A general cloud-tag naming rule; Ollama's cloud terms | not verified | `docs/cloud.mdx` at `28a9f8c9` gives one example and no rule (read 2026-10-09); terms not read | before the first live Ollama adapter |
+| C-85 | `UPSTREAMS.md:281` | Tag `gemma4:12b` exists | verified | ollama.com library pages, read 2026-10-07; pulled in the smoke test (Admin, 2026-10-12) | slice 4 runs |
+| C-86 | `UPSTREAMS.md:282`; `ROADMAP.md:84` | `gemma4:12b` publishes a 256K context | verified | Ollama pages and Hugging Face model data, read 2026-10-07 (published value only; use on 12 GB is B1) | slice 4 runs |
+| C-87 | `UPSTREAMS.md:283` | Manifest layer digests of `gemma4:12b` | verified | registry manifest, read 2026-10-07; layer prefixes matched in the smoke test (Admin, 2026-10-12) | slice 4 runs |
+| C-88 | `UPSTREAMS.md:284`; `BENCHMARK-PLAN.md:189` | Which value Ollama's short model ID is derived from | not verified | two pages disagree (2026-10-07); smoke-test ID `6114515d63c1` matches neither (2026-10-12) | slice 4 runs |
+| C-89 | `UPSTREAMS.md:285`; `ROADMAP.md:84` | Ollama's `gemma4:12b` weights licence is Apache-2.0 | verified | licence blob downloaded and hashed, 2026-10-07 | slice 4 runs; any live use |
+| C-90 | `UPSTREAMS.md:286` | Publisher's Gemma 4 12B weights are Apache-2.0 | verified | Hugging Face API, revision `707f0a3b`, read 2026-10-07 | slice 4 runs; any live use |
+| C-91 | `UPSTREAMS.md:287`; `UPSTREAMS.md:289`; `BENCHMARK-PLAN.md:80` | `gemma4:12b` accepts audio input | not verified | sources conflict (2026-10-07, 2026-10-10); projector metadata read partially, hash not verified; not run | slice 4 (B7 probe); MVP-3 |
+| C-92 | `UPSTREAMS.md:288`; `ROADMAP.md:37` | Ollama `v0.40.0` has audio input paths | verified | source at `0d0720e5`, read 2026-10-10 | slice 4 (B7); MVP-3 |
+| C-93 | `UPSTREAMS.md:290` | `gemma4:12b` has native function calling | not verified | documentation statement only (Ollama family page, 2026-10-07); reliability is B4 | slice 4 (B4) |
+| C-94 | `UPSTREAMS.md:291` | Fit and throughput on the 12 GB VRAM host | not verified | a measurement (B1, B3, B5) | slice 4 runs (not an exit item, R-28) |
 | C-95 | `BENCHMARK-PLAN.md:193` | A per-request control for `gemma4:12b` thinking output | not verified | none recorded; request field `think` exists in the source (2026-10-13), effect not verified | slice 4 runs (open item 12) |
 | C-96 | `BENCHMARK-PLAN.md:330` | Response field names of `POST /api/chat` | verified | source at `0d0720e5`, read 2026-10-13 (live behaviour not verified) | slice 4 runs |
 | C-97 | `BENCHMARK-PLAN.md:334`; `BENCHMARK-PLAN.md:337`; `BENCHMARK-PLAN.md:338` | Whether `eval_count` counts thinking tokens; duration units; `/api/tags` digest vs `ollama list` ID | not verified | as stated in the plan | slice 4 runs |
-| C-98 | `UPSTREAMS.md:262` | WeKnora `v0.8.2` (commit `3e8b0bfc`) is licensed MIT, with listed exceptions | verified | `LICENSE` at the tag, read 2026-10-07; notices read 2026-10-09 | slice 3b; MVP-2 |
-| C-99 | `UPSTREAMS.md:262` | Services and images in WeKnora's `docker-compose.yml` | verified | `docker-compose.yml` at the tag, read 2026-10-07 (which are optional profiles: not verified) | slice 3b; MVP-2 |
-| C-100 | `UPSTREAMS.md:262` | WeKnora model defaults; retrieval and ACL features | not verified | not researched (R-28: no Tier C claim for its own sake) | slice 3b; MVP-2 |
-| C-101 | `UPSTREAMS.md:278` | WeKnora's third-party notices and `licenses/` files | verified | files at `3e8b0bfc`, read 2026-10-09 | slice 3b; MVP-2 |
-| C-102 | `UPSTREAMS.md:290` | Licences of the images in WeKnora's compose file | not verified | not read | slice 3b; MVP-2 |
-| C-103 | `UPSTREAMS.md:263` | Hermes agent `v2026.9.24` (commit `f97608f1`) is licensed MIT | verified | `LICENSE` at the tag, read 2026-10-07 | MVP-2 |
-| C-104 | `UPSTREAMS.md:263` | Hermes skills, `skills.write_approval`, Telegram gateway | not verified | not researched (R-28) | MVP-2 |
-| C-105 | `UPSTREAMS.md:264` | Hindsight `v0.10.2` (commit `5fc4ce20`) is licensed MIT; README image `:latest` | verified | `LICENSE` and README at the tag, read 2026-10-07 | MVP-4 |
-| C-106 | `UPSTREAMS.md:264` | Hindsight embedding defaults, Hermes plugin, `bank_id_template` | not verified | not researched (R-28) | MVP-4 |
-| C-107 | `UPSTREAMS.md:267` | edge-tts `7.2.8` is LGPL-3.0 (one MIT file) | verified | `LICENSE` at the tag, read 2026-10-07 | only if an admin enables it (R-20) |
-| C-108 | `UPSTREAMS.md:267`; `DECISIONS.md:77` | edge-tts sends text to a Microsoft online service | verified | `src/edge_tts/constants.py` and README at the tag, read 2026-10-07 | only if an admin enables it (R-20) |
-| C-109 | `UPSTREAMS.md:268` | Digital-Secretary version, licence and modules | not verified | not researched (R-28) | MVP-3 |
-| C-110 | `UPSTREAMS.md:269` | Telegram Bot API terms; voice notes as files; outbound-only polling | not verified | not researched (R-28) | MVP-2 (text simulator), MVP-3 |
-| C-111 | `UPSTREAMS.md:300` | CLM-v0.1-8B is built on Qwen3-8B | not verified — flagged | no source recorded; Tier D, not adopted; Admin: kept as labelled (R-28) | none |
-| C-112 | `UPSTREAMS.md:305` | Docker Desktop and WSL2 licence and subscription terms | not verified | not recorded (as stated) | MVP-0 (local runtime, in use) |
+| C-98 | `UPSTREAMS.md:300` | WeKnora `v0.8.2` (commit `3e8b0bfc`) is licensed MIT, with listed exceptions | verified | `LICENSE` at the tag, read 2026-10-07; notices read 2026-10-09 | slice 3b; MVP-2 |
+| C-99 | `UPSTREAMS.md:300` | Services and images in WeKnora's `docker-compose.yml` | verified | `docker-compose.yml` at the tag, read 2026-10-07 (which are optional profiles: not verified) | slice 3b; MVP-2 |
+| C-100 | `UPSTREAMS.md:300` | WeKnora model defaults; retrieval and ACL features | not verified | not researched (R-28: no Tier C claim for its own sake) | slice 3b; MVP-2 |
+| C-101 | `UPSTREAMS.md:316` | WeKnora's third-party notices and `licenses/` files | verified | files at `3e8b0bfc`, read 2026-10-09 | slice 3b; MVP-2 |
+| C-102 | `UPSTREAMS.md:328` | Licences of the images in WeKnora's compose file | not verified | not read | slice 3b; MVP-2 |
+| C-103 | `UPSTREAMS.md:301` | Hermes agent `v2026.9.24` (commit `f97608f1`) is licensed MIT | verified | `LICENSE` at the tag, read 2026-10-07 | MVP-2 |
+| C-104 | `UPSTREAMS.md:301` | Hermes skills, `skills.write_approval`, Telegram gateway | not verified | not researched (R-28) | MVP-2 |
+| C-105 | `UPSTREAMS.md:302` | Hindsight `v0.10.2` (commit `5fc4ce20`) is licensed MIT; README image `:latest` | verified | `LICENSE` and README at the tag, read 2026-10-07 | MVP-4 |
+| C-106 | `UPSTREAMS.md:302` | Hindsight embedding defaults, Hermes plugin, `bank_id_template` | not verified | not researched (R-28) | MVP-4 |
+| C-107 | `UPSTREAMS.md:305` | edge-tts `7.2.8` is LGPL-3.0 (one MIT file) | verified | `LICENSE` at the tag, read 2026-10-07 | only if an admin enables it (R-20) |
+| C-108 | `UPSTREAMS.md:305`; `DECISIONS.md:77` | edge-tts sends text to a Microsoft online service | verified | `src/edge_tts/constants.py` and README at the tag, read 2026-10-07 | only if an admin enables it (R-20) |
+| C-109 | `UPSTREAMS.md:306` | Digital-Secretary version, licence and modules | not verified | not researched (R-28) | MVP-3 |
+| C-110 | `UPSTREAMS.md:307` | Telegram Bot API terms; voice notes as files; outbound-only polling | not verified | not researched (R-28) | MVP-2 (text simulator), MVP-3 |
+| C-111 | `UPSTREAMS.md:338` | CLM-v0.1-8B is built on Qwen3-8B | not verified — flagged | no source recorded; Tier D, not adopted; Admin: kept as labelled (R-28) | none |
+| C-112 | `UPSTREAMS.md:343` | Docker Desktop and WSL2 licence and subscription terms | not verified | not recorded (as stated) | MVP-0 (local runtime, in use) |
 | C-113 | `LOCAL-RUNTIME.md:41` | Docker Desktop's default disk-image location and setting | not verified | no source recorded (labelled in place) | MVP-0 (local runtime) |
 | C-114 | `DECISIONS.md:62` | psycopg is LGPL-3.0-only (same claim as the psycopg row above) | not verified | package metadata only, 2026-10-05 | MVP-1 (PostgreSQL as the authority) |
 | C-115 | `adr/0003-auth-dev-identity.md:23` | argon2-cffi defaults are 64 MiB, 3 passes, 4 lanes | not verified | no source recorded (labelled in place) | MVP-1 (authentication) |
@@ -456,6 +494,24 @@ were added to their existing rows. C-129 and C-130 are among the 9 flagged claim
 | C-128 | `HANDOFF.md:599` | Compose ignores the unused `POSTGRES_TAG` in `.env` | not verified | no source recorded | MVP-0 (local runtime) |
 | C-129 | `UPSTREAMS.md:81` | LGPL-3.0 obligations for psycopg (internal use conveys nothing; notices and replaceability on delivery) | not verified — flagged | licence interpretation; the note itself says it is not legal advice; no stage delivers QMS OS to another organisation; Admin: kept as labelled (R-28) | none |
 | C-130 | `UPSTREAMS.md:88` | pg8000 is BSD-licensed | not verified — flagged | no source recorded; pg8000 is not adopted; Admin: kept as labelled (R-28) | none |
+| C-131 | `UPSTREAMS.md:207` | react 19.3.0 is licensed MIT | not verified | package metadata only (secondary), read 2026-10-15; primary source not read | MVP-1 (admin web UI, slice 10) |
+| C-132 | `UPSTREAMS.md:208` | react-dom 19.3.0 is licensed MIT | not verified | package metadata only (secondary), read 2026-10-15; primary source not read | MVP-1 (admin web UI, slice 10) |
+| C-133 | `UPSTREAMS.md:209` | vite 8.3.2 is licensed MIT | not verified | package metadata only (secondary), read 2026-10-15; primary source not read | MVP-1 (admin web UI, slice 10) |
+| C-134 | `UPSTREAMS.md:210` | @vitejs/plugin-react 6.1.1 is licensed MIT | not verified | package metadata only (secondary), read 2026-10-15; primary source not read | MVP-1 (admin web UI, slice 10) |
+| C-135 | `UPSTREAMS.md:211` | typescript 6.0.3 is licensed Apache-2.0 | not verified | package metadata only (secondary), read 2026-10-15; primary source not read | MVP-1 (admin web UI, slice 10) |
+| C-136 | `UPSTREAMS.md:212` | vitest 5.0.3 is licensed MIT | not verified | package metadata only (secondary), read 2026-10-15; primary source not read | MVP-1 (admin web UI, slice 10) |
+| C-137 | `UPSTREAMS.md:213` | jsdom 29.1.1 is licensed MIT | not verified | package metadata only (secondary), read 2026-10-15; primary source not read | MVP-1 (admin web UI, slice 10) |
+| C-138 | `UPSTREAMS.md:214` | @testing-library/react 16.3.3 is licensed MIT | not verified | package metadata only (secondary), read 2026-10-15; primary source not read | MVP-1 (admin web UI, slice 10) |
+| C-139 | `UPSTREAMS.md:215` | @testing-library/dom 10.4.2 is licensed MIT | not verified | package metadata only (secondary), read 2026-10-15; primary source not read | MVP-1 (admin web UI, slice 10) |
+| C-140 | `UPSTREAMS.md:216` | @types/react 19.3.0 is licensed MIT | not verified | package metadata only (secondary), read 2026-10-15; primary source not read | MVP-1 (admin web UI, slice 10) |
+| C-141 | `UPSTREAMS.md:217` | @types/react-dom 19.3.0 is licensed MIT | not verified | package metadata only (secondary), read 2026-10-15; primary source not read | MVP-1 (admin web UI, slice 10) |
+| C-142 | `UPSTREAMS.md:218` | eslint 10.11.0 is licensed MIT | not verified | package metadata only (secondary), read 2026-10-15; primary source not read | MVP-1 (admin web UI, slice 10) |
+| C-143 | `UPSTREAMS.md:219` | @eslint/js 10.0.1 is licensed MIT | not verified | package metadata only (secondary), read 2026-10-15; primary source not read | MVP-1 (admin web UI, slice 10) |
+| C-144 | `UPSTREAMS.md:220` | typescript-eslint 8.71.0 is licensed MIT | not verified | package metadata only (secondary), read 2026-10-15; primary source not read | MVP-1 (admin web UI, slice 10) |
+| C-145 | `UPSTREAMS.md:221` | eslint-plugin-react-hooks 7.1.1 is licensed MIT | not verified | package metadata only (secondary), read 2026-10-15; primary source not read | MVP-1 (admin web UI, slice 10) |
+| C-146 | `UPSTREAMS.md:222` | globals 17.13.0 is licensed MIT | not verified | package metadata only (secondary), read 2026-10-15; primary source not read | MVP-1 (admin web UI, slice 10) |
+| C-147 | `UPSTREAMS.md:226` | lightningcss 1.33.0 (Vite's CSS tool, build time only) is MPL-2.0, file-level copyleft | not verified — flagged | package metadata only (secondary), read 2026-10-15; licence interpretation, not a legal opinion; Admin: kept as labelled, build-only exception (R-73) | MVP-1 (admin web UI, slice 10) |
+| C-148 | `UPSTREAMS.md:230` | pnpm audit reported no known vulnerabilities in the admin web UI packages | not verified | registry advisory data, 2026-10-15; advisories change over time | MVP-1 (admin web UI, slice 10) |
 
-Counts: 67 verified, 54 not verified, 9 flagged (not verified, no stage needs them), kept as labelled
-by the Admin on 2026-10-13; 130 in all.
+Counts: 67 verified, 71 not verified, 10 flagged (not verified, no stage needs them), kept as labelled
+by the Admin on 2026-10-13; 148 in all.
