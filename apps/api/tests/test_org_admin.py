@@ -29,6 +29,9 @@ ORG_ROUTES = {
     ("POST", f"{ORG}/projects/{{project_id}}/members"),
     ("POST", f"{ORG}/projects/{{project_id}}/members/{{user_id}}/remove"),
     ("GET", f"{ORG}/access-preview/{{user_id}}"),
+    # slice 4: agents (R-48, R-49)
+    ("GET", f"{ORG}/agents"), ("POST", f"{ORG}/agents"), ("GET", f"{ORG}/agents/{{agent_id}}"),
+    ("POST", f"{ORG}/agents/{{agent_id}}/revoke"), ("GET", f"{ORG}/access-preview/agents/{{agent_id}}"),
 }
 
 

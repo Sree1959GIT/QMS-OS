@@ -11,11 +11,13 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from .api import auth_routes, knowledge_routes, org_routes, provider_routes, routes
+from .api import auth_routes, evidence_routes, knowledge_routes, org_routes, provider_routes, routes
 from .auth.keys import KEY_ENV, SecretBox, load_key_file
 from .auth.limits import AuthConfigError, AuthLimits
 from .auth.service import AuthContext
 from .db import make_engine, make_sessionmaker, prepare_schema
+from .evidence.contract import StoreRefused
+from .evidence.local import EVIDENCE_ENV, LocalContentStore
 from .policy import Mode, load_context
 from .providers.gateway import ProviderGateway
 from .providers.registry import default_registry
@@ -36,14 +38,24 @@ def _auth_key(mode: Mode, env: Mapping[str, str], auth_key: bytes | None) -> byt
     raise AuthConfigError(f"{KEY_ENV} must name the authentication key file ({mode} mode)")
 
 
+def _evidence_store(mode: Mode, env: Mapping[str, str], store):
+    if store is not None:
+        if mode is Mode.OPERATIONAL:
+            raise StoreRefused("the interim evidence store is refused in operational mode (R-54)")
+        return store
+    folder = env.get(EVIDENCE_ENV, "").strip()
+    return LocalContentStore(folder, qms_mode=mode.value) if folder else None
+
+
 def create_app(engine=None, today: Callable[[], date] = date.today, mode: str | None = None,
                policy_file: str | os.PathLike | None = None, env: Mapping[str, str] | None = None, *,
                auth_key: bytes | None = None, auth_limits: AuthLimits | None = None,
-               now: Callable[[], datetime] = utcnow, identity_provider=None) -> FastAPI:
+               now: Callable[[], datetime] = utcnow, identity_provider=None, evidence_store=None) -> FastAPI:
     """Resolve the runtime mode and load the policy BEFORE touching the database: a malformed policy
     file or an invalid mode is a startup error (PolicyConfigError), never a silent fallback. Authentication
     settings are checked the same way (AuthConfigError). ``identity_provider`` (tests only) is refused outside
-    test mode."""
+    test mode. The interim evidence store (R-34) is opened from ``QMS_EVIDENCE_DIR`` when that is set (or passed as
+    ``evidence_store``); it refuses operational mode, so setting it there is a startup error (R-54)."""
     policy_ctx = load_context(mode, policy_file, env)
     if identity_provider is not None and policy_ctx.mode is not Mode.TEST:
         raise AuthConfigError(f"a test identity provider cannot be used in {policy_ctx.mode} mode")
@@ -58,6 +70,7 @@ def create_app(engine=None, today: Callable[[], date] = date.today, mode: str | 
     app.state.auth = AuthContext(box=box, limits=auth_limits or AuthLimits(), now=now)
     app.state.test_identity = identity_provider
     app.state.providers = ProviderGateway(default_registry(policy_ctx.mode), app.state.sessionmaker)
+    app.state.evidence_store = _evidence_store(policy_ctx.mode, os.environ if env is None else env, evidence_store)
 
     @app.exception_handler(ServiceError)
     async def _service_error(_: Request, exc: ServiceError):
@@ -75,6 +88,7 @@ def create_app(engine=None, today: Callable[[], date] = date.today, mode: str | 
     app.include_router(knowledge_routes.router)
     app.include_router(provider_routes.router)
     app.include_router(org_routes.router)
+    app.include_router(evidence_routes.router)
 
     dist = Path(__file__).resolve().parents[3] / "frontend" / "dist"
     if dist.is_dir():

@@ -336,6 +336,81 @@ def test_concurrent_account_admin_and_org_admin_grants_never_both_succeed(engine
     assert (is_account_admin, is_org_admin) == (first == "account_admin", first == "org_admin")
 
 
+# ---------- two enrolments for one person never both succeed (R-48, R-49) ----------
+
+def test_concurrent_enrolments_for_one_person_enrol_exactly_one_agent(engine):
+    """Deterministic, as above: the first enrolment holds the person's row lock (uncommitted) while the second, in
+    another session, is shown to be waiting for it; only then does the first commit. The second must then see the
+    first agent and be refused. The partial unique index is the backstop if the lock were missing."""
+    import queue
+
+    from qms_os.models import AgentProfile
+    from qms_os.services.common import AuditedRefusal
+    from qms_os.services.org import enrol_agent
+
+    maker = make_sessionmaker(engine)
+    with maker() as s:
+        ids = {u.email.split("@")[0]: u.id for u in s.scalars(select(User))}
+    pids: queue.Queue[int] = queue.Queue()
+    outcome: dict[str, str] = {}
+
+    def other() -> None:
+        with maker() as s2:
+            pids.put(s2.execute(text("SELECT pg_backend_pid()")).scalar())
+            try:
+                enrol_agent(s2, s2.get(User, ids["viewer"]), ids["md"], "second", "public")
+                s2.commit()
+                outcome["second"] = "enrolled"
+            except AuditedRefusal as e:
+                s2.rollback()
+                outcome["second"] = f"refused: {e.reason}"
+
+    s1 = maker()
+    try:
+        enrol_agent(s1, s1.get(User, ids["viewer"]), ids["md"], "first", "internal")
+        s1.flush()
+        t = threading.Thread(target=other)
+        t.start()
+        pid = pids.get(timeout=10)
+        assert _wait_until_waiting_on_a_lock(engine, pid), "the second enrolment did not wait for the person's lock"
+        s1.commit()
+    finally:
+        s1.close()
+    t.join(timeout=30)
+    assert not t.is_alive()
+    assert outcome["second"] == "refused: already_enrolled", outcome
+    with maker() as s:
+        rows = list(s.scalars(select(AgentProfile)))
+    assert [(a.person_id, a.label, a.revoked_at) for a in rows] == [(ids["md"], "first", None)]
+
+
+# ---------- evidence rows are immutable; the test clean-up does not depend on DELETE (R-52) ----------
+
+def test_evidence_rows_refuse_update_and_delete_and_the_truncate_clean_up_still_empties_them(engine):
+    """The migration's row trigger refuses UPDATE and DELETE. It does not fire on TRUNCATE, which is how
+    pg_support.empty_tables clears the database between tests; a database owner can also drop the table, so the
+    triggers are not append-only enforcement (R-52; open item in docs/HANDOFF.md)."""
+    from sqlalchemy.exc import DBAPIError
+
+    with make_sessionmaker(engine)() as s:
+        owner = s.scalar(select(User.id).limit(1))
+    with engine.begin() as c:
+        c.execute(text("INSERT INTO evidence_objects (sha256, size, mime, owner_id, classification, synthetic, "
+                       "stored_at) VALUES (:h, 1, 'text/plain', :o, 'internal', true, now())"),
+                  {"h": "a" * 64, "o": owner})
+    for stmt in ("UPDATE evidence_objects SET classification = 'public'", "DELETE FROM evidence_objects"):
+        with pytest.raises(DBAPIError, match="immutable"), engine.begin() as c:
+            c.execute(text(stmt))
+    with engine.connect() as c:
+        triggers = set(c.scalars(text("SELECT tgname FROM pg_trigger WHERE tgrelid = 'evidence_objects'::regclass "
+                                      "AND NOT tgisinternal")))
+        assert triggers == {"evidence_objects_immutable"}
+        assert c.scalar(text("SELECT classification FROM evidence_objects")) == "internal"
+    PG.empty_tables(engine)
+    with engine.connect() as c:
+        assert c.scalar(text("SELECT count(*) FROM evidence_objects")) == 0
+
+
 # ---------- super admin scripts are read-only on PostgreSQL too (R-46) ----------
 
 def test_superadmin_session_cannot_write_on_postgres(engine):

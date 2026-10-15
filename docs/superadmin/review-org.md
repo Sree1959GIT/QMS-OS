@@ -1,8 +1,8 @@
 # Super admin: review-org
 
 Skill: `.claude/skills/review-org/SKILL.md`. Script: `python -m qms_superadmin review-org`
-(`apps/api/qms_superadmin/review_org.py`), run by `scripts\run-superadmin.bat review-org`. Decisions: R-30, R-38,
-R-46. Source: `docs/SPECIFICATION.md` journey 1 (line 176).
+(`apps/api/qms_superadmin/review_org.py`), run by `scripts\run-superadmin.bat review-org`. Decisions: R-30, R-48,
+R-38, R-46. Source: `docs/SPECIFICATION.md` journey 1 (line 176).
 
 ## Purpose
 
@@ -13,7 +13,8 @@ After the Admin adds departments and people, review the directory and propose wh
 - Counts of departments and people (active and inactive), org admins and account admins.
 - Active departments with no head, an inactive head, or a head who belongs to another department.
 - Active people (other than MD and VIEWER roles) without a department, and people in an inactive department.
-- Agents: none can exist before MVP-1 slice 4; the report says so.
+- Agents (R-48): how many are active and revoked, and how many people have none (zero by default); an active agent
+  enrolled for an inactive person (propose `POST /api/v1/org/agents/{agent_id}/revoke`).
 
 ## How to run
 
@@ -28,12 +29,13 @@ Each finding proposes the org admin route that would make the change (`/api/v1/o
 
 ## Boundary
 
-The skill's instructions name one command, and its `allowed-tools` pre-approves that command; `allowed-tools`
-does not restrict other tools. `disallowed-tools` removes Write, Edit and NotebookEdit while the skill is
-active. The boundary is the read-only script (R-46: read-only database transaction, synthetic database
-only, no network, no file writes), the rules in the `SKILL.md` and the Claude Code permission settings of the
-session. A human-invocation check (2026-10-14) showed each skill running only its command; that run was
-approved by auto mode, so it did not show what `allowed-tools` pre-approves.
+The skill's instructions name one command, and its `allowed-tools` pre-approves that command; `allowed-tools` is not
+relied on as a restriction of other tools (public documentation describes it as pre-approval only; the installed
+Claude Code schema wording is ambiguous). `disallowed-tools` removes Write, Edit and NotebookEdit while the skill is
+active. The boundary is the read-only script (R-46: read-only database transaction, synthetic database only, no
+network, no file writes), the rules in the `SKILL.md` and the Claude Code permission settings of the session. A
+human-invocation check (2026-10-14) showed each skill running only its command; that run was approved by auto mode,
+so it did not show what `allowed-tools` pre-approves.
 
 ## What it never does
 

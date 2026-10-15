@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from qms_os.auth.permissions import org_admin_ids
 from qms_os.auth.service import ACCOUNT_ADMIN
-from qms_os.models import Department, User
+from qms_os.models import AgentProfile, Department, User
 
 
 def review(s: Session) -> list[str]:
@@ -18,10 +18,13 @@ def review(s: Session) -> list[str]:
     people = list(s.scalars(select(User).order_by(User.id)))
     by_id = {u.id: u for u in people}
     org_admins = org_admin_ids(s)
+    agents = list(s.scalars(select(AgentProfile).order_by(AgentProfile.id)))
+    active_agents = [a for a in agents if a.revoked_at is None]
     out = [f"departments: {len(depts)} ({sum(d.active for d in depts)} active); "
            f"people: {len(people)} ({sum(u.active for u in people)} active)",
            f"org admins: {len(org_admins)}; account admins: {sum(u.platform_role == ACCOUNT_ADMIN for u in people)}",
-           "agents: none (agent enablement arrives in MVP-1 slice 4; no person holds an agent)"]
+           f"agents: {len(active_agents)} active, {len(agents) - len(active_agents)} revoked; people without an "
+           f"agent: {len(people) - len({a.person_id for a in active_agents})} (zero agents by default, R-48)"]
     findings = []
     for d in depts:
         if not d.active:
@@ -44,6 +47,11 @@ def review(s: Session) -> list[str]:
             home = next((x for x in depts if x.id == u.department_id), None)
             if home is not None and not home.active:
                 findings.append(f"person {u.id} belongs to inactive department {home.id} -> move or deactivate")
+    for a in active_agents:
+        person = by_id.get(a.person_id)
+        if person is not None and not person.active:
+            findings.append(f"agent {a.id} is enrolled for inactive person {person.id} -> propose POST "
+                            f"/api/v1/org/agents/{a.id}/revoke")
     out.append(f"findings: {len(findings)}")
     out += [f"- {f}" for f in findings]
     out.append("next: run access-segregation to review what each person can read")

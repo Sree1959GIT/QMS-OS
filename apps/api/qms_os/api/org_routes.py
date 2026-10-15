@@ -1,12 +1,13 @@
-"""Org directory administration (MVP-1 slice 2): org admins with a fresh step-up only (R-30, R-41). Nothing here
-deletes a record (D-14); every change writes an audit event (``services/org.py``)."""
+"""Org directory administration (MVP-1 slices 2 to 4): org admins with a fresh step-up only (R-30, R-41). Nothing
+here deletes a record (D-14); every change writes an audit event (``services/org.py``). Agents are enrolled and
+revoked here (R-48, R-49); agent principals themselves get 403 on every route (``deps.org_admin`` needs a human)."""
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
-from ..models import User
+from ..models import AgentProfile, User
 from ..services import access as ACC
 from ..services import org as O
 from ..services.common import get_or_404
@@ -61,6 +62,18 @@ class MemberIn(BaseModel):
     user_id: int
 
 
+class AgentIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    person_id: int
+    label: str = Field(max_length=120)
+    max_classification: str = Field(max_length=16)
+
+
+class AgentRevoke(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: str = Field(max_length=200)
+
+
 @router.get("/departments")
 def departments(u: User = Depends(org_admin), s: Session = Depends(get_session)):
     return O.list_departments(s)
@@ -94,23 +107,23 @@ def people(u: User = Depends(org_admin), s: Session = Depends(get_session)):
 
 @router.post("/people")
 def create_person(body: PersonIn, u: User = Depends(org_admin), s: Session = Depends(get_session)):
-    return O.person_row(O.create_person(s, u, body.name, body.email, body.role, body.department_id,
+    return O.person_row(s, O.create_person(s, u, body.name, body.email, body.role, body.department_id,
                                         body.trained_auditor))
 
 
 @router.patch("/people/{person_id}")
 def update_person(person_id: int, body: PersonChange, u: User = Depends(org_admin), s: Session = Depends(get_session)):
-    return O.person_row(O.update_person(s, u, person_id, body.model_dump(exclude_unset=True)))
+    return O.person_row(s, O.update_person(s, u, person_id, body.model_dump(exclude_unset=True)))
 
 
 @router.post("/people/{person_id}/deactivate")
 def deactivate_person(person_id: int, u: User = Depends(org_admin), s: Session = Depends(get_session)):
-    return O.person_row(O.deactivate_person(s, u, person_id))
+    return O.person_row(s, O.deactivate_person(s, u, person_id))
 
 
 @router.post("/people/{person_id}/reactivate")
 def reactivate_person(person_id: int, u: User = Depends(org_admin), s: Session = Depends(get_session)):
-    return O.person_row(O.reactivate_person(s, u, person_id))
+    return O.person_row(s, O.reactivate_person(s, u, person_id))
 
 
 # ---------- grants and the effective-access preview (MVP-1 slice 3) ----------
@@ -148,3 +161,31 @@ def remove_project_member(project_id: int, user_id: int, u: User = Depends(org_a
 def access_preview(user_id: int, u: User = Depends(org_admin), s: Session = Depends(get_session)):
     """What the person can and cannot read, from the same functions that enforce the reads (R-31)."""
     return ACC.preview(s, get_or_404(s, User, user_id))
+
+
+# ---------- agents (MVP-1 slice 4; R-48, R-49) ----------
+
+@router.get("/agents")
+def agents(u: User = Depends(org_admin), s: Session = Depends(get_session)):
+    return O.list_agents(s)
+
+
+@router.get("/agents/{agent_id}")
+def agent(agent_id: int, u: User = Depends(org_admin), s: Session = Depends(get_session)):
+    return O.agent_row(get_or_404(s, AgentProfile, agent_id))
+
+
+@router.post("/agents")
+def enrol_agent(body: AgentIn, u: User = Depends(org_admin), s: Session = Depends(get_session)):
+    return O.agent_row(O.enrol_agent(s, u, body.person_id, body.label, body.max_classification))
+
+
+@router.post("/agents/{agent_id}/revoke")
+def revoke_agent(agent_id: int, body: AgentRevoke, u: User = Depends(org_admin), s: Session = Depends(get_session)):
+    return O.agent_row(O.revoke_agent(s, u, agent_id, body.reason))
+
+
+@router.get("/access-preview/agents/{agent_id}")
+def agent_access_preview(agent_id: int, u: User = Depends(org_admin), s: Session = Depends(get_session)):
+    """What the agent can and cannot read, from the same functions that decide the reads (R-48, D11)."""
+    return ACC.agent_preview(s, get_or_404(s, AgentProfile, agent_id))

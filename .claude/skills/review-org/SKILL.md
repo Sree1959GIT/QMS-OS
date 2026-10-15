@@ -31,7 +31,8 @@ Exit code: 0 nothing to report, 1 findings, 2 refused. Suggest `access-segregati
 
 ## Boundary
 
-`allowed-tools` only pre-approves the one script command above; it does not restrict any other tool.
+`allowed-tools` pre-approves the one script command above; it is not relied on as a restriction (public
+documentation describes it as pre-approval only; the installed Claude Code schema wording is ambiguous).
 `disallowed-tools` removes Write, Edit and NotebookEdit while this skill is active. The boundary is the
 read-only script (R-46), the rules below and the Claude Code permission settings.
 
