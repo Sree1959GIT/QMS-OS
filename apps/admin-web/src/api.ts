@@ -46,7 +46,9 @@ async function errorOf(r: Response): Promise<ApiError> {
   }
 }
 
-function send(method: "GET" | "POST", path: string, body?: unknown): Promise<Response> {
+type Method = "GET" | "POST" | "PATCH";
+
+function send(method: Method, path: string, body?: unknown): Promise<Response> {
   const headers: Record<string, string> = {};
   if (method !== "GET") {
     headers["Content-Type"] = "application/json";
@@ -58,7 +60,7 @@ function send(method: "GET" | "POST", path: string, body?: unknown): Promise<Res
     body: method === "GET" ? undefined : JSON.stringify(body ?? {}) });
 }
 
-async function request<T>(method: "GET" | "POST", path: string, body?: unknown): Promise<T> {
+async function request<T>(method: Method, path: string, body?: unknown): Promise<T> {
   let r = await send(method, path, body);
   if (r.status === 401) {
     const error = await errorOf(r);
@@ -124,4 +126,9 @@ export function get<T>(path: string): Promise<T> {
 /** An unsafe request with the in-memory CSRF token. */
 export function post<T>(path: string, body: unknown): Promise<T> {
   return request<T>("POST", path, body);
+}
+
+/** A partial update with the in-memory CSRF token; only the fields in `body` change. */
+export function patch<T>(path: string, body: unknown): Promise<T> {
+  return request<T>("PATCH", path, body);
 }

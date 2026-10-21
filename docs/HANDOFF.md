@@ -488,7 +488,13 @@ Open for slice 10 (2026-10-21):
   request #42 (run 39562347176) and passed there and on `main` (run 39562889995).
   Locally the browser lives in `D:\QMS-OS-TEMP\ms-playwright` (`PLAYWRIGHT_BROWSERS_PATH`); the tests need
   `QMS_E2E_PYTHON` naming the virtual environment's Python and a fresh `pnpm run build`.
-- Slice 10c: scope in `docs/ROADMAP.md`, *Slice 10 steps*.
+- Slice 10c (2026-10-21, local results, branch `feat/mvp1-admin-ui-org`): Departments and People screens behind an
+  "Organisation" menu shown only with the org-admin hint; every action calls the existing org routes and is followed
+  by a fresh load; errors read "Error <status>: <detail>", 403 and 404 as "Not available." (R-72). Python suite 587
+  passed, 2 skipped; PostgreSQL full suite 618 passed; 48 component tests; 5 browser tests; `tests/test_org_ui_refusals.py` calls each of the ten
+  actions directly: no permission 403, stale step-up 401 `step_up_required`, no session 401, missing or wrong
+  `X-QMS-CSRF` 403 on a real cookie session, own record 403, unknown record 404, forbidden deactivation 422; no audit
+  event is written by any refusal. No new route or dependency.
 - Grant-governed workflow reads (R-64; ADR 0007, *Consequences*: open with the list routes
   `GET /api/v1/workflow/proposals` and `GET /api/v1/workflow/versions?status=`): to be decided in a new ADR 0008,
   not yet drafted.

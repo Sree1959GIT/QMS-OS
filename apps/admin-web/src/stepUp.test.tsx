@@ -81,14 +81,15 @@ describe("the step-up retry (api.ts)", () => {
 describe("the step-up dialog (App)", () => {
   it("opens on step_up_required, sends the code once, retries once and keeps nothing", async () => {
     const f = route({ "/api/v1/auth/session": [{ status: 200, body: SESSION }],
-      [DEPARTMENTS]: [STEP_UP_REQUIRED, { status: 200, body: [{ id: 1, code: "QA", name: "Quality", active: true }] }],
+      [DEPARTMENTS]: [STEP_UP_REQUIRED, { status: 200, body: [{ id: 1, code: "QA", name: "Quality", head_user_id: null,
+        active: true, classification: "internal" }] }],
       "/api/v1/auth/step-up": [{ status: 200, body: { step_up_fresh: true } }] });
     render(<App />);
-    fireEvent.click(await screen.findByRole("button", { name: "Show departments" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Departments" }));
     const dialog = await screen.findByRole("dialog");
     fireEvent.change(screen.getByLabelText("Authenticator code"), { target: { value: "654321" } });
     fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
-    expect(await screen.findByText("QA Quality")).toBeTruthy();
+    expect(await screen.findByRole("cell", { name: "Quality" })).toBeTruthy();
     expect(dialog.isConnected).toBe(false);
     expect(f.count(DEPARTMENTS)).toBe(2);
     const sent = f.calls.filter((c) => c.path === "/api/v1/auth/step-up");
@@ -105,17 +106,17 @@ describe("the step-up dialog (App)", () => {
       "/api/v1/auth/step-up": [{ status: 401, body: { detail: "the sign-in details were not accepted",
         reason: "invalid_credentials" } }] });
     render(<App />);
-    fireEvent.click(await screen.findByRole("button", { name: "Show departments" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Departments" }));
     await screen.findByRole("dialog");
     const input = screen.getByLabelText("Authenticator code") as HTMLInputElement;
     fireEvent.change(input, { target: { value: "000000" } });
     fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
-    expect(await screen.findByText("the sign-in details were not accepted")).toBeTruthy();
+    expect(await screen.findByText("Error 401: the sign-in details were not accepted")).toBeTruthy();
     expect(input.value).toBe("");
     expect(input.autocomplete).toBe("off");
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    expect(await screen.findByText("confirm with a current authenticator code to continue")).toBeTruthy();
+    expect(await screen.findByText("Error 401: confirm with a current authenticator code to continue")).toBeTruthy();
     expect(f.count(DEPARTMENTS)).toBe(1);
   });
 });
@@ -147,7 +148,7 @@ describe("sign-in and sign-out", () => {
     fireEvent.change(password, { target: { value: "a long synthetic password" } });
     fireEvent.change(code, { target: { value: "123456" } });
     fireEvent.submit(form);
-    expect(await screen.findByText("the sign-in details were not accepted")).toBeTruthy();
+    expect(await screen.findByText("Error 401: the sign-in details were not accepted")).toBeTruthy();
     expect(password.value).toBe("");
     expect(code.value).toBe("");
   });

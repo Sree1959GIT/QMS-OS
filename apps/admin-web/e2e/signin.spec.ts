@@ -49,22 +49,24 @@ test("sign in, restore the session, step up once, sign out", async ({ page, cont
   await expect(page.getByText(/^Signed in as E2E Admin /)).toBeVisible();
 
   // within the step-up window an org route needs no dialog
-  await page.getByRole("button", { name: "Show departments" }).click();
-  await expect(page.getByRole("listitem").first()).toBeVisible();
+  await page.getByRole("navigation", { name: "Organisation" }).getByRole("button", { name: "Departments" }).click();
+  const departments = page.getByRole("region", { name: "Departments" });
+  await expect(departments.getByRole("row").nth(1)).toBeVisible();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   expect(departmentCalls).toHaveLength(1);
 
   // after the window has lapsed (and a new TOTP step has begun) the server asks for a step-up: one dialog, one retry
   await page.waitForTimeout(Math.max(0, signedInAt + STEP_UP_WINDOW_MS + 2_000 - Date.now()));
   expect(totpStep()).toBeGreaterThan(signInStep);
-  await page.getByRole("button", { name: "Show departments" }).click();
+  await departments.getByRole("button", { name: "Refresh" }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
   expect(departmentCalls).toHaveLength(2);
   await dialog.getByLabel("Authenticator code").fill(await totp(account.totp_secret));
   await dialog.getByRole("button", { name: "Confirm" }).click();
   await expect(dialog).toHaveCount(0);
-  await expect(page.getByRole("listitem").first()).toBeVisible();
+  await expect(departments.getByRole("row").nth(1)).toBeVisible();
+  await expect(page.getByRole("alert")).toHaveCount(0);
   expect(departmentCalls).toHaveLength(3);
 
   // sign out: the cookie is gone and a reload stays signed out

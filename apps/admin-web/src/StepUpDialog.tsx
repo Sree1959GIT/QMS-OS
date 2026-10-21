@@ -4,6 +4,7 @@
 import { type FormEvent, useState } from "react";
 
 import { type ApiError, stepUp } from "./api";
+import { ErrorMessage } from "./ui";
 
 export function StepUpDialog({ onDone }: { onDone: (confirmed: boolean) => void }) {
   const [code, setCode] = useState("");
@@ -37,7 +38,7 @@ export function StepUpDialog({ onDone }: { onDone: (confirmed: boolean) => void 
         </label>
         <button type="submit" disabled={busy}>Confirm</button>
         <button type="button" onClick={() => { setCode(""); onDone(false); }}>Cancel</button>
-        {error && <p role="alert">{error.detail}</p>}
+        <ErrorMessage error={error} />
       </form>
     </div>
   );
