@@ -12,7 +12,10 @@
   ("MVP-1 PR 5 (draft): admin web UI - ..."); `main` is not rewritten for it. The branch's five commits `2b05481`
   (10a-1), `d79a00e` (10a-2), `77fc4fe` (licence-check pattern, R-73), `bc9c83a` (vite 8.3.3) and `ec414e1`
   (handoff refresh) exist only on the deleted branch (and in pull request #41's history on GitHub), not on `main`.
-  Work in progress: branch `feat/mvp1-admin-ui-signin` from `efaeec1` (slice 10b preparation; local, not pushed).
+  Work in progress: branch `feat/mvp1-admin-ui-signin` from `efaeec1`, slice 10b (no pull request yet): `f6d606f`
+  (handoff and stale text), `f251734` (10b and 10c scope in ROADMAP), `6186328` (test-only bootstrap, backend),
+  `138f23a` (Playwright 1.63.0, browser smoke test, CI job `e2e`), then the commit with the sign-in, step-up and
+  sign-out screens and the sign-in browser test.
   Re-verify branch, HEAD and working tree with Git at session start; this file may be stale.
 - Stage: MVP-0 declared met (R-29), by the Admin on 2026-10-13, on the narrow reading of the exit (R-28). Of the
   eight items in the ROADMAP's MVP-0 table, five are done (Git scaffold, CI and protected `main`; synthetic fixtures;
@@ -23,7 +26,7 @@
   (R-37; *MVP-1 plan* in `docs/ROADMAP.md`); pull request 1 (slice 1) merged as `ded0fe8`; pull request 2 (the
   `/api/v1` move, slices 2 and 3, the first three skills) merged as `6aa5246`; pull request 3 (slices 4 and 5)
   merged as `caabb11`; pull request 4 (slices 6 to 9, R-55) merged as `6c74d60` (pull request #40); pull request 5
-  (slice 10a) merged as `efaeec1` (pull request #41); slice 10b in preparation on `feat/mvp1-admin-ui-signin`.
+  (slice 10a) merged as `efaeec1` (pull request #41); slice 10b implemented on `feat/mvp1-admin-ui-signin`.
 - Mode: synthetic only. No live connectors, staff accounts or model credentials are configured in this repository,
   and none has been verified; do not claim they are configured.
 
@@ -474,8 +477,14 @@ made.
 Open for slice 10 (2026-10-21):
 
 - The Admin decides when `frontend` becomes a required check (R-13, R-71); it is green on `main` at `efaeec1`.
-- Slices 10b and 10c: scope in `docs/ROADMAP.md`, *Slice 10 steps*; the browser test tool for 10b awaits the
-  Admin's approval.
+- Slice 10b (2026-10-21, local results): Python suite 568 passed, 2 skipped; PostgreSQL full suite 599 passed (at
+  `6186328`); 34 component tests; 3 browser tests in Chromium 153 (smoke under the CSP; sign-in, reload, step-up
+  with one retry, sign-out); lint, type check, build, bundle check, licence check (221 packages, 0 refused) and
+  audit clean. Bootstrap guard mutations M-10b-1 and M-10b-2 caught (`apps/api/tests/test_test_bootstrap.py`).
+  CI runs only on pull requests and pushes to `main` (and by manual dispatch), so the `e2e` job has not run yet.
+  Locally the browser lives in `D:\QMS-OS-TEMP\ms-playwright` (`PLAYWRIGHT_BROWSERS_PATH`); the tests need
+  `QMS_E2E_PYTHON` naming the virtual environment's Python and a fresh `pnpm run build`.
+- Slice 10c: scope in `docs/ROADMAP.md`, *Slice 10 steps*.
 - Grant-governed workflow reads (R-64; ADR 0007, *Consequences*: open with the list routes
   `GET /api/v1/workflow/proposals` and `GET /api/v1/workflow/versions?status=`): to be decided in a new ADR 0008,
   not yet drafted.

@@ -135,7 +135,8 @@ slice in a bundle; each slice's tests pass at its own commit. No dates. Status: 
 (pull request #39); pull request 4 (slices 6 to 9, the `inspect-workflow-completeness` skill; R-55) merged as
 `6c74d60` (pull request #40); pull request 5 (slice 10a: ADR 0007, the session CSRF token and headers, the
 `apps/admin-web` scaffold and the `frontend` CI job; R-65 to R-73) merged as `efaeec1` (pull request #41); slice 10b
-in preparation on branch `feat/mvp1-admin-ui-signin` (*Slice 10 steps* below); the others not started.
+implemented on branch `feat/mvp1-admin-ui-signin`, no pull request yet (*Slice 10 steps* below); the others not
+started.
 
 | Pull request | Slice | Goal | Exit criterion (testable) |
 |---|---|---|---|

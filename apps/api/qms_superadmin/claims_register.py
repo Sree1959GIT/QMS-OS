@@ -376,6 +376,10 @@ def build(docs_dir: Path) -> tuple[list[str], dict[str, int]]:
         "The Linux runner no longer installs the musl platform builds since the lockfile records `libc`", N,
         "expected from pnpm's `libc` handling; shown by the `e2e` job's log, which needs a GitHub sign-in (not read)",
         "MVP-1 (admin web UI, slice 10)")
+    add(refs(("U", "- Chromium 153 keeps the session cookie the API sets over plain `http://127.0.0.1`")),
+        "Chromium keeps and sends the Secure session cookie set over plain http://127.0.0.1", V,
+        "browser test `apps/admin-web/e2e/signin.spec.ts`, local run 2026-10-21 (Windows 11, Chromium 153); Chromium "
+        "only, loopback only", "MVP-1 (admin web UI, slice 10b)")
 
     # ---- output ----
     lines = [
