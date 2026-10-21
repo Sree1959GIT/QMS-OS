@@ -18,6 +18,7 @@ from .api import (
     org_routes,
     provider_routes,
     routes,
+    test_bootstrap_routes,
     workflow_routes,
 )
 from .auth.keys import KEY_ENV, SecretBox, load_key_file
@@ -117,6 +118,9 @@ def create_app(engine=None, today: Callable[[], date] = date.today, mode: str | 
     app.include_router(org_routes.router)
     app.include_router(evidence_routes.router)
     app.include_router(workflow_routes.router)
+    if policy_ctx.mode is Mode.TEST:
+        # ADR 0007, R-71: the browser tests' bootstrap exists in test mode only; demo and operational answer 404
+        app.include_router(test_bootstrap_routes.router)
 
     # R-66: the built admin web UI on the same origin, mounted after every API route. It is a static mount, not a
     # catch-all route: an unknown /api/v1 path still answers 404 (never the UI's index.html), and the UI's deep links

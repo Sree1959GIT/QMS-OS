@@ -18,7 +18,8 @@ LEVELS = {
     deps.org_admin: "human+step-up",
 }
 PUBLIC = {"/api/v1/health", "/api/v1/auth/login", "/api/v1/auth/login/recovery", "/api/v1/auth/setup",
-          "/api/v1/auth/setup/confirm"}
+          "/api/v1/auth/setup/confirm",
+          "/api/v1/test/bootstrap"}     # test mode only (the route walk uses test mode; tests/test_test_bootstrap.py)
 API_PREFIX = "/api/v1/"   # R-35: the application API lives under /api/v1 (docs/SPECIFICATION.md line 113)
 # approving, rejecting, accepting, verifying, closing or deciding something needs a fresh TOTP
 STEP_UP_SEGMENTS = {"approve", "reject", "accept", "verify", "acknowledge", "ma-review", "signoff", "close", "decide"}
