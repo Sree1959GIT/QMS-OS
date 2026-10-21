@@ -275,6 +275,19 @@ def revoke_role_grant(s: Session, actor: User, grant_id: int) -> RoleGrant:
     return g
 
 
+def project_row(s: Session, p: Project) -> dict:
+    members = select(ProjectMember.user_id).where(ProjectMember.project_id == p.id, ProjectMember.removed_at.is_(None))
+    return {"id": p.id, "code": p.code, "name": p.name, "department_id": p.department_id,
+            "manager_user_id": p.manager_user_id, "classification": p.classification,
+            "members": sorted(s.scalars(members))}
+
+
+def list_projects(s: Session) -> list[dict]:
+    """Every project with its current members, for the membership screen (slice 10d); read-only, so no audit event,
+    as for the department and people lists."""
+    return [project_row(s, p) for p in s.scalars(select(Project).order_by(Project.id))]
+
+
 def add_project_member(s: Session, actor: User, project_id: int, user_id) -> ProjectMember:
     project = get_or_404(s, Project, project_id)
     person = s.get(User, user_id) if isinstance(user_id, int) else None

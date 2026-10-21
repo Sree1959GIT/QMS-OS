@@ -5,8 +5,12 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { type ApiError, loadSession, type SessionInfo, setStepUpHandler, signOut } from "./api";
+import { Access } from "./Access";
+import { Agents } from "./Agents";
 import { Departments } from "./Departments";
+import { Grants } from "./Grants";
 import { People } from "./People";
+import { Projects } from "./Projects";
 import { SignIn } from "./SignIn";
 import { StepUpDialog } from "./StepUpDialog";
 import { ErrorMessage } from "./ui";
@@ -14,7 +18,14 @@ import { ErrorMessage } from "./ui";
 type State = { kind: "loading" } | { kind: "signed-out" } | { kind: "signed-in"; session: SessionInfo }
   | { kind: "error"; error: ApiError };
 
-const SCREENS = { departments: { title: "Departments", view: Departments }, people: { title: "People", view: People } };
+const SCREENS = {
+  departments: { title: "Departments", view: Departments },
+  people: { title: "People", view: People },
+  grants: { title: "Role grants", view: Grants },
+  projects: { title: "Projects", view: Projects },
+  access: { title: "Access preview", view: Access },
+  agents: { title: "Agents", view: Agents },
+};
 type Screen = keyof typeof SCREENS;
 
 export function App() {

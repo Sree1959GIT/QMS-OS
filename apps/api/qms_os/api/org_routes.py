@@ -143,6 +143,13 @@ def revoke_role_grant(grant_id: int, u: User = Depends(org_admin), s: Session = 
     return O.role_grant_row(O.revoke_role_grant(s, u, grant_id))
 
 
+@router.get("/projects")
+def projects(u: User = Depends(org_admin), s: Session = Depends(get_session)):
+    """The org-level project list with current members (MVP-1 slice 10d); org admin with a fresh step-up, as every
+    route here."""
+    return O.list_projects(s)
+
+
 @router.post("/projects/{project_id}/members")
 def add_project_member(project_id: int, body: MemberIn, u: User = Depends(org_admin),
                        s: Session = Depends(get_session)):

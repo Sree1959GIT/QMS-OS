@@ -495,6 +495,14 @@ Open for slice 10 (2026-10-21):
   actions directly: no permission 403, stale step-up 401 `step_up_required`, no session 401, missing or wrong
   `X-QMS-CSRF` 403 on a real cookie session, own record 403, unknown record 404, forbidden deactivation 422; no audit
   event is written by any refusal. No new route or dependency.
+- Slice 10d (2026-10-21, local results, same branch): Role grants, Projects, Access preview and Agents screens; new
+  route `GET /api/v1/org/projects` (org admin with a fresh step-up; every project with its current members; no audit
+  event for the read), added to the org route set (`tests/test_org_admin.py`). The agent preview loads the agent's
+  and its person's previews in one step and shows per kind "Agent only" counts and "Never wider than its person", or
+  an alert if any count is not zero (D11). Python suite 607 passed, 2 skipped; PostgreSQL full suite 638 passed;
+  63 component tests; 7 browser tests; the twelve 10d actions get the same direct-API refusals as 10c (plus agent
+  principals 403); mutation M-10d-1 (the project list guarded by `current_user` instead of `org_admin`) is caught by
+  1 test. No new dependency.
 - Grant-governed workflow reads (R-64; ADR 0007, *Consequences*: open with the list routes
   `GET /api/v1/workflow/proposals` and `GET /api/v1/workflow/versions?status=`): to be decided in a new ADR 0008,
   not yet drafted.

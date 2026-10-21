@@ -6,6 +6,8 @@ import type { ApiError } from "./api";
 
 export const ROLES = ["MA", "AUDITOR", "AUDITEE", "MD", "VIEWER"];
 export const LEVELS = ["public", "internal", "confidential"];
+export const KINDS = ["department", "person", "project"];
+export const SCOPES = ["all", "member"];
 
 export function ErrorMessage({ error }: { error: ApiError | null }) {
   return error ? <p role="alert">Error {error.status}: {error.detail}</p> : null;
