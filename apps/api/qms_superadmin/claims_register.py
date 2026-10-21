@@ -332,6 +332,8 @@ def build(docs_dir: Path) -> tuple[list[str], dict[str, int]]:
     # ---- added with the admin web UI (MVP-1 slice 10a-2, 2026-10-15); appended so earlier IDs keep their numbers ----
     for c in table_rows("U", "## Admin web UI (`apps/admin-web`", "- Transitive packages", 4):
         pkg, ver, lic = c[0], c[1], c[2]
+        if pkg == "@playwright/test":                 # added in slice 10b; its claim is appended below
+            continue
         read = "2026-10-21" if (pkg, ver) == ("vite", "8.3.3") else "2026-10-15"
         add(at("U", f"| {pkg} | {ver} |"), f"{pkg} {ver} is licensed {lic}", N,
             f"package metadata only (secondary), read {read}; primary source not read",
@@ -347,6 +349,33 @@ def build(docs_dir: Path) -> tuple[list[str], dict[str, int]]:
         "pnpm audit reported no known vulnerabilities in the admin web UI packages", N,
         "registry advisory data, 2026-10-21 (after vite 8.3.3; 8.3.2 had one high and two moderate advisories, "
         "development server only); advisories change over time", "MVP-1 (admin web UI, slice 10)")
+
+    # ---- added with the browser tests (MVP-1 slice 10b, 2026-10-21); appended so earlier IDs keep their numbers ----
+    add(at("U", "| @playwright/test | 1.63.0 |"),
+        "@playwright/test 1.63.0, playwright 1.63.0 and playwright-core 1.63.0 are licensed Apache-2.0", N,
+        "package metadata only (secondary), read 2026-10-21; primary source not read", "MVP-1 (admin web UI, slice 10b)")
+    add(refs(("U", "- Browser for the end-to-end tests (R-70 supply-chain item")),
+        "Playwright 1.63.0 installs Chrome for Testing 153.0.8010.12 (revision 1243)", V,
+        "`browsers.json` in the installed `playwright-core` 1.63.0, read 2026-10-21; the local download created "
+        "`chromium-1243`", "MVP-1 (admin web UI, slice 10b)")
+    add(refs(("U", "verify this download: the lockfile holds hashes")),
+        "Playwright checks the browser archive against a pinned hash", N,
+        "not read in Playwright's source (R-70: the lockfile cannot verify the download)", "MVP-1 (admin web UI, slice 10b)")
+    add(refs(("U", "of the UI or the API. Its licence is not read.")), "The licence of the Chromium build Playwright downloads",
+        N, "not read", "MVP-1 (admin web UI, slice 10b)")
+    add(refs(("U", "(`apps/api/tests/e2e_server.py`). The built UI renders under the API's Content-Security-Policy")),
+        "The built React UI renders under the API's Content-Security-Policy in Chromium with no violation", V,
+        "browser test `apps/admin-web/e2e/smoke.spec.ts`, local run 2026-10-21 (Windows 11, Chromium 153); the "
+        "violation watcher reported an injected inline script in a scratch run; Chromium only, not other browsers",
+        "MVP-1 (admin web UI, slice 10b)")
+    add(refs(("U", "cookie and the `X-QMS-CSRF` header is not tested")),
+        "The Vite development server's proxy passes the session cookie and the `X-QMS-CSRF` header to the API", N,
+        "not tested: the browser tests use the production build on one origin, not the development server (Admin "
+        "decision, 2026-10-21)", "development only (no stage needs it)")
+    add(refs(("U", "- Whether the Linux runner still installs the musl platform builds")),
+        "The Linux runner no longer installs the musl platform builds since the lockfile records `libc`", N,
+        "expected from pnpm's `libc` handling; shown by the `e2e` job's log, which needs a GitHub sign-in (not read)",
+        "MVP-1 (admin web UI, slice 10)")
 
     # ---- output ----
     lines = [
