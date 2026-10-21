@@ -3,7 +3,7 @@ one-time values (link tokens, authenticator set-up secrets, recovery codes) are 
 readable form."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -100,14 +100,29 @@ def setup_confirm(body: SetupConfirmIn, _: None = Depends(public), s: Session = 
 
 # ---------- signed-in person ----------
 
+def _hints(s: Session, user: User) -> dict:
+    """What the UI may show or hide (R-68). Hints only: every action is decided again by the server."""
+    from ..auth.permissions import holds_org_admin
+    from ..workflow.service import is_author
+    return {"org_admin": holds_org_admin(s, user.id), "account_admin": user.platform_role == AS.ACCOUNT_ADMIN,
+            "workflow_author": is_author(s, user)}
+
+
 @router.get("/auth/session")
-def session_info(p: Principal = Depends(current_principal), s: Session = Depends(get_session)):
+def session_info(request: Request, p: Principal = Depends(current_principal), s: Session = Depends(get_session),
+                 ctx: AS.AuthContext = Depends(auth_ctx)):
+    """The signed-in person, the session and, for a cookie session, its CSRF token again (R-67), so the UI can keep
+    the token in memory only and recover it after a reload. The API sends no CORS headers, so a page on another origin
+    cannot read this response; the cookie is SameSite=Strict."""
     cred = s.get(AS.UserCredential, p.user.id)
     out = {"user": user_row(p.user), "kind": p.kind, "channel": p.channel, "step_up_fresh": p.mfa_fresh,
-           "totp_reenrollment_required": bool(cred and cred.must_reenroll_totp)}
+           "totp_reenrollment_required": bool(cred and cred.must_reenroll_totp), "hints": _hints(s, p.user),
+           "csrf_token": None}
     if p.session is not None:
+        csrf = ctx.box.csrf_for(request.cookies.get(SESSION_COOKIE, ""))
         out |= {"method": p.session.method, "idle_expires_at": p.session.idle_expires_at,
-                "absolute_expires_at": p.session.absolute_expires_at}
+                "absolute_expires_at": p.session.absolute_expires_at,
+                "csrf_token": csrf if AS.csrf_ok(p.session, csrf) else None}
     return out
 
 

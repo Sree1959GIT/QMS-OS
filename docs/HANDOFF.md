@@ -6,10 +6,13 @@
 
 - Repository: this repository (`QMS-OS`); confirm the remote with `git remote -v`.
 - Specification: `docs/SPECIFICATION.md`, v3.0 dated 29 September 2026. Verify title and version locally.
-- Baseline recorded here: `main` at `caabb11a11b947d424b505e7d95d7874ebdc7d4e` (2026-10-15; "MVP-1 PR 3: agent
-  profiles, interim evidence store, knowledge-integrity skill (#39)").
-  Work in progress: branch `feat/mvp1-workflow` from `caabb11` (MVP-1 pull request 4: slices 6 to 9, the workflow
-  engine, and the `inspect-workflow-completeness` skill; R-55 to R-64; local, not pushed).
+- Baseline recorded here: `main` at `6c74d607009e61032ced88ddb32e5706c58d1088` (2026-10-15; "MVP-1 PR 4: workflow
+  engine - versions with digest-bound approval, validator, cases, proposal form (#40)"; `git fetch`, 2026-10-21).
+  Work in progress: branch `feat/mvp1-admin-ui` from `6c74d60`, pull request #41 (draft, open; MVP-1 pull request 5,
+  slice 10: admin web UI; R-65 to R-73). Commits: `2b05481` (10a-1: ADR 0007 accepted, session CSRF token and UI
+  hints, security headers), `d79a00e` (10a-2: `apps/admin-web` scaffold, `frontend` CI job, licence and bundle
+  checks), `77fc4fe` (licence check: lightningcss platform builds by a strict pattern, R-73), `bc9c83a` (vite 8.3.3
+  for three dev-server advisories), and the commit that adds this handoff refresh.
   Re-verify branch, HEAD and working tree with Git at session start; this file may be stale.
 - Stage: MVP-0 declared met (R-29), by the Admin on 2026-10-13, on the narrow reading of the exit (R-28). Of the
   eight items in the ROADMAP's MVP-0 table, five are done (Git scaffold, CI and protected `main`; synthetic fixtures;
@@ -19,13 +22,36 @@
   and the accepted gaps are in *MVP-0 exit evidence* in `docs/ROADMAP.md`. MVP-1: planned as bundled pull requests
   (R-37; *MVP-1 plan* in `docs/ROADMAP.md`); pull request 1 (slice 1) merged as `ded0fe8`; pull request 2 (the
   `/api/v1` move, slices 2 and 3, the first three skills) merged as `6aa5246`; pull request 3 (slices 4 and 5)
-  merged as `caabb11`; pull request 4 (slices 6 to 9, R-55) in progress on `feat/mvp1-workflow`.
+  merged as `caabb11`; pull request 4 (slices 6 to 9, R-55) merged as `6c74d60` (pull request #40); pull request 5
+  (slice 10, first part) open as pull request #41 on `feat/mvp1-admin-ui`.
 - Mode: synthetic only. No live connectors, staff accounts or model credentials are configured in this repository,
   and none has been verified; do not claim they are configured.
 
 ## Verified state
 
 Each item says how it was verified.
+
+- **Pull request #41 (2026-10-21):** `origin/feat/mvp1-admin-ui` was at `d79a00e` after `git fetch` on 2026-10-21
+  (nothing pushed by anyone since 2026-10-15). Run 38772304414 on `d79a00e` (GitHub public API, read 2026-10-21):
+  `test`, `test-py311`, `lint`, `types`, `postgres` and `secret-scan` succeeded; `frontend` failed at "Licence
+  check", which refused `lightningcss-linux-x64-musl@1.33.0` (MPL-2.0; the exception named three packages). The
+  steps after it (dependency audit) did not run in CI. Pull request #40's and `main`'s runs on `6c74d60` were not
+  recorded. Locally on 2026-10-21 (Windows 11, Node 24.13.1, pnpm 10.34.6), at `bc9c83a`: lint, type check, 25
+  frontend tests, build, bundle check, licence check (3 production packages and 218 in all, 0 refused) and
+  `pnpm audit --audit-level high` (no known vulnerabilities) passed; `scripts\run-tests.bat` 560 passed, 2 skipped;
+  `scripts\run-lint.bat` ruff, mypy and the image digest check passed; `scripts\run-pg-tests.bat full` 591 passed;
+  `claims-register` check clean; gitleaks 8.30.1 on the staged changes found nothing.
+- **What CI has not proved yet:** the fix commits (`77fc4fe`, `bc9c83a`) have not run in CI before the push of
+  2026-10-21; the frontend job has never passed in CI; the dependency audit has never run in CI; the browser
+  end-to-end job (R-71) does not exist yet; the `frontend` job is not a required check (R-13: after it is green on
+  `main`).
+- **Licence-check limits (R-73):** pnpm reads licences from the installed packages in `node_modules`, and
+  `pnpm-lock.yaml` (lockfile 9.0) records none, so each host checks only the platform builds it installs (Windows
+  x64: the msvc builds; the Linux runner: the gnu builds, and before `bc9c83a` also the musl builds). The 14 rolldown
+  platform builds and `fsevents` not installed on a host are not checked there. Licences are package metadata
+  (secondary), not the licence text; the lightningcss exception is a licence interpretation, not a legal opinion
+  (C-147 flagged). Since `bc9c83a` the lockfile records `libc` for the ten Linux rolldown and lightningcss builds,
+  so a glibc host should skip the musl builds (to be confirmed by the next CI run).
 
 - **Git:** on 2026-10-15 `git pull --ff-only` brought local `main` to `caabb11a11b947d424b505e7d95d7874ebdc7d4e`
   (= `origin/main`), working tree clean; its tree is identical to the tip of `feat/mvp1-agents-store` (`c6c93d4`).
@@ -438,6 +464,24 @@ Each item says how it was verified.
 
 See *MVP-1 plan* in `docs/ROADMAP.md` (bundled pull requests, R-37). No dates or delivery commitments have been
 made.
+
+Open for pull request #41 and slice 10 (2026-10-21):
+
+- CI on the pushed fix commits; the Admin decides when `frontend` becomes a required check (R-13, R-71).
+- Slices 10b and 10c, the next steps of slice 10 (their scope is in the Admin's slice 10 plan; it is not yet written
+  into `docs/ROADMAP.md`).
+- Grant-governed workflow reads (R-64; ADR 0007, *Consequences*: open with the list routes
+  `GET /api/v1/workflow/proposals` and `GET /api/v1/workflow/versions?status=`): to be decided in a new ADR 0008,
+  not yet drafted.
+- Remaining claims: the 16 admin web UI package licences (C-131 to C-146) are package metadata only, not verified
+  against the licence text; C-147 flagged (lightningcss, R-73); C-148 (audit) is dated registry data.
+- Stale text found on 2026-10-21, not yet corrected: the claims register's header says "9 flagged" (and "C-129 and
+  C-130 are among the 9 flagged") while the generated register now counts 10 (C-147 added on 2026-10-15); the same
+  "9 flagged" figure stands in `docs/ROADMAP.md` as of 2026-10-13. `docs/UPSTREAMS.md` (*Admin web UI*) says the
+  packages were checked on 2026-10-15 with pnpm 10.26.1, while the lockfile was regenerated on 2026-10-21 with
+  pnpm 10.34.6 (the `packageManager` pin CI uses). The *MVP-1 plan* status in `docs/ROADMAP.md` still says pull
+  request 4 is in progress on `feat/mvp1-workflow` (merged as `6c74d60`), and the `housekeeping` check reports its
+  *Current baseline* and remaining-slices "as of" lines still at `caabb11`.
 
 ## Binding design decisions
 

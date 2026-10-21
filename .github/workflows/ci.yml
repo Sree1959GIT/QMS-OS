@@ -144,6 +144,56 @@ jobs:
       - name: Type check
         run: python -m mypy --cache-dir "$RUNNER_TEMP/mypy-cache"
 
+  frontend:
+    # The admin web UI (apps/admin-web; docs/adr/0007-admin-web-frontend.md, R-70, R-71): Node pinned, frozen
+    # lockfile, lint, type check, tests, build, a check that nothing secret reaches the bundle, a licence check of every
+    # installed package and a dependency audit. pnpm comes from corepack at the version and hash in package.json.
+    name: frontend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/admin-web
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24.13.1"
+
+      - name: Enable pnpm (version and hash from packageManager)
+        run: |
+          corepack enable
+          pnpm --version
+
+      - name: Install (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Type check
+        run: pnpm run typecheck
+
+      - name: Test
+        run: pnpm run test
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Nothing secret in the bundle
+        run: pnpm run check-bundle
+
+      - name: Licence check
+        run: pnpm run licences
+
+      - name: Dependency audit
+        run: pnpm audit --audit-level high
+
   postgres:
     # The PostgreSQL suite: the equivalent of scripts\run-pg-tests.bat full (whole suite on PostgreSQL, including the
     # migration-drift and concurrency tests). Throw-away service container; no password, no secrets.
@@ -229,6 +279,10 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           "$RUNNER_TEMP/gitleaks" git . --config .gitleaks.toml --redact --no-banner --log-opts="${BASE_SHA}..${HEAD_SHA}"
+
+      - name: Scan the admin web UI files (R-71)
+        run: |
+          "$RUNNER_TEMP/gitleaks" dir apps/admin-web --config .gitleaks.toml --redact --no-banner
 
       - name: Scan the whole history
         if: github.event_name != 'pull_request'

@@ -14,10 +14,12 @@ apps/api/data/
 # Node
 node_modules/
 frontend/dist/
+apps/admin-web/dist/
 
 # Editors / OS
 .vscode/
 .idea/
+.claude/settings.local.json
 Thumbs.db
 .DS_Store
 

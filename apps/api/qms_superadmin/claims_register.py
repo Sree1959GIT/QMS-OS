@@ -329,6 +329,25 @@ def build(docs_dir: Path) -> tuple[list[str], dict[str, int]]:
     add(refs(("U", "BSD-licensed pg8000")), "pg8000 is BSD-licensed", F,
         "no source recorded; pg8000 is not adopted (Admin: keep or remove)", "none")
 
+    # ---- added with the admin web UI (MVP-1 slice 10a-2, 2026-10-15); appended so earlier IDs keep their numbers ----
+    for c in table_rows("U", "## Admin web UI (`apps/admin-web`", "- Transitive packages", 4):
+        pkg, ver, lic = c[0], c[1], c[2]
+        read = "2026-10-21" if (pkg, ver) == ("vite", "8.3.3") else "2026-10-15"
+        add(at("U", f"| {pkg} | {ver} |"), f"{pkg} {ver} is licensed {lic}", N,
+            f"package metadata only (secondary), read {read}; primary source not read",
+            "MVP-1 (admin web UI, slice 10)")
+    add(refs(("U", "- lightningcss 1.33.0 and its platform builds")),
+        "lightningcss 1.33.0 and its platform builds (Vite's CSS tool, build time only) are MPL-2.0, file-level "
+        "copyleft", F,
+        "package metadata only (secondary), read 2026-10-15 (musl build: CI log, 2026-10-21); licence interpretation, "
+        "not a legal opinion; Admin: kept as labelled, build-only exception (R-73), widened to the platform-build "
+        "pattern at the installed version on 2026-10-21; platform builds not installed on a host are not checked "
+        "there", "MVP-1 (admin web UI, slice 10)")
+    add(refs(("U", "- `pnpm audit --audit-level high` reported no known vulnerabilities")),
+        "pnpm audit reported no known vulnerabilities in the admin web UI packages", N,
+        "registry advisory data, 2026-10-21 (after vite 8.3.3; 8.3.2 had one high and two moderate advisories, "
+        "development server only); advisories change over time", "MVP-1 (admin web UI, slice 10)")
+
     # ---- output ----
     lines = [
         "## Claims register (slice 2 labelling pass; added 2026-10-13)",

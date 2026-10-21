@@ -8,7 +8,7 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from .api import (
@@ -46,6 +46,15 @@ def _auth_key(mode: Mode, env: Mapping[str, str], auth_key: bytes | None) -> byt
     raise AuthConfigError(f"{KEY_ENV} must name the authentication key file ({mode} mode)")
 
 
+# R-69 (docs/adr/0007-admin-web-frontend.md): the admin web UI is served from this origin and loads nothing else.
+SECURITY_HEADERS = {
+    "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; "
+                               "connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+    "Referrer-Policy": "no-referrer",
+    "X-Content-Type-Options": "nosniff",
+}
+
+
 def _evidence_store(mode: Mode, env: Mapping[str, str], store):
     if store is not None:
         if mode is Mode.OPERATIONAL:
@@ -80,6 +89,16 @@ def create_app(engine=None, today: Callable[[], date] = date.today, mode: str | 
     app.state.providers = ProviderGateway(default_registry(policy_ctx.mode), app.state.sessionmaker)
     app.state.evidence_store = _evidence_store(policy_ctx.mode, os.environ if env is None else env, evidence_store)
 
+    @app.middleware("http")
+    async def _security_headers(request: Request, call_next):
+        """R-69: on every response, including errors and the single-page app's files. ``no-store`` keeps API
+        responses (records, CSRF tokens) out of every cache."""
+        response = await call_next(request)
+        response.headers.update(SECURITY_HEADERS)
+        if request.url.path.startswith("/api/"):
+            response.headers["Cache-Control"] = "no-store"
+        return response
+
     @app.exception_handler(ServiceError)
     async def _service_error(_: Request, exc: ServiceError):
         return JSONResponse(status_code=exc.status_code, content=exc.body())
@@ -99,13 +118,17 @@ def create_app(engine=None, today: Callable[[], date] = date.today, mode: str | 
     app.include_router(evidence_routes.router)
     app.include_router(workflow_routes.router)
 
-    dist = Path(__file__).resolve().parents[3] / "frontend" / "dist"
+    # R-66: the built admin web UI on the same origin, mounted after every API route. It is a static mount, not a
+    # catch-all route: an unknown /api/v1 path still answers 404 (never the UI's index.html), and the UI's deep links
+    # use the URL fragment, so no server-side fallback is needed.
+    dist = admin_web_dist()
     if dist.is_dir():
-        app.mount("/assets", StaticFiles(directory=dist / "assets"), name="assets")
-
-        @app.get("/{path:path}", include_in_schema=False)
-        def spa(path: str):
-            return FileResponse(dist / "index.html")
+        app.mount("/", StaticFiles(directory=dist, html=True), name="admin-web")
 
     return app
+
+
+def admin_web_dist() -> Path:
+    """Where ``pnpm build`` in apps/admin-web puts the UI (docs/adr/0007-admin-web-frontend.md)."""
+    return Path(__file__).resolve().parents[2] / "admin-web" / "dist"
 # Run with:  uvicorn qms_os.main:create_app --factory
