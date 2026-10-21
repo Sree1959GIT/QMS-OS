@@ -6,13 +6,16 @@
 
 - Repository: this repository (`QMS-OS`); confirm the remote with `git remote -v`.
 - Specification: `docs/SPECIFICATION.md`, v3.0 dated 29 September 2026. Verify title and version locally.
-- Baseline recorded here: `main` at `6c74d607009e61032ced88ddb32e5706c58d1088` (2026-10-15; "MVP-1 PR 4: workflow
-  engine - versions with digest-bound approval, validator, cases, proposal form (#40)"; `git fetch`, 2026-10-21).
-  Work in progress: branch `feat/mvp1-admin-ui` from `6c74d60`, pull request #41 (draft, open; MVP-1 pull request 5,
-  slice 10: admin web UI; R-65 to R-73). Commits: `2b05481` (10a-1: ADR 0007 accepted, session CSRF token and UI
-  hints, security headers), `d79a00e` (10a-2: `apps/admin-web` scaffold, `frontend` CI job, licence and bundle
-  checks), `77fc4fe` (licence check: lightningcss platform builds by a strict pattern, R-73), `bc9c83a` (vite 8.3.3
-  for three dev-server advisories), and the commit that adds this handoff refresh.
+- Baseline recorded here: `main` at `efaeec19dfbee2d5f2007fdd133a6f90294f168e` (2026-10-21; squash merge of pull
+  request #41, MVP-1 pull request 5, slice 10a; `git pull --ff-only`, 2026-10-21). Its tree is identical to `ec414e1`,
+  the last commit of the deleted branch `feat/mvp1-admin-ui` (`git diff` empty). The squash title kept "(draft)"
+  ("MVP-1 PR 5 (draft): admin web UI - ..."); `main` is not rewritten for it. The branch's five commits `2b05481`
+  (10a-1), `d79a00e` (10a-2), `77fc4fe` (licence-check pattern, R-73), `bc9c83a` (vite 8.3.3) and `ec414e1`
+  (handoff refresh) exist only on the deleted branch (and in pull request #41's history on GitHub), not on `main`.
+  Work in progress: branch `feat/mvp1-admin-ui-signin` from `efaeec1`, slice 10b (no pull request yet): `f6d606f`
+  (handoff and stale text), `f251734` (10b and 10c scope in ROADMAP), `6186328` (test-only bootstrap, backend),
+  `138f23a` (Playwright 1.63.0, browser smoke test, CI job `e2e`), then the commit with the sign-in, step-up and
+  sign-out screens and the sign-in browser test.
   Re-verify branch, HEAD and working tree with Git at session start; this file may be stale.
 - Stage: MVP-0 declared met (R-29), by the Admin on 2026-10-13, on the narrow reading of the exit (R-28). Of the
   eight items in the ROADMAP's MVP-0 table, five are done (Git scaffold, CI and protected `main`; synthetic fixtures;
@@ -23,7 +26,7 @@
   (R-37; *MVP-1 plan* in `docs/ROADMAP.md`); pull request 1 (slice 1) merged as `ded0fe8`; pull request 2 (the
   `/api/v1` move, slices 2 and 3, the first three skills) merged as `6aa5246`; pull request 3 (slices 4 and 5)
   merged as `caabb11`; pull request 4 (slices 6 to 9, R-55) merged as `6c74d60` (pull request #40); pull request 5
-  (slice 10, first part) open as pull request #41 on `feat/mvp1-admin-ui`.
+  (slice 10a) merged as `efaeec1` (pull request #41); slice 10b implemented on `feat/mvp1-admin-ui-signin`.
 - Mode: synthetic only. No live connectors, staff accounts or model credentials are configured in this repository,
   and none has been verified; do not claim they are configured.
 
@@ -31,6 +34,12 @@
 
 Each item says how it was verified.
 
+- **Merge of pull request #41 (2026-10-21):** merged at 04:06 UTC as `efaeec1` (GitHub public API: state closed,
+  merged, merge commit `efaeec19dfbee2d5f2007fdd133a6f90294f168e`). `main` run 39542227140 (shown as #87, push at
+  `efaeec1`): all seven jobs succeeded, `postgres` (2m 36s), `test` (1m 41s), `test-py311` (1m 11s), `types` (35s),
+  `frontend` (20s), `lint` (14s) and `secret-scan` (9s) (GitHub public API, read 2026-10-21). Pull request run
+  39539241722 (#86) on `ec414e1`: all seven jobs succeeded (same source). `frontend` is green on `main` and not
+  yet required (R-13, R-71: the Admin decides).
 - **Pull request #41 (2026-10-21):** `origin/feat/mvp1-admin-ui` was at `d79a00e` after `git fetch` on 2026-10-21
   (nothing pushed by anyone since 2026-10-15). Run 38772304414 on `d79a00e` (GitHub public API, read 2026-10-21):
   `test`, `test-py311`, `lint`, `types`, `postgres` and `secret-scan` succeeded; `frontend` failed at "Licence
@@ -41,10 +50,10 @@ Each item says how it was verified.
   `pnpm audit --audit-level high` (no known vulnerabilities) passed; `scripts\run-tests.bat` 560 passed, 2 skipped;
   `scripts\run-lint.bat` ruff, mypy and the image digest check passed; `scripts\run-pg-tests.bat full` 591 passed;
   `claims-register` check clean; gitleaks 8.30.1 on the staged changes found nothing.
-- **What CI has not proved yet:** the fix commits (`77fc4fe`, `bc9c83a`) have not run in CI before the push of
-  2026-10-21; the frontend job has never passed in CI; the dependency audit has never run in CI; the browser
-  end-to-end job (R-71) does not exist yet; the `frontend` job is not a required check (R-13: after it is green on
-  `main`).
+- **What CI has not proved yet:** the `frontend` job (with the licence check and the dependency audit) passed on
+  pull request #41 (run #86) and on `main` (run #87); not proved: anything in a browser (the browser end-to-end job,
+  R-71, does not exist yet), and that the Linux runner now skips the musl builds (the job logs need a GitHub
+  sign-in and were not read).
 - **Licence-check limits (R-73):** pnpm reads licences from the installed packages in `node_modules`, and
   `pnpm-lock.yaml` (lockfile 9.0) records none, so each host checks only the platform builds it installs (Windows
   x64: the msvc builds; the Linux runner: the gnu builds, and before `bc9c83a` also the musl builds). The 14 rolldown
@@ -465,23 +474,28 @@ Each item says how it was verified.
 See *MVP-1 plan* in `docs/ROADMAP.md` (bundled pull requests, R-37). No dates or delivery commitments have been
 made.
 
-Open for pull request #41 and slice 10 (2026-10-21):
+Open for slice 10 (2026-10-21):
 
-- CI on the pushed fix commits; the Admin decides when `frontend` becomes a required check (R-13, R-71).
-- Slices 10b and 10c, the next steps of slice 10 (their scope is in the Admin's slice 10 plan; it is not yet written
-  into `docs/ROADMAP.md`).
+- The Admin decides when `frontend` becomes a required check (R-13, R-71); it is green on `main` at `efaeec1`.
+- Slice 10b (2026-10-21, local results): Python suite 568 passed, 2 skipped; PostgreSQL full suite 599 passed (at
+  `6186328`); 34 component tests; 3 browser tests in Chromium 153 (smoke under the CSP; sign-in, reload, step-up
+  with one retry, sign-out); lint, type check, build, bundle check, licence check (221 packages, 0 refused) and
+  audit clean. Bootstrap guard mutations M-10b-1 and M-10b-2 caught (`apps/api/tests/test_test_bootstrap.py`).
+  CI runs only on pull requests and pushes to `main` (and by manual dispatch), so the `e2e` job has not run yet.
+  Locally the browser lives in `D:\QMS-OS-TEMP\ms-playwright` (`PLAYWRIGHT_BROWSERS_PATH`); the tests need
+  `QMS_E2E_PYTHON` naming the virtual environment's Python and a fresh `pnpm run build`.
+- Slice 10c: scope in `docs/ROADMAP.md`, *Slice 10 steps*.
 - Grant-governed workflow reads (R-64; ADR 0007, *Consequences*: open with the list routes
   `GET /api/v1/workflow/proposals` and `GET /api/v1/workflow/versions?status=`): to be decided in a new ADR 0008,
   not yet drafted.
 - Remaining claims: the 16 admin web UI package licences (C-131 to C-146) are package metadata only, not verified
   against the licence text; C-147 flagged (lightningcss, R-73); C-148 (audit) is dated registry data.
-- Stale text found on 2026-10-21, not yet corrected: the claims register's header says "9 flagged" (and "C-129 and
-  C-130 are among the 9 flagged") while the generated register now counts 10 (C-147 added on 2026-10-15); the same
-  "9 flagged" figure stands in `docs/ROADMAP.md` as of 2026-10-13. `docs/UPSTREAMS.md` (*Admin web UI*) says the
-  packages were checked on 2026-10-15 with pnpm 10.26.1, while the lockfile was regenerated on 2026-10-21 with
-  pnpm 10.34.6 (the `packageManager` pin CI uses). The *MVP-1 plan* status in `docs/ROADMAP.md` still says pull
-  request 4 is in progress on `feat/mvp1-workflow` (merged as `6c74d60`), and the `housekeeping` check reports its
-  *Current baseline* and remaining-slices "as of" lines still at `caabb11`.
+- Stale text found on 2026-10-21 and corrected on `feat/mvp1-admin-ui-signin`: the claims register's header now
+  says 10 flagged (9 kept as labelled on 2026-10-13, C-147 on 2026-10-15); the pnpm note in `docs/UPSTREAMS.md`
+  (*Admin web UI*) records the 2026-10-21 re-run with pnpm 10.34.6; `docs/ROADMAP.md` *Current baseline*, the
+  MVP-0 "as of" line and the *MVP-1 plan* status now name `efaeec1` and pull requests #40 and #41. The "9 flagged"
+  figures in the MVP-0 exit evidence of `docs/ROADMAP.md` and in this file's *Stage* line are dated 2026-10-13 and
+  were right then; they are left as they are.
 
 ## Binding design decisions
 

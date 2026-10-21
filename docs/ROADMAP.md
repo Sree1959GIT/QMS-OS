@@ -12,12 +12,14 @@
 
 ## Current baseline
 
-A synthetic-data backend prototype on `main` at `caabb11` (pull request #39, MVP-1 pull request 3, on top of
-`6aa5246`): `440 passed, 2 skipped` on SQLite (`scripts\run-tests.bat`) and `469 passed` on PostgreSQL
-(`scripts\run-pg-tests.bat full`), local runs on 2026-10-15 at `c6c93d4`, whose tree is identical to `caabb11`
-(Windows, Python 3.12.7); CI on GitHub Actions with six jobs (`test`, `test-py311`, `lint`, `types`, `postgres`,
-`secret-scan`), all required on a protected `main` branch (R-13), all passed on `main` at `caabb11` (run
-38681512256, as shown in the Admin's screenshot). MVP-0: declared met (R-29). MVP-1: in progress (*MVP-1 plan*
+A synthetic-data backend prototype on `main` at `efaeec1`, with the admin web UI scaffold (pull request #41, MVP-1
+pull request 5, slice 10a, on top of `6c74d60`): `560 passed, 2 skipped` on SQLite (`scripts\run-tests.bat`),
+`591 passed` on PostgreSQL (`scripts\run-pg-tests.bat full`) and 25 frontend tests, local runs on 2026-10-21 at
+`bc9c83a`, whose code is identical to `efaeec1` (later commits changed documents only; Windows, Python 3.12.7, Node
+24.13.1); CI on GitHub Actions with seven jobs (`test`, `test-py311`, `lint`, `types`, `postgres`, `secret-scan`,
+`frontend`), the first six required on a protected `main` branch (R-13; `frontend` becomes required when the Admin
+decides, R-71), all passed on `main` at `efaeec1` (run 39542227140, shown as #87, read from the GitHub public API on
+2026-10-21). MVP-0: declared met (R-29). MVP-1: in progress (*MVP-1 plan*
 below). See *Verified state* and *Not verified* in `docs/HANDOFF.md`.
 
 ## MVP-0
@@ -63,7 +65,7 @@ no unverified feature claim.
    required status checks, with the up-to-date rule on (R-13, Admin, 2026-10-07). No formatter is enforced (Admin
    decision, 2026-10-07).
 
-### Remaining before the MVP-0 exit (as of `caabb11`)
+### Remaining before the MVP-0 exit (as of `efaeec1`)
 
 The exit is read as written in the specification (R-28): one safe fixture startup and no unverified feature claim.
 No slices remain for the exit: MVP-0 is declared met (R-29). Slice 6 (the review) is done (pull request #35,
@@ -130,8 +132,11 @@ plan is R-37 as amended by R-55. One commit per
 slice in a bundle; each slice's tests pass at its own commit. No dates. Status: pull request 1 (slice 1) merged as
 `ded0fe8` (pull request #37); pull request 2 (the `/api/v1` move, slices 2 and 3, the first three skills) merged as
 `6aa5246` (pull request #38); pull request 3 (slices 4 and 5, the `knowledge-integrity` skill) merged as `caabb11`
-(pull request #39); pull request 4 (slices 6 to 9, the `inspect-workflow-completeness` skill; R-55) in progress on
-branch `feat/mvp1-workflow`; the others not started.
+(pull request #39); pull request 4 (slices 6 to 9, the `inspect-workflow-completeness` skill; R-55) merged as
+`6c74d60` (pull request #40); pull request 5 (slice 10a: ADR 0007, the session CSRF token and headers, the
+`apps/admin-web` scaffold and the `frontend` CI job; R-65 to R-73) merged as `efaeec1` (pull request #41); slice 10b
+implemented on branch `feat/mvp1-admin-ui-signin`, no pull request yet (*Slice 10 steps* below); the others not
+started.
 
 | Pull request | Slice | Goal | Exit criterion (testable) |
 |---|---|---|---|
@@ -187,6 +192,19 @@ Slice notes (decisions recorded with their slice, not as R-rows):
   development step in a reviewed pull request (`python -m qms_superadmin claims-register --print`), never a skill.
   Skill scripts: `scripts\run-superadmin.bat` with `housekeeping`, `review-org`, `access-segregation`,
   `knowledge-integrity` or `inspect-workflow-completeness` (R-46).
+
+### Slice 10 steps (scope decided by the Admin, 2026-10-21)
+
+Slice 10 (the admin web UI; `docs/adr/0007-admin-web-frontend.md`, R-65 to R-73) is built in steps, one commit or a
+few per step, each with its tests passing at its own commit. The server decides every action (R-68); each screen
+only calls existing `/api/v1` routes unless a step says otherwise.
+
+| Step | Scope | Exit criterion (testable) |
+|---|---|---|
+| 10a (done) | ADR 0007; session CSRF token derived from the session and returned by `GET /api/v1/auth/session`, UI hints, browser security headers (10a-1); `apps/admin-web` scaffold, `frontend` CI job, licence and bundle checks (10a-2) | Merged as `efaeec1` (pull request #41); CI run #87 green on `main` |
+| 10b | Sign-in: email, password and TOTP code (`POST /api/v1/auth/login`; R-3, R-67). Session restore on page load with `GET /api/v1/auth/session` (the CSRF token kept in memory only, never in web storage). Step-up dialog: a 401 `step_up_required` opens a TOTP dialog (`POST /api/v1/auth/step-up`) and the original request is retried once; nothing is cached (no code, no "remember"). Sign-out (`POST /api/v1/auth/logout`), which forgets the in-memory token. Generic error display (R-72): status and the server's `detail` only; 403 and 404 shown alike. A browser end-to-end test of sign-in, session restore, step-up and sign-out, signing in through a **test-only bootstrap** route that creates a synthetic account with a known authenticator secret; the route is registered only in `test` mode; tests show it is absent (404) in `demo` and `operational` mode, and a mutation demonstration removes the mode guard and shows those tests fail. The browser end-to-end CI job (R-71) | The browser test signs in, reloads and stays signed in, passes a step-up and retries once, signs out; no web storage is written; the bootstrap is absent outside `test` mode and the mutation is caught; component tests cover the retry-once and no-cache rules; all existing suites pass |
+| 10c | Departments and people screens: list, create, update, deactivate and reactivate (`/api/v1/org/departments`, `/api/v1/org/people`; slice 2 rules D4, D14), with the step-up on every `/api/v1/org/` route (R-41). Direct-API refusal tests for every action the screens offer, without the UI (R-68): a signed-in non-org-admin gets 403; no fresh step-up gets 401 `step_up_required`; a missing or wrong `X-QMS-CSRF` is refused; an org admin changing their own person record is refused; deactivation that slice 2 forbids is refused; a hidden record gives 404 (R-44) | Each screen performs its flow against the synthetic fixture in the browser test; each refusal is proven by a direct API test; all existing suites pass |
+| Later | Role and grant preview, agent enablement, proposal form, validator results and baseline approval screens; not scoped yet. The workflow list routes (ADR 0007, *Consequences*: steps 10e and 10f) wait for the decision on grant-governed workflow reads (R-64), to be drafted as ADR 0008 | — |
 
 ### Super admin skills and documentation (approved (Admin, 2026-10-14))
 
