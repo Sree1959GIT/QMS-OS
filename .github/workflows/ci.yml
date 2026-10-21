@@ -170,8 +170,8 @@ jobs:
           corepack enable
           pnpm --version
 
-      - name: Install (frozen lockfile)
-        run: pnpm install --frozen-lockfile
+      - name: Install (frozen lockfile, no install scripts)
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Lint
         run: pnpm run lint

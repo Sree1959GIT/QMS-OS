@@ -3,6 +3,7 @@
 import { type FormEvent, useState } from "react";
 
 import { type ApiError, signIn } from "./api";
+import { ErrorMessage } from "./ui";
 
 export function SignIn({ onSignedIn }: { onSignedIn: () => void }) {
   const [email, setEmail] = useState("");
@@ -46,7 +47,7 @@ export function SignIn({ onSignedIn }: { onSignedIn: () => void }) {
           onChange={(e) => setCode(e.target.value)} />
       </label>
       <button type="submit" disabled={busy}>Sign in</button>
-      {error && <p role="alert">{error.detail}</p>}
+      <ErrorMessage error={error} />
     </form>
   );
 }

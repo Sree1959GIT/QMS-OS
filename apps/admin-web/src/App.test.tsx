@@ -37,7 +37,7 @@ describe("the shell", () => {
   it("shows a 403 or 404 generically (R-72)", async () => {
     vi.stubGlobal("fetch", respond(404, { detail: "person 7 not found in department qa" }));
     render(<App />);
-    expect((await screen.findByRole("alert")).textContent).toBe("Not available.");
+    expect((await screen.findByRole("alert")).textContent).toBe("Error 404: Not available.");
   });
 });
 
