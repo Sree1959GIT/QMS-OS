@@ -5,8 +5,9 @@ import { totp } from "./totp";
 
 export type Account = { email: string; password: string; totp_secret: string };
 
-export async function bootstrap(request: APIRequestContext): Promise<Account> {
-  const boot = await request.post("/api/v1/test/bootstrap");
+/** A fresh synthetic org admin; `role` gives it another QMS role than VIEWER (MA: an author and approver, 10f). */
+export async function bootstrap(request: APIRequestContext, role?: string): Promise<Account> {
+  const boot = await request.post("/api/v1/test/bootstrap", role ? { data: { role } } : {});
   expect(boot.status()).toBe(200);
   return (await boot.json()) as Account;
 }

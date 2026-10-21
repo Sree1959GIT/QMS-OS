@@ -1,11 +1,31 @@
 // Helpers for the workflow browser tests (MVP-1 slice steps 10e and 10f). Set-up the screens do not offer (a
 // guideline and a template, another author's changes) goes through the same API from the signed-in browser page, with
 // the session's CSRF token, as the application itself would send it.
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
+
+import type { Account } from "./account";
+import { totp, totpStep } from "./totp";
 
 export const WF = "/api/v1/workflow";
 export const REQUEST = "Plan an internal audit of the Purchasing department within 30 days.";
 export const REFERENCES = ["Synthetic guideline reference SYN-1"];
+
+// Complete under every MVP-1 validator check (as apps/api/tests/workflow_support.py GRAPH)
+export const GRAPH = {
+  target_days: 30,
+  references: REFERENCES,
+  nodes: [
+    { id: "start", type: "start", name: "Start" },
+    { id: "do", type: "task", name: "Do the work", role: "AUDITEE", evidence: ["work record"], sla_days: 5 },
+    { id: "approve", type: "approval", name: "Approve the work", role: "MA", approves: "do",
+      evidence: ["approval record"], sla_days: 2 },
+    { id: "end", type: "end", name: "End" },
+  ],
+  edges: [
+    { from: "start", to: "do" }, { from: "do", to: "approve" },
+    { from: "approve", to: "end", condition: "approve" }, { from: "approve", to: "do", condition: "reject" },
+  ],
+};
 
 export type Reply = { status: number; body: Record<string, unknown> };
 
@@ -40,4 +60,16 @@ export async function template(page: Page, title: string): Promise<number> {
 
 export function openWorkflow(page: Page, title: string) {
   return page.getByRole("navigation", { name: "Workflow" }).getByRole("button", { name: title }).click();
+}
+
+/** Confirms a step-up if the server asked for one (only once the 35-second window has lapsed); then `done` shows. */
+export async function stepUpIfAsked(page: Page, account: Account, signedInAt: number, done: Locator): Promise<void> {
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.or(done)).toBeVisible();
+  if (await dialog.isVisible()) {
+    expect(totpStep()).toBeGreaterThan(totpStep(signedInAt));
+    await dialog.getByLabel("Authenticator code").fill(await totp(account.totp_secret));
+    await dialog.getByRole("button", { name: "Confirm" }).click();
+  }
+  await expect(done).toBeVisible();
 }

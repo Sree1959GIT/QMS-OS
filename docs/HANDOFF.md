@@ -534,7 +534,16 @@ Open for slice 10 (2026-10-21):
   findings with their codes, a draft into a template the person can read (labelled with its guideline's
   classification), the draft's graph edited as JSON, checked again, and submitted; a submission with errors is
   refused by the server (422) and its detail shown. Tests: `apps/admin-web/src/proposals.test.tsx`,
-  `apps/admin-web/e2e/proposals.spec.ts` (the whole flow on the production build, same origin). Open for the Admin: change routes (edit, submit, withdraw, answer, draft, approve, reject, cases) are not
+  `apps/admin-web/e2e/proposals.spec.ts` (the whole flow on the production build, same origin). Slice step 10f
+  (commit E): the *Approval inbox* (proposed versions from `GET /api/v1/workflow/versions?status=proposed`), a review
+  with the full digest, the diff against the same template's baseline and the validator's result; approve sends the
+  shown digest and an effective date (step-up dialog once, one retry); reject with a reason. The test-only bootstrap
+  takes an optional `{"role": ...}` (one of the five QMS roles; default `VIEWER`) inside the same test-mode guards;
+  tests show a request with a role creates nothing outside test mode and an unknown role or extra field is 422;
+  mutation M-10f-1 (both guards removed) caught by 7 tests. Browser test of the exit flow with two synthetic MA accounts in
+  separate contexts: self-approval refused (403, generic); the other approver baselines the digest shown; an edit
+  after baselining 409; a version changed after it was shown 409 (R-59). Tests: `apps/admin-web/src/approvals.test.tsx`,
+  `apps/admin-web/e2e/approvals.spec.ts`, `apps/api/tests/test_test_bootstrap.py`. Open for the Admin: change routes (edit, submit, withdraw, answer, draft, approve, reject, cases) are not
   read-checked, so an author without a grant could receive another person's draft in a change response (ADR 0008,
   *Choices made in implementation*).
 - Remaining claims: the 16 admin web UI package licences (C-131 to C-146) are package metadata only, not verified

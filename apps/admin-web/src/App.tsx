@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 import { type ApiError, loadSession, type SessionInfo, setStepUpHandler, signOut } from "./api";
 import { Access } from "./Access";
 import { Agents } from "./Agents";
+import { Approvals } from "./Approvals";
 import { Departments } from "./Departments";
 import { Grants } from "./Grants";
 import { People } from "./People";
@@ -33,6 +34,7 @@ const SCREENS = {
 // the workflow screens (slice steps 10e and 10f); `author` hides the button from people who are not authors (a hint)
 const WORKFLOW_SCREENS = {
   proposals: { title: "Proposals", view: Proposals, author: true },
+  approvals: { title: "Approval inbox", view: Approvals, author: false },
 };
 type Screen = keyof typeof SCREENS | keyof typeof WORKFLOW_SCREENS;
 const ALL_SCREENS = { ...SCREENS, ...WORKFLOW_SCREENS };
