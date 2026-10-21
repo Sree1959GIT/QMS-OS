@@ -57,6 +57,12 @@ class RoleGrantIn(BaseModel):
     scope: str = Field(default="all", max_length=8)
 
 
+class WorkflowGrantIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    role: str = Field(max_length=16)
+    max_classification: str = Field(max_length=16)
+
+
 class MemberIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     user_id: int
@@ -141,6 +147,21 @@ def add_role_grant(body: RoleGrantIn, u: User = Depends(org_admin), s: Session =
 @router.post("/role-grants/{grant_id}/revoke")
 def revoke_role_grant(grant_id: int, u: User = Depends(org_admin), s: Session = Depends(get_session)):
     return O.role_grant_row(O.revoke_role_grant(s, u, grant_id))
+
+
+@router.get("/workflow-grants")
+def workflow_grants(u: User = Depends(org_admin), s: Session = Depends(get_session)):
+    return O.list_workflow_grants(s)
+
+
+@router.post("/workflow-grants")
+def add_workflow_grant(body: WorkflowGrantIn, u: User = Depends(org_admin), s: Session = Depends(get_session)):
+    return O.workflow_grant_row(O.add_workflow_grant(s, u, body.role, body.max_classification))
+
+
+@router.post("/workflow-grants/{grant_id}/revoke")
+def revoke_workflow_grant(grant_id: int, u: User = Depends(org_admin), s: Session = Depends(get_session)):
+    return O.workflow_grant_row(O.revoke_workflow_grant(s, u, grant_id))
 
 
 @router.get("/projects")

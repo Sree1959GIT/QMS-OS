@@ -16,7 +16,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..auth.service import locked_person
-from ..models import AgentProfile, Department, Project, ProjectMember, RoleGrant, User, UserCredential
+from ..models import AgentProfile, Department, Project, ProjectMember, RoleGrant, User, UserCredential, WorkflowGrant
 from ..rules.findings import Role
 from ..timeutil import utcnow
 from .access import KINDS, LEVELS, SCOPES, active_agents
@@ -272,6 +272,40 @@ def revoke_role_grant(s: Session, actor: User, grant_id: int) -> RoleGrant:
         raise RuleViolation("the grant is already revoked")
     g.revoked_at = utcnow()
     log(s, actor, "org.role_grant.revoked", "role_grant", g.id)
+    return g
+
+
+# ---------- workflow grants (R-74, R-75; ADR 0008) ----------
+# The same rule as role grants: an org admin cannot change the grants of their own QMS role.
+
+def workflow_grant_row(g: WorkflowGrant) -> dict:
+    return {"id": g.id, "role": g.role, "max_classification": g.max_classification, "active": g.revoked_at is None}
+
+
+def list_workflow_grants(s: Session) -> list[dict]:
+    return [workflow_grant_row(g) for g in s.scalars(select(WorkflowGrant).order_by(WorkflowGrant.id))]
+
+
+def add_workflow_grant(s: Session, actor: User, role, max_classification) -> WorkflowGrant:
+    role_v = _role(role)
+    if role_v == actor.role:
+        raise Forbidden("an org admin cannot change the grants of their own QMS role")
+    g = WorkflowGrant(role=role_v, max_classification=_classification(max_classification))
+    s.add(g)
+    s.flush()
+    log(s, actor, "org.workflow_grant.added", "workflow_grant", g.id, role=g.role,
+        max_classification=g.max_classification)
+    return g
+
+
+def revoke_workflow_grant(s: Session, actor: User, grant_id: int) -> WorkflowGrant:
+    g = get_or_404(s, WorkflowGrant, grant_id)
+    if g.role == actor.role:
+        raise Forbidden("an org admin cannot change the grants of their own QMS role")
+    if g.revoked_at is not None:
+        raise RuleViolation("the grant is already revoked")
+    g.revoked_at = utcnow()
+    log(s, actor, "org.workflow_grant.revoked", "workflow_grant", g.id)
     return g
 
 

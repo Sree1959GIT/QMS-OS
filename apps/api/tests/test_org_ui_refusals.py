@@ -218,3 +218,93 @@ def test_the_org_project_list_shows_every_project_and_its_current_members(api, e
     assert md in oa.get(f"{ORG}/projects").json()[0]["members"]
     assert oa.post(f"{ORG}/projects/{pid}/members/{md}/remove").status_code == 200
     assert md not in oa.get(f"{ORG}/projects").json()[0]["members"]
+
+
+# ---------- the workflow grants screen (ADR 0008; R-74, R-75) ----------
+
+UI_ACTIONS_WORKFLOW_GRANTS = [
+    ("GET", "/workflow-grants", None),
+    ("POST", "/workflow-grants", {"role": "AUDITEE", "max_classification": "public"}),
+    ("POST", "/workflow-grants/{grant}/revoke", {}),
+]
+
+
+def _workflow_grant(engine, role: str = "AUDITEE") -> int:
+    from qms_os.models import WorkflowGrant
+    with make_sessionmaker(engine)() as s:
+        return s.scalar(select(WorkflowGrant.id).where(WorkflowGrant.role == role, WorkflowGrant.revoked_at.is_(None)))
+
+
+@pytest.mark.parametrize(("method", "path", "body"), UI_ACTIONS_WORKFLOW_GRANTS,
+                         ids=[f"{m} {p}" for m, p, _ in UI_ACTIONS_WORKFLOW_GRANTS])
+def test_workflow_grant_actions_refused_without_the_permission_and_without_step_up(api, engine, method, path, body):
+    url = path.format(grant=_workflow_grant(engine))
+    before = _audit_count(engine)
+    who = api.as_("eng_auditor")
+    assert _send(who.c, who.h, method, url, body).status_code == 403
+    _make_org_admin(engine, api.users["viewer"])
+    oa = api.as_("viewer")
+    r = _send(oa.c, oa.h | {"X-Test-Step-Up": "stale"}, method, url, body)
+    assert r.status_code == 401 and r.json()["reason"] == "step_up_required"
+    r = _send(oa.c, {}, method, url, body)
+    assert r.status_code == 401 and r.json()["reason"] != "step_up_required"
+    for kind in ("agent", "telegram"):
+        assert _send(oa.c, oa.h | {"X-Test-Principal-Kind": kind}, method, url, body).status_code == 403
+    assert _audit_count(engine) == before
+
+
+@pytest.mark.parametrize(("method", "path", "body"), [a for a in UI_ACTIONS_WORKFLOW_GRANTS if a[0] != "GET"],
+                         ids=[f"{m} {p}" for m, p, _ in UI_ACTIONS_WORKFLOW_GRANTS if m != "GET"])
+def test_workflow_grant_unsafe_actions_refused_without_or_with_a_wrong_csrf_token(engine, method, path, body):
+    h = TA.Harness(engine)
+    admin = h.bootstrap()
+    viewer = h.onboard(admin, "viewer")
+    _make_org_admin(engine, h.uid("viewer"))
+    viewer.login()
+    url = f"{ORG}{path.format(grant=_workflow_grant(engine))}"
+    before = _audit_count(engine)
+    for headers in ({}, {"X-QMS-CSRF": "not-the-session-token"}):
+        assert viewer.c.request(method, url, json=body, headers=headers).status_code == 403
+    assert _audit_count(engine) == before
+    assert viewer.get(f"{ORG}/workflow-grants").status_code == 200
+
+
+def test_workflow_grant_rule_refusals_the_screen_shows(api, engine):
+    """An org admin cannot add or revoke a workflow grant of their own QMS role (403); an unknown grant is 404; a
+    revoked grant cannot be revoked again (422); bad values are 422."""
+    _make_org_admin(engine, api.users["viewer"])
+    oa = api.as_("viewer")
+    assert oa.post(f"{ORG}/workflow-grants", {"role": "VIEWER", "max_classification": "confidential"}
+                   ).status_code == 403
+    assert oa.post(f"{ORG}/workflow-grants/{_workflow_grant(engine, 'VIEWER')}/revoke").status_code == 403
+    assert oa.post(f"{ORG}/workflow-grants/999999/revoke").status_code == 404
+    assert oa.post(f"{ORG}/workflow-grants", {"role": "AUDITEE", "max_classification": "secret"}).status_code == 422
+    assert oa.post(f"{ORG}/workflow-grants", {"role": "NOBODY", "max_classification": "public"}).status_code == 422
+    grant = _workflow_grant(engine)
+    assert oa.post(f"{ORG}/workflow-grants/{grant}/revoke").status_code == 200
+    r = oa.post(f"{ORG}/workflow-grants/{grant}/revoke")
+    assert r.status_code == 422 and r.json()["detail"] == "the grant is already revoked"
+
+
+def test_workflow_grants_change_what_people_read_and_are_audited(api, engine):
+    """Adding and revoking a workflow grant changes the reads at once (the same decide rule, R-75) and writes an audit
+    event without request contents."""
+    from workflow_support import WF, new_template
+    t = new_template(api, engine)
+    _make_org_admin(engine, api.users["viewer"])
+    oa = api.as_("viewer")
+    auditee = _workflow_grant(engine)
+    assert api.as_("qa_head").get(f"{WF}/templates/{t}").status_code == 200
+    assert oa.post(f"{ORG}/workflow-grants/{auditee}/revoke").status_code == 200
+    assert api.as_("qa_head").get(f"{WF}/templates/{t}").status_code == 404
+    added = oa.post(f"{ORG}/workflow-grants", {"role": "AUDITEE", "max_classification": "public"}).json()
+    assert added == {"id": added["id"], "role": "AUDITEE", "max_classification": "public", "active": True}
+    assert api.as_("qa_head").get(f"{WF}/templates/{t}").status_code == 404      # internal guideline, public grant
+    oa.post(f"{ORG}/workflow-grants", {"role": "AUDITEE", "max_classification": "internal"})
+    assert api.as_("qa_head").get(f"{WF}/templates/{t}").status_code == 200
+    with make_sessionmaker(engine)() as s:
+        events = list(s.scalars(select(AuditEvent).where(AuditEvent.action.like("org.workflow_grant.%"))
+                                .order_by(AuditEvent.id)))
+    assert [e.action for e in events] == ["org.workflow_grant.revoked", "org.workflow_grant.added",
+                                          "org.workflow_grant.added"]
+    assert events[1].detail == {"role": "AUDITEE", "max_classification": "public"}

@@ -14,6 +14,7 @@ import { Projects } from "./Projects";
 import { SignIn } from "./SignIn";
 import { StepUpDialog } from "./StepUpDialog";
 import { ErrorMessage } from "./ui";
+import { WorkflowGrants } from "./WorkflowGrants";
 
 type State = { kind: "loading" } | { kind: "signed-out" } | { kind: "signed-in"; session: SessionInfo }
   | { kind: "error"; error: ApiError };
@@ -22,6 +23,7 @@ const SCREENS = {
   departments: { title: "Departments", view: Departments },
   people: { title: "People", view: People },
   grants: { title: "Role grants", view: Grants },
+  workflowGrants: { title: "Workflow grants", view: WorkflowGrants },
   projects: { title: "Projects", view: Projects },
   access: { title: "Access preview", view: Access },
   agents: { title: "Agents", view: Agents },

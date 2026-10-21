@@ -26,6 +26,8 @@ ORG_ROUTES = {
     ("POST", f"{ORG}/people/{{person_id}}/deactivate"), ("POST", f"{ORG}/people/{{person_id}}/reactivate"),
     # slice 3: grants, project membership and the effective-access preview
     ("GET", f"{ORG}/role-grants"), ("POST", f"{ORG}/role-grants"), ("POST", f"{ORG}/role-grants/{{grant_id}}/revoke"),
+    ("GET", f"{ORG}/workflow-grants"), ("POST", f"{ORG}/workflow-grants"),    # R-74 (ADR 0008)
+    ("POST", f"{ORG}/workflow-grants/{{grant_id}}/revoke"),
     ("GET", f"{ORG}/projects"),           # slice 10d: the org-level project list
     ("POST", f"{ORG}/projects/{{project_id}}/members"),
     ("POST", f"{ORG}/projects/{{project_id}}/members/{{user_id}}/remove"),

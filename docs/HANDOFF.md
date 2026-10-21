@@ -520,7 +520,15 @@ Open for slice 10 (2026-10-21):
   (upgrade from `03c084021bfa`, an existing guideline becomes `internal`, the three CHECK constraints refuse bad
   values, the downgrade raises and changes nothing). Mutations, each restored with its SHA-256 checked: the case
   read unchecked (4 tests fail), the proposals list unfiltered (3), the versions list unfiltered (3), the approver
-  exception widened to every guideline (2). Open for the Admin: change routes (edit, submit, withdraw, answer, draft, approve, reject, cases) are not
+  exception widened to every guideline (2). Workflow grants screen (commit C): org routes
+  `GET/POST /api/v1/org/workflow-grants` and `POST /api/v1/org/workflow-grants/{id}/revoke` (org admin with a fresh
+  step-up, R-41; no change to the grants of one's own QMS role; audited `org.workflow_grant.*`), in the org route set;
+  the admin web *Workflow grants* screen under Organisation (list, add, revoke; the guidelines the person can read
+  with their classification) and the `workflow` kind in the access preview. Direct-API refusals for each of the three
+  actions (no permission 403, stale step-up 401, no session 401, agent and Telegram principals 403, missing or wrong
+  CSRF 403, own role 403, unknown 404, already revoked 422); mutation M-C-1 (adding a grant needs only a step-up, not
+  the org admin permission) caught by 1 test. Tests: `apps/admin-web/src/workflowGrants.test.tsx`,
+  `apps/admin-web/e2e/workflowGrants.spec.ts`, `apps/api/tests/test_org_ui_refusals.py`. Open for the Admin: change routes (edit, submit, withdraw, answer, draft, approve, reject, cases) are not
   read-checked, so an author without a grant could receive another person's draft in a change response (ADR 0008,
   *Choices made in implementation*).
 - Remaining claims: the 16 admin web UI package licences (C-131 to C-146) are package metadata only, not verified
