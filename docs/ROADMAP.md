@@ -12,12 +12,14 @@
 
 ## Current baseline
 
-A synthetic-data backend prototype on `main` at `caabb11` (pull request #39, MVP-1 pull request 3, on top of
-`6aa5246`): `440 passed, 2 skipped` on SQLite (`scripts\run-tests.bat`) and `469 passed` on PostgreSQL
-(`scripts\run-pg-tests.bat full`), local runs on 2026-10-15 at `c6c93d4`, whose tree is identical to `caabb11`
-(Windows, Python 3.12.7); CI on GitHub Actions with six jobs (`test`, `test-py311`, `lint`, `types`, `postgres`,
-`secret-scan`), all required on a protected `main` branch (R-13), all passed on `main` at `caabb11` (run
-38681512256, as shown in the Admin's screenshot). MVP-0: declared met (R-29). MVP-1: in progress (*MVP-1 plan*
+A synthetic-data backend prototype on `main` at `efaeec1`, with the admin web UI scaffold (pull request #41, MVP-1
+pull request 5, slice 10a, on top of `6c74d60`): `560 passed, 2 skipped` on SQLite (`scripts\run-tests.bat`),
+`591 passed` on PostgreSQL (`scripts\run-pg-tests.bat full`) and 25 frontend tests, local runs on 2026-10-21 at
+`bc9c83a`, whose code is identical to `efaeec1` (later commits changed documents only; Windows, Python 3.12.7, Node
+24.13.1); CI on GitHub Actions with seven jobs (`test`, `test-py311`, `lint`, `types`, `postgres`, `secret-scan`,
+`frontend`), the first six required on a protected `main` branch (R-13; `frontend` becomes required when the Admin
+decides, R-71), all passed on `main` at `efaeec1` (run 39542227140, shown as #87, read from the GitHub public API on
+2026-10-21). MVP-0: declared met (R-29). MVP-1: in progress (*MVP-1 plan*
 below). See *Verified state* and *Not verified* in `docs/HANDOFF.md`.
 
 ## MVP-0
@@ -63,7 +65,7 @@ no unverified feature claim.
    required status checks, with the up-to-date rule on (R-13, Admin, 2026-10-07). No formatter is enforced (Admin
    decision, 2026-10-07).
 
-### Remaining before the MVP-0 exit (as of `caabb11`)
+### Remaining before the MVP-0 exit (as of `efaeec1`)
 
 The exit is read as written in the specification (R-28): one safe fixture startup and no unverified feature claim.
 No slices remain for the exit: MVP-0 is declared met (R-29). Slice 6 (the review) is done (pull request #35,
@@ -130,8 +132,10 @@ plan is R-37 as amended by R-55. One commit per
 slice in a bundle; each slice's tests pass at its own commit. No dates. Status: pull request 1 (slice 1) merged as
 `ded0fe8` (pull request #37); pull request 2 (the `/api/v1` move, slices 2 and 3, the first three skills) merged as
 `6aa5246` (pull request #38); pull request 3 (slices 4 and 5, the `knowledge-integrity` skill) merged as `caabb11`
-(pull request #39); pull request 4 (slices 6 to 9, the `inspect-workflow-completeness` skill; R-55) in progress on
-branch `feat/mvp1-workflow`; the others not started.
+(pull request #39); pull request 4 (slices 6 to 9, the `inspect-workflow-completeness` skill; R-55) merged as
+`6c74d60` (pull request #40); pull request 5 (slice 10a: ADR 0007, the session CSRF token and headers, the
+`apps/admin-web` scaffold and the `frontend` CI job; R-65 to R-73) merged as `efaeec1` (pull request #41); slice 10b
+in preparation on branch `feat/mvp1-admin-ui-signin` (*Slice 10 steps* below); the others not started.
 
 | Pull request | Slice | Goal | Exit criterion (testable) |
 |---|---|---|---|
