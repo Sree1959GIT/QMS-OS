@@ -6,14 +6,13 @@
 
 - Repository: this repository (`QMS-OS`); confirm the remote with `git remote -v`.
 - Specification: `docs/SPECIFICATION.md`, v3.0 dated 29 September 2026. Verify title and version locally.
-- Baseline recorded here: `main` at `8b0c0ef03909180593308ada7128defc78c94390` (2026-10-21; squash merge of pull
-  request #42, MVP-1 pull request 6, slice 10b; `git pull --ff-only`, 2026-10-21). Its tree is identical to
-  `ac712a0`, the last commit of the deleted branch `feat/mvp1-admin-ui-signin` (`git diff` empty); that branch's
-  commits (`f6d606f`, `f251734`, `6186328`, `138f23a`, `ac712a0`) exist only in pull request #42's history. The
-  previous baseline, `efaeec1` (pull request #41, slice 10a), likewise replaced the commits of `feat/mvp1-admin-ui`
-  (`2b05481`, `d79a00e`, `77fc4fe`, `bc9c83a`, `ec414e1`); its squash title kept "(draft)".
-  Work in progress: branch `feat/mvp1-admin-ui-org` from `8b0c0ef`, slices 10c and 10d and the draft ADR 0008 (no
-  pull request yet).
+- Baseline recorded here: `main` at `42859bed6223e8e02ba03a16f92819c3da94dea1` (2026-10-21; squash merge of pull
+  request #43, MVP-1 pull request 7: slices 10c and 10d and the draft ADR 0008; fast-forward of local `main`,
+  2026-10-21). Pull request #43's head was `46a35a3` on the deleted branch `feat/mvp1-admin-ui-org` (commits
+  `2621b1c`, `d02574a`, `d45d1f8`, `46a35a3`, kept only in the pull request's history). Earlier squash baselines:
+  `8b0c0ef` (pull request #42, slice 10b), `efaeec1` (pull request #41, slice 10a).
+  Work in progress: branch `feat/mvp1-workflow-reads-ui` from `42859be`: ADR 0008 accepted (R-74 to R-78),
+  grant-governed workflow reads, the workflow grants screen, slice steps 10e and 10f (no pull request yet).
   Re-verify branch, HEAD and working tree with Git at session start; this file may be stale.
 - Stage: MVP-0 declared met (R-29), by the Admin on 2026-10-13, on the narrow reading of the exit (R-28). Of the
   eight items in the ROADMAP's MVP-0 table, five are done (Git scaffold, CI and protected `main`; synthetic fixtures;
@@ -25,7 +24,8 @@
   `/api/v1` move, slices 2 and 3, the first three skills) merged as `6aa5246`; pull request 3 (slices 4 and 5)
   merged as `caabb11`; pull request 4 (slices 6 to 9, R-55) merged as `6c74d60` (pull request #40); pull request 5
   (slice 10a) merged as `efaeec1` (pull request #41); pull request 6 (slice 10b) merged as `8b0c0ef` (pull request
-  #42); slices 10c and 10d in progress on `feat/mvp1-admin-ui-org`.
+  #42); pull request 7 (slices 10c, 10d, draft ADR 0008) merged as `42859be` (pull request #43); grant-governed
+  workflow reads and slice steps 10e and 10f in progress on `feat/mvp1-workflow-reads-ui`.
 - Mode: synthetic only. No live connectors, staff accounts or model credentials are configured in this repository,
   and none has been verified; do not claim they are configured.
 
@@ -33,6 +33,11 @@
 
 Each item says how it was verified.
 
+- **Merge of pull request #43 (2026-10-21):** merged at 12:07 UTC as `42859be` (GitHub public API: state closed,
+  merge commit `42859be`, head `46a35a3`). Pull request run 39572955912 (#90) on `46a35a3` succeeded; `main` run
+  39597065905 (#91) on `42859be`: all eight jobs succeeded (`test`, `test-py311`, `lint`, `types`, `postgres`,
+  `secret-scan`, `frontend`, `e2e`), from the GitHub public API, 2026-10-21. The job logs were not read; C-155
+  (musl build in CI) stays as it is, since no log lines were supplied.
 - **Merge of pull request #42 (2026-10-21):** merged at 07:34 UTC as `8b0c0ef` (GitHub public API). Pull request run
   39562347176 (#88) on `ac712a0` and `main` run 39562889995 (#89) on `8b0c0ef`: all eight jobs succeeded in both
   (`test`, `test-py311`, `lint`, `types`, `postgres`, `secret-scan`, `frontend`, `e2e`; every step of `e2e`
@@ -503,11 +508,11 @@ Open for slice 10 (2026-10-21):
   63 component tests; 7 browser tests; the twelve 10d actions get the same direct-API refusals as 10c (plus agent
   principals 403); mutation M-10d-1 (the project list guarded by `current_user` instead of `org_admin`) is caught by
   1 test. No new dependency.
-- Grant-governed workflow reads (R-64; ADR 0007, *Consequences*: open with the list routes
-  `GET /api/v1/workflow/proposals` and `GET /api/v1/workflow/versions?status=`): drafted as
-  `docs/adr/0008-grant-governed-workflow-reads.md` (status Draft, 2026-10-21; not implemented). It lists ten
-  decisions for the Admin (grant table, what is classified, default deny and 404, fixture grants, author and
-  approver reads, case participants, unfiled proposals, preview and skill, timing against 10e and 10f).
+- Grant-governed workflow reads: `docs/adr/0008-grant-governed-workflow-reads.md` **Accepted** (Admin, 2026-10-21;
+  R-74 to R-78; R-64 superseded for reads). Implementation in progress on `feat/mvp1-workflow-reads-ui` (commit B
+  onward). Open for the Admin: change routes (edit, submit, withdraw, answer, draft, approve, reject, cases) are not
+  read-checked, so an author without a grant could receive another person's draft in a change response (ADR 0008,
+  *Choices made in implementation*).
 - Remaining claims: the 16 admin web UI package licences (C-131 to C-146) are package metadata only, not verified
   against the licence text; C-147 flagged (lightningcss, R-73); C-148 (audit) is dated registry data.
 - Stale text found on 2026-10-21 and corrected on `feat/mvp1-admin-ui-signin`: the claims register's header now
