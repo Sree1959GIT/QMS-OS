@@ -2,7 +2,8 @@
 // on one origin: the exit flow with two synthetic quality representatives from the test-only bootstrap (QMS role MA:
 // both authors and qualified approvers), each in a browser context of their own. Self-approval is refused; the other
 // approver baselines exactly the digest shown; an edit after baselining is refused; a version changed after it was
-// shown gives 409. The author's set-up and changes go through the API from the author's own page.
+// shown gives 409. The guideline and template come from the Guidelines screen; the versions and the author's later
+// changes go through the API from the author's own page.
 import { expect, test } from "@playwright/test";
 
 import { bootstrap, signIn } from "./account";

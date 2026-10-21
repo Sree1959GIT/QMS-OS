@@ -455,14 +455,14 @@ were added to their existing rows. C-129 and C-130 are among the 9 flagged claim
 | C-53 | `UPSTREAMS.md:128` | The vendored list is SecLists 10k at commit `913b3273`, MIT | verified | commit and file SHA-256 recorded, 2026-10-06 | MVP-1 (authentication) |
 | C-54 | `UPSTREAMS.md:135` | The authentication packages make no network calls | not verified | packages' source not reviewed (labelled in place) | MVP-1 (authentication) |
 | C-55 | `UPSTREAMS.md:141`; `UPSTREAMS.md:192`; `adr/0003-auth-dev-identity.md:114` | These packages ship compiled code on Windows | verified | local installs from PyPI wheels, 2026-10-06 and 2026-10-07; whether the code is signed: not verified (labelled in place) | MVP-0 (local development) |
-| C-56 | `HANDOFF.md:214` | Smart App Control blocked SQLAlchemy's unsigned `_row_cy` | verified | Code Integrity events 3033/3077, observed 2026-10-06 | MVP-0 (local development) |
+| C-56 | `HANDOFF.md:215` | Smart App Control blocked SQLAlchemy's unsigned `_row_cy` | verified | Code Integrity events 3033/3077, observed 2026-10-06 | MVP-0 (local development) |
 | C-57 | `UPSTREAMS.md:144` | cryptography's OpenSSL fixes arrive only through new releases | not verified | no source recorded (labelled in place) | Production-2 (durable upgrades) |
 | C-58 | `UPSTREAMS.md:160` | gitleaks 8.30.1 archive SHA-256 and tag commit | verified | release checksums file and tag, read 2026-10-06 | MVP-0 (CI job `secret-scan`) |
 | C-59 | `UPSTREAMS.md:160` | gitleaks is licensed MIT | not verified | no source recorded (labelled in place) | MVP-0 (CI job `secret-scan`) |
 | C-60 | `UPSTREAMS.md:165` | gitleaks downloads nothing at scan time; `--redact` keeps values out of the log | not verified | no source recorded (labelled in place) | MVP-0 (CI job `secret-scan`) |
 | C-61 | `UPSTREAMS.md:168` | gitleaks finds no leaks in the history and detects a fake key outside the allow-list | verified | local runs, 2026-10-06 | MVP-0 (CI job `secret-scan`) |
 | C-62 | `UPSTREAMS.md:170` | actionlint is licensed MIT | not verified — flagged | no source recorded; local check only, no stage uses it; Admin: kept as labelled (R-28) | none |
-| C-63 | `UPSTREAMS.md:161`; `DECISIONS.md:61`; `HANDOFF.md:268` | The pinned image is PostgreSQL 17.11 (Debian 17.11-1.pgdg13+2) | verified | `select version()` on the local container, 2026-10-05 and 2026-10-10; CI job `postgres` | MVP-1 (PostgreSQL) |
+| C-63 | `UPSTREAMS.md:161`; `DECISIONS.md:61`; `HANDOFF.md:269` | The pinned image is PostgreSQL 17.11 (Debian 17.11-1.pgdg13+2) | verified | `select version()` on the local container, 2026-10-05 and 2026-10-10; CI job `postgres` | MVP-1 (PostgreSQL) |
 | C-64 | `UPSTREAMS.md:161` | The postgres image is under the PostgreSQL Licence | not verified | no source recorded (labelled in place) | MVP-1 (PostgreSQL) |
 | C-65 | `UPSTREAMS.md:162` | actions/checkout and setup-python are licensed MIT | not verified | no source recorded (labelled in place) | MVP-0 (CI) |
 | C-66 | `UPSTREAMS.md:188` | ruff and mypy make no network calls | not verified — flagged | no source recorded; development tools only; Admin: kept as labelled (R-28) | none |
@@ -477,7 +477,7 @@ were added to their existing rows. C-129 and C-130 are among the 9 flagged claim
 | C-75 | `UPSTREAMS.md:303`; `BENCHMARK-PLAN.md:27`; `BENCHMARK-PLAN.md:63`; `ROADMAP.md:40` | Native API accepts per-request `num_ctx`; a new value reloads the model; OpenAI-compatible routes cannot set it | verified | source and docs at `0d0720e5`, read 2026-10-10 | slice 4 runs |
 | C-76 | `UPSTREAMS.md:304` | Ollama binds 127.0.0.1:11434 by default | verified | docs.ollama.com/faq, read 2026-10-07 | slice 4 runs; MVP-2 and later |
 | C-77 | `UPSTREAMS.md:305` | Ollama does not see prompts when run locally | not verified | documentation statement only (`docs/faq.mdx:161` at `0d0720e5`, 2026-10-10); not checked at runtime | before the first live Ollama adapter |
-| C-78 | `UPSTREAMS.md:306`; `DECISIONS.md:84`; `HANDOFF.md:400`; `adr/0005-provider-contract-and-egress.md:54` | The daemon contacts ollama.com by default (recommendations, cloud-model cache), signed with the installation key | verified | source at `0d0720e5`, read 2026-10-10 | before the first live Ollama adapter (R-27) |
+| C-78 | `UPSTREAMS.md:306`; `DECISIONS.md:84`; `HANDOFF.md:401`; `adr/0005-provider-contract-and-egress.md:54` | The daemon contacts ollama.com by default (recommendations, cloud-model cache), signed with the installation key | verified | source at `0d0720e5`, read 2026-10-10 | before the first live Ollama adapter (R-27) |
 | C-79 | `UPSTREAMS.md:307` | `OLLAMA_NO_CLOUD=1` or `disable_ollama_cloud` turns that off | verified | source and docs at `0d0720e5`, read 2026-10-10; set in `ollama-bench` (Admin check, 2026-10-12) | before the first live Ollama adapter (R-27) |
 | C-80 | `UPSTREAMS.md:308` | No other outbound calls or analytics in Ollama | not verified | grep of the tag's own code only, 2026-10-10; dependencies and runtime not verified (as stated) | before the first live Ollama adapter |
 | C-81 | `UPSTREAMS.md:309`; `DECISIONS.md:73` | The desktop app checks ollama.com for updates hourly; no setting disables the check; Docker image runs `ollama serve` | verified | FAQ and source at `0d0720e5`, read 2026-10-10 | before any shared deployment (R-16 note) |
@@ -524,10 +524,10 @@ were added to their existing rows. C-129 and C-130 are among the 9 flagged claim
 | C-122 | `BENCHMARK-PLAN.md:166` | Compose resolves variables for the whole file | not verified | no source recorded (labelled in place) | slice 4 runs |
 | C-123 | `BENCHMARK-PLAN.md:167` | `docker compose down -v` in `reset-db.bat` may delete the benchmark models volume | not verified | not tested (as stated) | slice 4 runs |
 | C-124 | `BENCHMARK-PLAN.md:173`; `BENCHMARK-PLAN.md:177` | Smoke test: pull, one-word reply, `ollama ps`, `nvidia-smi` (one sample) | verified | Admin-supplied output, 2026-10-12 (not a benchmark result) | slice 4 runs |
-| C-125 | `HANDOFF.md:209` | The R-3 compiled dependencies install on Linux (CI) | verified | CI step results, read 2026-10-06 (log not read) | MVP-1 (authentication) |
-| C-126 | `HANDOFF.md:401` | Whether the PostgreSQL digest is a multi-arch index | not verified — flagged | not checked; only amd64 hosts are used; Admin: kept as labelled (R-28) | none |
-| C-127 | `BENCHMARK-PLAN.md:108`; `HANDOFF.md:778` | Memory inside a container is capped by the Docker Desktop allocation | not verified | no source recorded | slice 4 runs |
-| C-128 | `HANDOFF.md:715` | Compose ignores the unused `POSTGRES_TAG` in `.env` | not verified | no source recorded | MVP-0 (local runtime) |
+| C-125 | `HANDOFF.md:210` | The R-3 compiled dependencies install on Linux (CI) | verified | CI step results, read 2026-10-06 (log not read) | MVP-1 (authentication) |
+| C-126 | `HANDOFF.md:402` | Whether the PostgreSQL digest is a multi-arch index | not verified — flagged | not checked; only amd64 hosts are used; Admin: kept as labelled (R-28) | none |
+| C-127 | `BENCHMARK-PLAN.md:108`; `HANDOFF.md:793` | Memory inside a container is capped by the Docker Desktop allocation | not verified | no source recorded | slice 4 runs |
+| C-128 | `HANDOFF.md:730` | Compose ignores the unused `POSTGRES_TAG` in `.env` | not verified | no source recorded | MVP-0 (local runtime) |
 | C-129 | `UPSTREAMS.md:81` | LGPL-3.0 obligations for psycopg (internal use conveys nothing; notices and replaceability on delivery) | not verified — flagged | licence interpretation; the note itself says it is not legal advice; no stage delivers QMS OS to another organisation; Admin: kept as labelled (R-28) | none |
 | C-130 | `UPSTREAMS.md:88` | pg8000 is BSD-licensed | not verified — flagged | no source recorded; pg8000 is not adopted; Admin: kept as labelled (R-28) | none |
 | C-131 | `UPSTREAMS.md:209` | react 19.3.0 is licensed MIT | not verified | package metadata only (secondary), read 2026-10-15; primary source not read | MVP-1 (admin web UI, slice 10) |

@@ -16,10 +16,20 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..auth.service import locked_person
-from ..models import AgentProfile, Department, Project, ProjectMember, RoleGrant, User, UserCredential, WorkflowGrant
+from ..models import (
+    AgentProfile,
+    Department,
+    Project,
+    ProjectMember,
+    RoleGrant,
+    User,
+    UserCredential,
+    WorkflowGrant,
+    WorkflowGuideline,
+)
 from ..rules.findings import Role
 from ..timeutil import utcnow
-from .access import KINDS, LEVELS, SCOPES, active_agents
+from .access import KINDS, LEVELS, SCOPES, active_agents, decide, effective_access, workflow_resource
 from .common import AuditedRefusal, Forbidden, RuleViolation, get_or_404, log
 
 PERSONAL_FIELDS = ("name", "email")      # recorded as "changed" only (R-42)
@@ -306,6 +316,29 @@ def revoke_workflow_grant(s: Session, actor: User, grant_id: int) -> WorkflowGra
         raise RuleViolation("the grant is already revoked")
     g.revoked_at = utcnow()
     log(s, actor, "org.workflow_grant.revoked", "workflow_grant", g.id)
+    return g
+
+
+# ---------- guideline classification (R-80) ----------
+# An org admin sets the classification that the workflow grants are compared with. The list shows every guideline's
+# id, department and classification, so that one the org admin cannot read can still be classified; its title only
+# where the org admin's own workflow grants read the guideline (the org admin permission widens no read, R-41). The
+# classification is not part of a version's digest, so a change never alters a digest or an approval.
+
+def list_workflow_guidelines(s: Session, actor: User) -> list[dict]:
+    access = effective_access(s, actor)
+    return [{"id": g.id, "title": g.title if decide(access, workflow_resource(g)) else None,
+             "department_id": g.department_id, "classification": g.classification, "active": g.active}
+            for g in s.scalars(select(WorkflowGuideline).order_by(WorkflowGuideline.id))]
+
+
+def classify_workflow_guideline(s: Session, actor: User, guideline_id: int, classification) -> WorkflowGuideline:
+    g = get_or_404(s, WorkflowGuideline, guideline_id)
+    value = _classification(classification)
+    if value == g.classification:
+        raise RuleViolation(f"the guideline is already {value}")
+    before, g.classification = g.classification, value
+    log(s, actor, "org.workflow_guideline.classified", "workflow_guideline", g.id, before=before, after=value)
     return g
 
 

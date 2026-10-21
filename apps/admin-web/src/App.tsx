@@ -1,6 +1,6 @@
 // The application shell (MVP-1 slice 10): restores the session on load (GET /api/v1/auth/session), signs in and
 // out, shows the step-up dialog when a request needs a fresh authenticator code, and opens one screen at a time.
-// The hints from the session only hide the org screens' menu and the proposal form's button; the server decides
+// The hints from the session only hide the org screens' menu and the authors' workflow buttons; the server decides
 // every request (R-68). Each screen loads its data when it opens and keeps nothing after it closes (docs/ROADMAP.md,
 // Slice 10 steps).
 import { useCallback, useEffect, useState } from "react";
@@ -11,6 +11,7 @@ import { Agents } from "./Agents";
 import { Approvals } from "./Approvals";
 import { Departments } from "./Departments";
 import { Grants } from "./Grants";
+import { Guidelines } from "./Guidelines";
 import { People } from "./People";
 import { Projects } from "./Projects";
 import { Proposals } from "./Proposals";
@@ -31,8 +32,10 @@ const SCREENS = {
   access: { title: "Access preview", view: Access },
   agents: { title: "Agents", view: Agents },
 };
-// the workflow screens (slice steps 10e and 10f); `author` hides the button from people who are not authors (a hint)
+// the workflow screens (slice steps 10e and 10f, guidelines in commit F); `author` hides the button from people who
+// are not authors (a hint)
 const WORKFLOW_SCREENS = {
+  guidelines: { title: "Guidelines", view: Guidelines, author: true },
   proposals: { title: "Proposals", view: Proposals, author: true },
   approvals: { title: "Approval inbox", view: Approvals, author: false },
 };

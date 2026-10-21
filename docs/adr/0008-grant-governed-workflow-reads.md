@@ -2,7 +2,7 @@
 
 - Status: **Accepted** (Admin, 2026-10-21; drafted the same day). Decisions R-74 to R-78 in `docs/DECISIONS.md`;
   R-64 is superseded for reads by this ADR. Implemented on `feat/mvp1-workflow-reads-ui` before slice steps 10e and
-  10f.
+  10f. Amended the same day after the Admin's review (R-76 widened; R-79 and R-80 added; see *Review decisions*).
 - Related: `docs/DECISIONS.md` R-31, R-43, R-44, R-51, R-56 to R-64; `docs/adr/0006-workflow-engine.md`;
   `docs/adr/0007-admin-web-frontend.md`, *Consequences* (the open list routes `GET /api/v1/workflow/proposals` and
   `GET /api/v1/workflow/versions?status=`, slice steps 10e and 10f); `docs/ROADMAP.md`, *Slice 10 steps*.
@@ -116,13 +116,43 @@ rule (option 4a).
 
 Agents and Telegram principals stay refused on every workflow route whatever the grants (R-64, unchanged).
 
-### Choices made in implementation, for the Admin to confirm
+### Choices made in implementation, confirmed or replaced by the review decisions below
 
 - Downgrade: the migration's `downgrade()` raises, as every migration must (D-14, `tests/test_migrations_static.py`);
   the PostgreSQL test shows the upgrade to head and that the downgrade is refused and leaves the schema unchanged.
+  **Accepted** (review decision 2): rolling back means restoring a database backup taken before the upgrade.
 - `POST /api/v1/workflow/versions/{id}/validate` changes nothing but returns a version's findings; it is governed
-  like the seven read routes (404 when denied).
-- Change routes (edit, submit, withdraw, answer, draft, approve, reject, cases) keep their existing checks and are
-  not read-checked here; an author without a grant could receive another person's draft in a change response. This
-  is recorded as an open point, not decided.
-- "Own drafts" (decision 5) is applied literally: the contributor exception covers versions in status `draft` only.
+  like the seven read routes (404 when denied). **Accepted** (review decision 3).
+- Change routes were not read-checked at first. **Replaced** by review decision 1 (R-79).
+- "Own drafts" (decision 5) was applied literally (status `draft` only). **Replaced** by review decision 4.
+
+## Review decisions (Admin, 2026-10-21)
+
+1. **Change routes are governed too (R-79).** Every workflow change route (create a template or a version, edit,
+   submit, withdraw, approve, reject, answer, draft, start a case, request, approve or reject a migration) first
+   reads its target record through the same decision (`require_workflow_read`) and returns the same 404 when denied,
+   before any service check or audited refusal; drafting from a proposal reads both the proposal and the template.
+   The author and approver exceptions are unchanged. No change response contains a record the caller cannot read:
+   the response goes through `change_result`, which returns the row only if the caller can read the record as it now
+   is, and otherwise its id and status (what the caller has just set). This happens when an approver without a grant
+   baselines or rejects a version. Creating a guideline is refused (403, rolled back) when its creator's grants would
+   not read it.
+2. **Migration downgrade:** raising is accepted; rollback means restoring a backup (`scripts/backup-db.bat`), noted in
+   `docs/HANDOFF.md`.
+3. **Validate route:** governed as a read, accepted.
+4. **Own versions (R-76 widened):** the author and contributor exception covers their own versions in the states
+   draft, proposed, rejected and withdrawn. A rejected or withdrawn version returns to status `draft` (R-58), so in
+   the data this is status `draft` or `proposed`; baselined and superseded versions need a grant. It never extends to
+   other people's versions, to the guideline, its templates or cases, or to other guidelines.
+5. **Setting a guideline's classification (R-80):** `GET /api/v1/org/workflow-guidelines` lists every guideline's
+   id, department, classification and active flag, with the title only where the org admin's own workflow grants read
+   it (the org admin permission widens no read, R-41); `POST /api/v1/org/workflow-guidelines/{id}/classification`
+   sets it (org admin with a fresh step-up, CSRF, audited `org.workflow_guideline.classified` with the values before
+   and after; an unknown guideline is 404, an unknown or unchanged value 422). The classification is not part of a
+   version's digest (`workflow/digest.py`), so a change alters no digest and no approval; a test shows a raised
+   classification denies reads (404) to every role whose ceiling is lower and shows them denied on the access
+   preview. The Workflow grants screen offers it.
+
+The same review asked for screens to create a guideline and a template, which no screen offered: the Guidelines
+screen (authors, R-57; no step-up under the existing rules) does both, and the browser tests now set up their
+guideline and template through it.

@@ -63,6 +63,11 @@ class WorkflowGrantIn(BaseModel):
     max_classification: str = Field(max_length=16)
 
 
+class ClassificationIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    classification: str = Field(max_length=16)
+
+
 class MemberIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     user_id: int
@@ -162,6 +167,19 @@ def add_workflow_grant(body: WorkflowGrantIn, u: User = Depends(org_admin), s: S
 @router.post("/workflow-grants/{grant_id}/revoke")
 def revoke_workflow_grant(grant_id: int, u: User = Depends(org_admin), s: Session = Depends(get_session)):
     return O.workflow_grant_row(O.revoke_workflow_grant(s, u, grant_id))
+
+
+@router.get("/workflow-guidelines")
+def workflow_guidelines(u: User = Depends(org_admin), s: Session = Depends(get_session)):
+    """Every guideline's classification (R-80); the title only where the org admin's own grants read it."""
+    return O.list_workflow_guidelines(s, u)
+
+
+@router.post("/workflow-guidelines/{guideline_id}/classification")
+def classify_workflow_guideline(guideline_id: int, body: ClassificationIn, u: User = Depends(org_admin),
+                                s: Session = Depends(get_session)):
+    g = O.classify_workflow_guideline(s, u, guideline_id, body.classification)
+    return next(row for row in O.list_workflow_guidelines(s, u) if row["id"] == g.id)
 
 
 @router.get("/projects")

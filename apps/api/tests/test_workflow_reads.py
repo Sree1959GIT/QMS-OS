@@ -184,7 +184,8 @@ def test_list_routes_leave_out_what_the_caller_cannot_read(api, engine, world):
     assert _ids(eng, f"{WF}/guidelines") == []
     assert _ids(eng, f"{WF}/proposals") == [world["drafted_p"]]                 # own proposal only
     assert _ids(eng, f"{WF}/versions?status=draft") == [world["v3"], world["dv"]]  # own drafts only
-    assert _ids(eng, f"{WF}/versions?status=proposed") == []                    # own, but no longer a draft
+    assert _ids(eng, f"{WF}/versions?status=proposed") == [world["v2"], world["w"]]  # own proposed versions
+    assert _ids(eng, f"{WF}/versions?status=baselined") == []                   # own, but baselined: grants only
     qa_head = api.as_("qa_head")
     assert _ids(qa_head, f"{WF}/versions?status=proposed") == [world["v2"]]     # qualified for qa, not for pur
     assert _ids(qa_head, f"{WF}/versions") == [world["v1"], world["v2"]]
@@ -203,13 +204,14 @@ def test_the_versions_list_names_the_guideline(api, world):
 # ---------- authors and contributors (R-76) ----------
 
 def test_authors_read_their_own_drafts_and_proposals_never_other_peoples(api, engine, world):
-    _revoke_workflow_grants(engine)
     other = new_version(api, world["t"], author="ma")                            # ma's draft
+    _revoke_workflow_grants(engine)
     eng = api.as_("eng_head")
     assert eng.get(f"{WF}/versions/{world['v3']}").status_code == 200           # own draft
     assert eng.post(f"{WF}/versions/{world['v3']}/validate").status_code == 200
     assert eng.get(f"{WF}/versions/{other['id']}").status_code == 404          # another author's draft
-    assert eng.get(f"{WF}/versions/{world['v2']}").status_code == 404          # own, but proposed: grants only
+    assert eng.get(f"{WF}/versions/{world['v2']}").status_code == 200          # own, proposed
+    assert eng.get(f"{WF}/versions/{world['v1']}").status_code == 404          # own, but baselined: grants only
     assert eng.get(f"{WF}/proposals/{world['drafted_p']}").status_code == 200  # own proposal
     assert eng.get(f"{WF}/proposals/{world['open_p']}").status_code == 404     # ma's open proposal
     ma = api.as_("ma")
@@ -219,10 +221,11 @@ def test_authors_read_their_own_drafts_and_proposals_never_other_peoples(api, en
 
 
 def test_a_contributor_reads_the_draft_they_edited(api, engine, world):
-    _revoke_workflow_grants(engine)
+    """qa_head edits eng_head's draft while holding a grant (R-79: no edit without a read); the grant revoked, the
+    edit makes qa_head a contributor who still reads it."""
     qa_head = api.as_("qa_head")
-    assert qa_head.get(f"{WF}/versions/{world['v3']}").status_code == 404
     assert qa_head.patch(f"{WF}/versions/{world['v3']}", {"title": "Edited by qa_head"}).status_code == 200
+    _revoke_workflow_grants(engine)
     assert qa_head.get(f"{WF}/versions/{world['v3']}").status_code == 200
     assert api.as_("pur_head").get(f"{WF}/versions/{world['v3']}").status_code == 404
 

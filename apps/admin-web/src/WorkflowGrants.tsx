@@ -1,28 +1,33 @@
 // Workflow grants (ADR 0008; R-74, R-75): list, add and revoke through /api/v1/org/workflow-grants. A grant lets
 // every person with the QMS role read the workflow guidelines classified at or below its ceiling, with their
 // templates, versions and cases. The server refuses a change to the grants of the org admin's own QMS role; the screen
-// does not guess it. The guidelines listed are the ones the signed-in person can read, with their classification.
+// does not guess it. Guideline classification (R-80): every guideline is listed with its classification
+// (/api/v1/org/workflow-guidelines), its title only where the org admin's own grants read it; the org admin sets it
+// here (step-up, audited). The classification is not part of a version's digest.
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 
 import { get, post } from "./api";
 import { ErrorMessage, LEVELS, plain, ROLES, Select, useRows } from "./ui";
 
 export type WorkflowGrant = { id: number; role: string; max_classification: string; active: boolean };
-export type Guideline = { id: number; title: string; department_id: number; classification: string; active: boolean };
+export type ClassifiedGuideline = { id: number; title: string | null; department_id: number;
+  classification: string; active: boolean };
 
 const PATH = "/api/v1/org/workflow-grants";
+const GUIDELINES = "/api/v1/org/workflow-guidelines";
 
-type Data = { grants: WorkflowGrant[]; guidelines: Guideline[] };
+type Data = { grants: WorkflowGrant[]; guidelines: ClassifiedGuideline[] };
 
 export function WorkflowGrants() {
   const load = useCallback(async (): Promise<Data> => {
     const grants = await get<WorkflowGrant[]>(PATH);
-    const guidelines = await get<Guideline[]>("/api/v1/workflow/guidelines");
+    const guidelines = await get<ClassifiedGuideline[]>(GUIDELINES);
     return { grants, guidelines };
   }, []);
   const { rows, error, busy, reload, act } = useRows(load);
   const [role, setRole] = useState("VIEWER");
   const [ceiling, setCeiling] = useState("internal");
+  const [chosen, setChosen] = useState<Record<number, string>>({});
 
   useEffect(() => { void reload(); }, [reload]);
 
@@ -53,12 +58,24 @@ export function WorkflowGrants() {
               ))}
             </tbody>
           </table>
-          <h3>Guidelines you can read</h3>
+          <h3>Guideline classification</h3>
           <table aria-label="Guidelines">
-            <thead><tr><th>Id</th><th>Title</th><th>Classification</th></tr></thead>
+            <thead><tr><th>Id</th><th>Title</th><th>Department</th><th>Classification</th><th /></tr></thead>
             <tbody>
               {rows.guidelines.map((g) => (
-                <tr key={g.id}><td>{g.id}</td><td>{g.title}</td><td>{g.classification}</td></tr>
+                <tr key={g.id}>
+                  <td>{g.id}</td><td>{g.title ?? "(not readable with your grants)"}</td><td>{g.department_id}</td>
+                  <td>{g.classification}</td>
+                  <td>
+                    <Select label={`Classification of guideline ${g.id}`} value={chosen[g.id] ?? g.classification}
+                      options={plain(LEVELS)} onChange={(v) => setChosen({ ...chosen, [g.id]: v })} />
+                    <button type="button" aria-label={`Set classification of guideline ${g.id}`}
+                      disabled={busy || (chosen[g.id] ?? g.classification) === g.classification}
+                      onClick={() => void act(() => post(`${GUIDELINES}/${g.id}/classification`,
+                        { classification: chosen[g.id] })).then((done) => { if (done) setChosen({}); })}>
+                      Set</button>
+                  </td>
+                </tr>
               ))}
             </tbody>
           </table>

@@ -28,6 +28,8 @@ ORG_ROUTES = {
     ("GET", f"{ORG}/role-grants"), ("POST", f"{ORG}/role-grants"), ("POST", f"{ORG}/role-grants/{{grant_id}}/revoke"),
     ("GET", f"{ORG}/workflow-grants"), ("POST", f"{ORG}/workflow-grants"),    # R-74 (ADR 0008)
     ("POST", f"{ORG}/workflow-grants/{{grant_id}}/revoke"),
+    ("GET", f"{ORG}/workflow-guidelines"),                                   # R-80
+    ("POST", f"{ORG}/workflow-guidelines/{{guideline_id}}/classification"),
     ("GET", f"{ORG}/projects"),           # slice 10d: the org-level project list
     ("POST", f"{ORG}/projects/{{project_id}}/members"),
     ("POST", f"{ORG}/projects/{{project_id}}/members/{{user_id}}/remove"),

@@ -308,3 +308,130 @@ def test_workflow_grants_change_what_people_read_and_are_audited(api, engine):
     assert [e.action for e in events] == ["org.workflow_grant.revoked", "org.workflow_grant.added",
                                           "org.workflow_grant.added"]
     assert events[1].detail == {"role": "AUDITEE", "max_classification": "public"}
+
+
+# ---------- guideline classification (R-80) ----------
+
+UI_ACTIONS_CLASSIFICATION = [
+    ("GET", "/workflow-guidelines", None),
+    ("POST", "/workflow-guidelines/{guideline}/classification", {"classification": "confidential"}),
+]
+
+
+def _guideline(api, engine) -> int:
+    from workflow_support import new_template
+
+    from qms_os.models import WorkflowTemplate
+    t = new_template(api, engine)
+    with make_sessionmaker(engine)() as s:
+        return s.get(WorkflowTemplate, t).guideline_id
+
+
+def _classification(engine, guideline_id: int) -> str:
+    from qms_os.models import WorkflowGuideline
+    with make_sessionmaker(engine)() as s:
+        return s.get(WorkflowGuideline, guideline_id).classification
+
+
+@pytest.mark.parametrize(("method", "path", "body"), UI_ACTIONS_CLASSIFICATION,
+                         ids=[f"{m} {p}" for m, p, _ in UI_ACTIONS_CLASSIFICATION])
+def test_classification_actions_refused_without_the_permission_and_without_step_up(api, engine, method, path, body):
+    g = _guideline(api, engine)
+    url = path.format(guideline=g)
+    before = _audit_count(engine)
+    for who in ("eng_auditor", "ma", "qa_head"):                          # QMS roles and authors, no org admin
+        c = api.as_(who)
+        assert _send(c.c, c.h, method, url, body).status_code == 403, who
+    _make_org_admin(engine, api.users["viewer"])
+    oa = api.as_("viewer")
+    r = _send(oa.c, oa.h | {"X-Test-Step-Up": "stale"}, method, url, body)
+    assert r.status_code == 401 and r.json()["reason"] == "step_up_required"
+    r = _send(oa.c, {}, method, url, body)
+    assert r.status_code == 401 and r.json()["reason"] != "step_up_required"
+    for kind in ("agent", "telegram"):
+        assert _send(oa.c, oa.h | {"X-Test-Principal-Kind": kind}, method, url, body).status_code == 403
+    assert _audit_count(engine) == before
+    assert _classification(engine, g) == "internal"
+
+
+def test_classification_refused_without_or_with_a_wrong_csrf_token(api, engine):
+    g = _guideline(api, engine)
+    h = TA.Harness(engine)
+    admin = h.bootstrap()
+    viewer = h.onboard(admin, "viewer")
+    _make_org_admin(engine, h.uid("viewer"))
+    viewer.login()
+    before = _audit_count(engine)
+    for headers in ({}, {"X-QMS-CSRF": "not-the-session-token"}):
+        r = viewer.c.request("POST", f"{ORG}/workflow-guidelines/{g}/classification",
+                             json={"classification": "confidential"}, headers=headers)
+        assert r.status_code == 403
+    assert _audit_count(engine) == before and _classification(engine, g) == "internal"
+
+
+def test_classification_rule_refusals_the_screen_shows(api, engine):
+    """An unknown guideline is 404; an unknown value, an extra field or the value it already has is 422."""
+    g = _guideline(api, engine)
+    _make_org_admin(engine, api.users["viewer"])
+    oa = api.as_("viewer")
+    url = f"{ORG}/workflow-guidelines/{g}/classification"
+    before = _audit_count(engine)
+    assert oa.post(f"{ORG}/workflow-guidelines/999999/classification", {"classification": "public"}
+                   ).status_code == 404
+    assert oa.post(url, {"classification": "secret"}).status_code == 422
+    assert oa.post(url, {"classification": "public", "title": "x"}).status_code == 422
+    assert oa.post(url, {}).status_code == 422
+    r = oa.post(url, {"classification": "internal"})
+    assert r.status_code == 422 and r.json()["detail"] == "the guideline is already internal"
+    assert _audit_count(engine) == before and _classification(engine, g) == "internal"
+
+
+def test_a_raised_classification_denies_reads_shows_on_the_preview_and_changes_no_digest(api, engine):
+    """R-80: the org admin raises a guideline to confidential; every role whose workflow grant stops at internal then
+    gets 404 (the same decide rule, R-75), the preview shows it denied, a baselined digest is unchanged and a proposed
+    version is still approved with the digest its approver read. Audited with the values before and after."""
+    from workflow_support import WF, approve, new_template, submitted
+
+    from qms_os.models import WorkflowTemplate
+    t = new_template(api, engine)
+    v1 = submitted(api, t)
+    assert approve(api, "ma", v1).status_code == 200
+    v2 = submitted(api, t)
+    with make_sessionmaker(engine)() as s:
+        g = s.get(WorkflowTemplate, t).guideline_id
+    _make_org_admin(engine, api.users["viewer"])
+    oa = api.as_("viewer")
+    readers = ("viewer", "md", "eng_auditor", "pur_head")
+    for who in readers:
+        assert api.as_(who).get(f"{WF}/versions/{v1['id']}").status_code == 200, who
+    listed = {row["id"]: row for row in oa.get(f"{ORG}/workflow-guidelines").json()}
+    assert listed[g]["classification"] == "internal" and listed[g]["title"] == "Synthetic process (fixture)"
+
+    r = oa.post(f"{ORG}/workflow-guidelines/{g}/classification", {"classification": "confidential"})
+    assert r.status_code == 200
+    assert r.json() == {"id": g, "title": None, "department_id": listed[g]["department_id"],
+                        "classification": "confidential", "active": True}      # the org admin no longer reads it
+    for who in readers:
+        c = api.as_(who)
+        for url in (f"{WF}/guidelines/{g}", f"{WF}/templates/{t}", f"{WF}/versions/{v1['id']}"):
+            assert c.get(url).status_code == 404, (who, url)
+        assert g not in [row["id"] for row in c.get(f"{WF}/guidelines").json()]
+        p = oa.get(f"{ORG}/access-preview/{api.users[who]}").json()
+        assert g in p["denied"]["workflow"] and g not in p["readable"]["workflow"], who
+    assert oa.post(f"{ORG}/workflow-grants", {"role": "MD", "max_classification": "confidential"}).status_code == 200
+    assert api.as_("md").get(f"{WF}/versions/{v1['id']}").status_code == 200
+    assert g in oa.get(f"{ORG}/access-preview/{api.users['md']}").json()["readable"]["workflow"]
+
+    # no digest changes: the baselined digest is the same, and the approver's read digest still approves
+    assert api.as_("md").get(f"{WF}/versions/{v1['id']}").json()["digest"] == v1["digest"]
+    shown = api.as_("qa_head").get(f"{WF}/versions/{v2['id']}").json()   # proposed: the approver exception
+    assert shown["digest"] == v2["digest"]
+    r = approve(api, "qa_head", shown)
+    assert r.status_code == 200 and r.json() == {"id": v2["id"], "status": "baselined"}
+    with make_sessionmaker(engine)() as s:
+        events = list(s.scalars(select(AuditEvent).where(AuditEvent.action == "org.workflow_guideline.classified")))
+    assert [(e.entity_id, e.detail) for e in events] == [(g, {"before": "internal", "after": "confidential"})]
+
+    # lowered again: the readers are back
+    assert oa.post(f"{ORG}/workflow-guidelines/{g}/classification", {"classification": "internal"}).status_code == 200
+    assert api.as_("viewer").get(f"{WF}/versions/{v1['id']}").status_code == 200

@@ -20,11 +20,17 @@ metadata row; a role's ceiling for them comes from ``evidence_grants`` (scope ``
 Workflow records (R-74 to R-77; ADR 0008): resources of kind ``workflow``, one per guideline and classified by it;
 its templates, versions and cases, and the proposals drafted into it, inherit that classification. A role's ceiling
 comes from ``workflow_grants`` (scope ``all``), decided by the same ``decide``. Outside the grants
-(``can_read_workflow``, R-76): the creator and contributors of a **draft** version read it; the creator of a proposal
-reads it, and nobody else reads a proposal before it is drafted into a guideline; a qualified approver of the
-guideline (R-56) reads its ``proposed`` versions and the baselined version a proposed one would supersede. Nothing
-else: no reads through case assignments (R-77). A denied single read is 404 like a missing record (R-44); lists
-leave the record out.
+(``can_read_workflow``, R-76): the creator and contributors of a version read it while it is a draft or proposed
+(a rejected or withdrawn version is a draft again; a baselined or superseded one needs a grant); the creator of a
+proposal reads it, and nobody else reads a proposal before it is drafted into a guideline; a qualified approver of
+the guideline (R-56) reads its ``proposed`` versions and the baselined version a proposed one would supersede.
+Nothing else: no reads through case assignments (R-77). A denied single read is 404 like a missing record (R-44);
+lists leave the record out.
+
+Changes (R-79): every workflow change route first reads its target record through ``require_workflow_read`` (the
+same 404 when denied), and its response goes through ``change_result``: a record the caller cannot read after the
+change (an approver without a grant who has just baselined or rejected a version) comes back as its id and status
+only.
 """
 from __future__ import annotations
 
@@ -195,8 +201,8 @@ def _guideline_of(s: Session, record: WorkflowRecord) -> WorkflowGuideline | Non
 
 
 def _version_outside_grants(s: Session, user: User, v: WorkflowTemplateVersion, g: WorkflowGuideline) -> bool:
-    if v.status == "draft" and user.id in contributors(s, v):
-        return True                                               # own draft (R-76)
+    if v.status in ("draft", "proposed") and user.id in contributors(s, v):
+        return True                                               # own draft or proposed version (R-76)
     if not is_qualified_approver(s, user, g):
         return False
     if v.status == "proposed":
@@ -233,6 +239,14 @@ def require_workflow_read(s: Session, user: User, model: type[R], obj_id: int) -
 def readable_workflow(s: Session, user: User, rows: list[R]) -> list[R]:
     access = effective_access(s, user)
     return [r for r in rows if can_read_workflow(s, user, access, r)]
+
+
+def change_result(s: Session, user: User, obj: WorkflowRecord, row: dict) -> dict:
+    """A change route's response (R-79): the record's row if the caller can read the record as it now is, otherwise
+    its id and status only (what the caller has just set), never its content."""
+    if can_read_workflow(s, user, effective_access(s, user), obj):
+        return row
+    return {"id": obj.id, "status": getattr(obj, "status", None)}
 
 
 # ---------- preview ----------

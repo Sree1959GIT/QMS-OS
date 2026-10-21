@@ -12,7 +12,8 @@
   `2621b1c`, `d02574a`, `d45d1f8`, `46a35a3`, kept only in the pull request's history). Earlier squash baselines:
   `8b0c0ef` (pull request #42, slice 10b), `efaeec1` (pull request #41, slice 10a).
   Work in progress: branch `feat/mvp1-workflow-reads-ui` from `42859be`: ADR 0008 accepted (R-74 to R-78),
-  grant-governed workflow reads, the workflow grants screen, slice steps 10e and 10f (no pull request yet).
+  grant-governed workflow reads, the workflow grants screen, slice steps 10e and 10f, and commit F with the Admin's
+  review decisions (R-76 widened, R-79, R-80, the Guidelines screen) (no pull request yet).
   Re-verify branch, HEAD and working tree with Git at session start; this file may be stale.
 - Stage: MVP-0 declared met (R-29), by the Admin on 2026-10-13, on the narrow reading of the exit (R-28). Of the
   eight items in the ROADMAP's MVP-0 table, five are done (Git scaffold, CI and protected `main`; synthetic fixtures;
@@ -543,9 +544,23 @@ Open for slice 10 (2026-10-21):
   mutation M-10f-1 (both guards removed) caught by 7 tests. Browser test of the exit flow with two synthetic MA accounts in
   separate contexts: self-approval refused (403, generic); the other approver baselines the digest shown; an edit
   after baselining 409; a version changed after it was shown 409 (R-59). Tests: `apps/admin-web/src/approvals.test.tsx`,
-  `apps/admin-web/e2e/approvals.spec.ts`, `apps/api/tests/test_test_bootstrap.py`. Open for the Admin: change routes (edit, submit, withdraw, answer, draft, approve, reject, cases) are not
-  read-checked, so an author without a grant could receive another person's draft in a change response (ADR 0008,
-  *Choices made in implementation*).
+  `apps/admin-web/e2e/approvals.spec.ts`, `apps/api/tests/test_test_bootstrap.py`.
+- Review changes (commit F, 2026-10-21; ADR 0008 *Review decisions*): every workflow change route (create a template
+  or a version, edit, submit, withdraw, approve, reject, answer, draft, start a case, request, approve or reject a
+  migration) reads its target through `require_workflow_read` first: 404 with the missing-record detail when denied,
+  nothing changed, no event written (R-79). Responses go through `access.change_result`: an approver without a grant
+  who baselines or rejects gets the id and status only. Creating a guideline its creator could not read is 403. The
+  author and contributor exception covers own versions while draft or proposed (rejected and withdrawn ones are
+  drafts again; R-76 widened). New org routes `GET /api/v1/org/workflow-guidelines` and
+  `POST /api/v1/org/workflow-guidelines/{id}/classification` (org admin, step-up, audited
+  `org.workflow_guideline.classified`; R-80) with a control on the Workflow grants screen; the classification is not
+  in the digest. A *Guidelines* screen (authors; no step-up under the existing rules) creates guidelines and
+  templates, and the browser tests now set up through it. Mutations M-F-1 (no read check on the edit route) caught
+  by 3 tests and M-F-2 (none on the approve route) by 2, each restored with its SHA-256 checked. New browser test
+  `apps/admin-web/e2e/approvalsStepUp.spec.ts` waits out the 35-second step-up window, then shows one dialog, one
+  retry and the shown digest sent both times. Local results: Python suite 688 passed, 2 skipped; PostgreSQL full suite 720 passed; 95 component tests; 11 browser
+  tests. **Migration rollback:** the R-74 migration's downgrade raises (accepted, review decision 2); rolling back
+  means restoring a database backup taken before the upgrade (`scriptsackup-db.bat`).
 - Remaining claims: the 16 admin web UI package licences (C-131 to C-146) are package metadata only, not verified
   against the licence text; C-147 flagged (lightningcss, R-73); C-148 (audit) is dated registry data.
 - Stale text found on 2026-10-21 and corrected on `feat/mvp1-admin-ui-signin`: the claims register's header now

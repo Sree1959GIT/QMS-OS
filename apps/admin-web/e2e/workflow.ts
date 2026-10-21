@@ -1,6 +1,7 @@
-// Helpers for the workflow browser tests (MVP-1 slice steps 10e and 10f). Set-up the screens do not offer (a
-// guideline and a template, another author's changes) goes through the same API from the signed-in browser page, with
-// the session's CSRF token, as the application itself would send it.
+// Helpers for the workflow browser tests (MVP-1 slice steps 10e and 10f). The guideline and the template are created
+// on the Guidelines screen (commit F). Set-up no screen offers (a version created with a whole graph outside a
+// proposal, another author's later changes) goes through the same API from the signed-in browser page, with the
+// session's CSRF token, as the application itself would send it.
 import { expect, type Locator, type Page } from "@playwright/test";
 
 import type { Account } from "./account";
@@ -47,19 +48,30 @@ export async function ok(page: Page, method: string, path: string, body?: unknow
   return r.body;
 }
 
-/** A synthetic guideline of the quality department and one template in it, created by the signed-in author. */
-export async function template(page: Page, title: string): Promise<number> {
-  const departments = await call(page, "GET", "/api/v1/org/departments");
-  const qa = (departments.body as unknown as { id: number; code: string }[]).find((d) => d.code === "qa");
-  expect(qa).toBeTruthy();
-  const g = await ok(page, "POST", `${WF}/guidelines`, { title: `${title} (fixture)`, department_id: qa?.id,
-    references: REFERENCES });
-  const t = await ok(page, "POST", `${WF}/guidelines/${String(g.id)}/templates`, { title });
-  return t.id as number;
-}
-
 export function openWorkflow(page: Page, title: string) {
   return page.getByRole("navigation", { name: "Workflow" }).getByRole("button", { name: title }).click();
+}
+
+/** A synthetic guideline of the quality department and one template in it, created by the signed-in author on the
+ * Guidelines screen; returns the template's id as the screen shows it. */
+export async function template(page: Page, title: string): Promise<number> {
+  await openWorkflow(page, "Guidelines");
+  const form = page.getByRole("form", { name: "New guideline" });
+  const qa = form.getByLabel("Department").locator("option").filter({ hasText: /\(qa\)$/ });
+  await expect(qa).toBeAttached();
+  await form.getByLabel("Title").fill(`${title} (fixture)`);
+  await form.getByLabel("Department").selectOption(await qa.getAttribute("value") as string);
+  await form.getByLabel("References (one per line)").fill(REFERENCES.join("\n"));
+  await form.getByRole("button", { name: "Create guideline" }).click();
+  const guideline = page.getByRole("article", { name: /^Guideline \d+$/ });
+  await expect(guideline).toContainText(`${title} (fixture)`);
+  await expect(guideline).toContainText("classification internal");
+  const templateForm = guideline.getByRole("form", { name: "New template" });
+  await templateForm.getByLabel("Template title").fill(title);
+  await templateForm.getByRole("button", { name: "Create template" }).click();
+  const row = guideline.getByRole("table", { name: "Templates" }).getByRole("row").filter({ hasText: title });
+  await expect(row).toHaveCount(1);
+  return Number(await row.getByRole("cell").first().textContent());
 }
 
 /** Confirms a step-up if the server asked for one (only once the 35-second window has lapsed); then `done` shows. */
