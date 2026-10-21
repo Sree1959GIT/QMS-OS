@@ -13,5 +13,5 @@ export default defineConfig({
     host: "127.0.0.1",
     proxy: { "/api": { target: "http://127.0.0.1:8000", changeOrigin: false } },
   },
-  test: { environment: "jsdom", include: ["src/**/*.test.tsx", "src/**/*.test.ts"] },
+  test: { environment: "jsdom", include: ["src/**/*.test.tsx", "src/**/*.test.ts", "scripts/**/*.test.mjs"] },
 });

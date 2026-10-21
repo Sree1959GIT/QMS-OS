@@ -335,10 +335,13 @@ def build(docs_dir: Path) -> tuple[list[str], dict[str, int]]:
         add(at("U", f"| {pkg} | {ver} |"), f"{pkg} {ver} is licensed {lic}", N,
             "package metadata only (secondary), read 2026-10-15; primary source not read",
             "MVP-1 (admin web UI, slice 10)")
-    add(refs(("U", "- lightningcss 1.33.0 and lightningcss-win32-x64-msvc 1.33.0")),
-        "lightningcss 1.33.0 (Vite's CSS tool, build time only) is MPL-2.0, file-level copyleft", F,
-        "package metadata only (secondary), read 2026-10-15; licence interpretation, not a legal opinion; Admin: kept "
-        "as labelled, build-only exception (R-73)", "MVP-1 (admin web UI, slice 10)")
+    add(refs(("U", "- lightningcss 1.33.0 and its platform builds")),
+        "lightningcss 1.33.0 and its platform builds (Vite's CSS tool, build time only) are MPL-2.0, file-level "
+        "copyleft", F,
+        "package metadata only (secondary), read 2026-10-15 (musl build: CI log, 2026-10-21); licence interpretation, "
+        "not a legal opinion; Admin: kept as labelled, build-only exception (R-73), widened to the platform-build "
+        "pattern at the installed version on 2026-10-21; platform builds not installed on a host are not checked "
+        "there", "MVP-1 (admin web UI, slice 10)")
     add(refs(("U", "- `pnpm audit --audit-level high` reported no known vulnerabilities")),
         "pnpm audit reported no known vulnerabilities in the admin web UI packages", N,
         "registry advisory data, 2026-10-15; advisories change over time", "MVP-1 (admin web UI, slice 10)")
