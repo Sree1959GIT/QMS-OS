@@ -6,16 +6,14 @@
 
 - Repository: this repository (`QMS-OS`); confirm the remote with `git remote -v`.
 - Specification: `docs/SPECIFICATION.md`, v3.0 dated 29 September 2026. Verify title and version locally.
-- Baseline recorded here: `main` at `efaeec19dfbee2d5f2007fdd133a6f90294f168e` (2026-10-21; squash merge of pull
-  request #41, MVP-1 pull request 5, slice 10a; `git pull --ff-only`, 2026-10-21). Its tree is identical to `ec414e1`,
-  the last commit of the deleted branch `feat/mvp1-admin-ui` (`git diff` empty). The squash title kept "(draft)"
-  ("MVP-1 PR 5 (draft): admin web UI - ..."); `main` is not rewritten for it. The branch's five commits `2b05481`
-  (10a-1), `d79a00e` (10a-2), `77fc4fe` (licence-check pattern, R-73), `bc9c83a` (vite 8.3.3) and `ec414e1`
-  (handoff refresh) exist only on the deleted branch (and in pull request #41's history on GitHub), not on `main`.
-  Work in progress: branch `feat/mvp1-admin-ui-signin` from `efaeec1`, slice 10b (no pull request yet): `f6d606f`
-  (handoff and stale text), `f251734` (10b and 10c scope in ROADMAP), `6186328` (test-only bootstrap, backend),
-  `138f23a` (Playwright 1.63.0, browser smoke test, CI job `e2e`), then the commit with the sign-in, step-up and
-  sign-out screens and the sign-in browser test.
+- Baseline recorded here: `main` at `8b0c0ef03909180593308ada7128defc78c94390` (2026-10-21; squash merge of pull
+  request #42, MVP-1 pull request 6, slice 10b; `git pull --ff-only`, 2026-10-21). Its tree is identical to
+  `ac712a0`, the last commit of the deleted branch `feat/mvp1-admin-ui-signin` (`git diff` empty); that branch's
+  commits (`f6d606f`, `f251734`, `6186328`, `138f23a`, `ac712a0`) exist only in pull request #42's history. The
+  previous baseline, `efaeec1` (pull request #41, slice 10a), likewise replaced the commits of `feat/mvp1-admin-ui`
+  (`2b05481`, `d79a00e`, `77fc4fe`, `bc9c83a`, `ec414e1`); its squash title kept "(draft)".
+  Work in progress: branch `feat/mvp1-admin-ui-org` from `8b0c0ef`, slices 10c and 10d and the draft ADR 0008 (no
+  pull request yet).
   Re-verify branch, HEAD and working tree with Git at session start; this file may be stale.
 - Stage: MVP-0 declared met (R-29), by the Admin on 2026-10-13, on the narrow reading of the exit (R-28). Of the
   eight items in the ROADMAP's MVP-0 table, five are done (Git scaffold, CI and protected `main`; synthetic fixtures;
@@ -26,7 +24,8 @@
   (R-37; *MVP-1 plan* in `docs/ROADMAP.md`); pull request 1 (slice 1) merged as `ded0fe8`; pull request 2 (the
   `/api/v1` move, slices 2 and 3, the first three skills) merged as `6aa5246`; pull request 3 (slices 4 and 5)
   merged as `caabb11`; pull request 4 (slices 6 to 9, R-55) merged as `6c74d60` (pull request #40); pull request 5
-  (slice 10a) merged as `efaeec1` (pull request #41); slice 10b implemented on `feat/mvp1-admin-ui-signin`.
+  (slice 10a) merged as `efaeec1` (pull request #41); pull request 6 (slice 10b) merged as `8b0c0ef` (pull request
+  #42); slices 10c and 10d in progress on `feat/mvp1-admin-ui-org`.
 - Mode: synthetic only. No live connectors, staff accounts or model credentials are configured in this repository,
   and none has been verified; do not claim they are configured.
 
@@ -34,6 +33,10 @@
 
 Each item says how it was verified.
 
+- **Merge of pull request #42 (2026-10-21):** merged at 07:34 UTC as `8b0c0ef` (GitHub public API). Pull request run
+  39562347176 (#88) on `ac712a0` and `main` run 39562889995 (#89) on `8b0c0ef`: all eight jobs succeeded in both
+  (`test`, `test-py311`, `lint`, `types`, `postgres`, `secret-scan`, `frontend`, `e2e`; every step of `e2e`
+  succeeded, including "Browser tests"), from the GitHub public API, 2026-10-21. The job logs were not read.
 - **Merge of pull request #41 (2026-10-21):** merged at 04:06 UTC as `efaeec1` (GitHub public API: state closed,
   merged, merge commit `efaeec19dfbee2d5f2007fdd133a6f90294f168e`). `main` run 39542227140 (shown as #87, push at
   `efaeec1`): all seven jobs succeeded, `postgres` (2m 36s), `test` (1m 41s), `test-py311` (1m 11s), `types` (35s),
@@ -481,7 +484,8 @@ Open for slice 10 (2026-10-21):
   `6186328`); 34 component tests; 3 browser tests in Chromium 153 (smoke under the CSP; sign-in, reload, step-up
   with one retry, sign-out); lint, type check, build, bundle check, licence check (221 packages, 0 refused) and
   audit clean. Bootstrap guard mutations M-10b-1 and M-10b-2 caught (`apps/api/tests/test_test_bootstrap.py`).
-  CI runs only on pull requests and pushes to `main` (and by manual dispatch), so the `e2e` job has not run yet.
+  CI runs only on pull requests and pushes to `main` (and by manual dispatch); the `e2e` job first ran on pull
+  request #42 (run 39562347176) and passed there and on `main` (run 39562889995).
   Locally the browser lives in `D:\QMS-OS-TEMP\ms-playwright` (`PLAYWRIGHT_BROWSERS_PATH`); the tests need
   `QMS_E2E_PYTHON` naming the virtual environment's Python and a fresh `pnpm run build`.
 - Slice 10c: scope in `docs/ROADMAP.md`, *Slice 10 steps*.

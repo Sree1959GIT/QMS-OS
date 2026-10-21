@@ -351,6 +351,9 @@ def build(docs_dir: Path) -> tuple[list[str], dict[str, int]]:
         "development server only); advisories change over time", "MVP-1 (admin web UI, slice 10)")
 
     # ---- added with the browser tests (MVP-1 slice 10b, 2026-10-21); appended so earlier IDs keep their numbers ----
+    CI = ("CI: pull request #42 run 39562347176 (#88, ubuntu-24.04) and `main` run 39562889995 (#89), job `e2e`, "
+          "step \"Browser tests\" succeeded (job and step conclusions from the GitHub public API, 2026-10-21; the test "
+          "log was not read)")
     add(at("U", "| @playwright/test | 1.63.0 |"),
         "@playwright/test 1.63.0, playwright 1.63.0 and playwright-core 1.63.0 are licensed Apache-2.0", N,
         "package metadata only (secondary), read 2026-10-21; primary source not read", "MVP-1 (admin web UI, slice 10b)")
@@ -365,8 +368,9 @@ def build(docs_dir: Path) -> tuple[list[str], dict[str, int]]:
         N, "not read", "MVP-1 (admin web UI, slice 10b)")
     add(refs(("U", "(`apps/api/tests/e2e_server.py`). The built UI renders under the API's Content-Security-Policy")),
         "The built React UI renders under the API's Content-Security-Policy in Chromium with no violation", V,
-        "browser test `apps/admin-web/e2e/smoke.spec.ts`, local run 2026-10-21 (Windows 11, Chromium 153); the "
-        "violation watcher reported an injected inline script in a scratch run; Chromium only, not other browsers",
+        "browser test `apps/admin-web/e2e/smoke.spec.ts`: local run 2026-10-21 (Windows 11, Chromium 153) and " + CI +
+        "; the violation watcher reported an injected inline script in a local scratch run only; Chromium only, not "
+        "other browsers",
         "MVP-1 (admin web UI, slice 10b)")
     add(refs(("U", "cookie and the `X-QMS-CSRF` header is not tested")),
         "The Vite development server's proxy passes the session cookie and the `X-QMS-CSRF` header to the API", N,
@@ -378,8 +382,8 @@ def build(docs_dir: Path) -> tuple[list[str], dict[str, int]]:
         "MVP-1 (admin web UI, slice 10)")
     add(refs(("U", "- Chromium 153 keeps the session cookie the API sets over plain `http://127.0.0.1`")),
         "Chromium keeps and sends the Secure session cookie set over plain http://127.0.0.1", V,
-        "browser test `apps/admin-web/e2e/signin.spec.ts`, local run 2026-10-21 (Windows 11, Chromium 153); Chromium "
-        "only, loopback only", "MVP-1 (admin web UI, slice 10b)")
+        "browser test `apps/admin-web/e2e/signin.spec.ts`: local run 2026-10-21 (Windows 11, Chromium 153) and " + CI +
+        "; Chromium only, loopback only", "MVP-1 (admin web UI, slice 10b)")
 
     # ---- output ----
     lines = [
