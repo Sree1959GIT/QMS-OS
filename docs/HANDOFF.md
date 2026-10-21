@@ -504,8 +504,10 @@ Open for slice 10 (2026-10-21):
   principals 403); mutation M-10d-1 (the project list guarded by `current_user` instead of `org_admin`) is caught by
   1 test. No new dependency.
 - Grant-governed workflow reads (R-64; ADR 0007, *Consequences*: open with the list routes
-  `GET /api/v1/workflow/proposals` and `GET /api/v1/workflow/versions?status=`): to be decided in a new ADR 0008,
-  not yet drafted.
+  `GET /api/v1/workflow/proposals` and `GET /api/v1/workflow/versions?status=`): drafted as
+  `docs/adr/0008-grant-governed-workflow-reads.md` (status Draft, 2026-10-21; not implemented). It lists ten
+  decisions for the Admin (grant table, what is classified, default deny and 404, fixture grants, author and
+  approver reads, case participants, unfiled proposals, preview and skill, timing against 10e and 10f).
 - Remaining claims: the 16 admin web UI package licences (C-131 to C-146) are package metadata only, not verified
   against the licence text; C-147 flagged (lightningcss, R-73); C-148 (audit) is dated registry data.
 - Stale text found on 2026-10-21 and corrected on `feat/mvp1-admin-ui-signin`: the claims register's header now
