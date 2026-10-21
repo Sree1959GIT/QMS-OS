@@ -528,7 +528,13 @@ Open for slice 10 (2026-10-21):
   actions (no permission 403, stale step-up 401, no session 401, agent and Telegram principals 403, missing or wrong
   CSRF 403, own role 403, unknown 404, already revoked 422); mutation M-C-1 (adding a grant needs only a step-up, not
   the org admin permission) caught by 1 test. Tests: `apps/admin-web/src/workflowGrants.test.tsx`,
-  `apps/admin-web/e2e/workflowGrants.spec.ts`, `apps/api/tests/test_org_ui_refusals.py`. Open for the Admin: change routes (edit, submit, withdraw, answer, draft, approve, reject, cases) are not
+  `apps/admin-web/e2e/workflowGrants.spec.ts`, `apps/api/tests/test_org_ui_refusals.py`. Slice step 10e (commit D):
+  a *Workflow* menu (its *Proposals* button hidden from non-authors, a hint only) with the proposal form on the existing
+  routes and the governed list: request, questions with answers sent as whole numbers or text, the validator's
+  findings with their codes, a draft into a template the person can read (labelled with its guideline's
+  classification), the draft's graph edited as JSON, checked again, and submitted; a submission with errors is
+  refused by the server (422) and its detail shown. Tests: `apps/admin-web/src/proposals.test.tsx`,
+  `apps/admin-web/e2e/proposals.spec.ts` (the whole flow on the production build, same origin). Open for the Admin: change routes (edit, submit, withdraw, answer, draft, approve, reject, cases) are not
   read-checked, so an author without a grant could receive another person's draft in a change response (ADR 0008,
   *Choices made in implementation*).
 - Remaining claims: the 16 admin web UI package licences (C-131 to C-146) are package metadata only, not verified
