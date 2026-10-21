@@ -16,10 +16,20 @@ are refused on every human route); the preview and the super admin review use th
 
 Evidence (MVP-1 slice 5; R-51): objects in the evidence store are resources of kind ``evidence``, classified by their
 metadata row; a role's ceiling for them comes from ``evidence_grants`` (scope ``all``). The owner has no bypass.
+
+Workflow records (R-74 to R-77; ADR 0008): resources of kind ``workflow``, one per guideline and classified by it;
+its templates, versions and cases, and the proposals drafted into it, inherit that classification. A role's ceiling
+comes from ``workflow_grants`` (scope ``all``), decided by the same ``decide``. Outside the grants
+(``can_read_workflow``, R-76): the creator and contributors of a **draft** version read it; the creator of a proposal
+reads it, and nobody else reads a proposal before it is drafted into a guideline; a qualified approver of the
+guideline (R-56) reads its ``proposed`` versions and the baselined version a proposed one would supersede. Nothing
+else: no reads through case assignments (R-77). A denied single read is 404 like a missing record (R-44); lists
+leave the record out.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TypeVar
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -35,13 +45,20 @@ from ..models import (
     ProjectMember,
     RoleGrant,
     User,
+    WorkflowCase,
+    WorkflowGrant,
+    WorkflowGuideline,
+    WorkflowProposal,
+    WorkflowTemplate,
+    WorkflowTemplateVersion,
 )
 from ..providers.contract import DataClass
+from ..workflow.service import contributors, is_qualified_approver
 from .common import NotFound
 
 LEVELS = [c.value for c in DataClass]               # ordered: public < internal < confidential
 KINDS = ("department", "person", "project")                   # kinds governed by role_grants
-PREVIEW_KINDS = (*KINDS, "evidence")                         # evidence: evidence_grants (R-51)
+PREVIEW_KINDS = (*KINDS, "evidence", "workflow")             # evidence_grants (R-51), workflow_grants (R-74)
 SCOPES = ("all", "member")
 MODELS: dict[str, type[Department] | type[User] | type[Project]] = {"department": Department, "person": User,
                                                                   "project": Project}
@@ -73,6 +90,10 @@ def evidence_resource(o: EvidenceObject) -> Resource:
     return Resource("evidence", o.sha256, o.classification)
 
 
+def workflow_resource(g: WorkflowGuideline) -> Resource:
+    return Resource("workflow", g.id, g.classification)
+
+
 def resource_of(obj) -> Resource:
     kind = next(k for k, m in MODELS.items() if isinstance(obj, m))
     return Resource(kind, obj.id, obj.classification)
@@ -94,6 +115,11 @@ def effective_access(s: Session, user: User) -> AccessSet:
         current = ceilings.get("evidence")
         if current is None or _level(eg.max_classification) > _level(current[0]):
             ceilings["evidence"] = (eg.max_classification, "all")
+    for wg in s.scalars(select(WorkflowGrant).where(WorkflowGrant.role == user.role,
+                                                    WorkflowGrant.revoked_at.is_(None))):
+        current = ceilings.get("workflow")
+        if current is None or _level(wg.max_classification) > _level(current[0]):
+            ceilings["workflow"] = (wg.max_classification, "all")
     members = set(s.scalars(select(ProjectMember.project_id).where(
         ProjectMember.user_id == user.id, ProjectMember.removed_at.is_(None))))
     members |= set(s.scalars(select(Project.id).where(Project.manager_user_id == user.id)))
@@ -147,6 +173,68 @@ def require_read(s: Session, user: User, kind: str, obj_id: int):
     return obj
 
 
+# ---------- workflow records (R-74 to R-77) ----------
+
+WorkflowRecord = WorkflowGuideline | WorkflowTemplate | WorkflowTemplateVersion | WorkflowCase | WorkflowProposal
+R = TypeVar("R", WorkflowGuideline, WorkflowTemplate, WorkflowTemplateVersion, WorkflowCase, WorkflowProposal)
+
+
+def _guideline_of(s: Session, record: WorkflowRecord) -> WorkflowGuideline | None:
+    """The guideline whose classification governs ``record``; None for a proposal not yet drafted into one."""
+    obj: WorkflowRecord | None = record
+    if isinstance(obj, WorkflowProposal):
+        if obj.version_id is None:
+            return None
+        obj = s.get(WorkflowTemplateVersion, obj.version_id)
+    if isinstance(obj, (WorkflowTemplateVersion, WorkflowCase)):
+        obj = s.get(WorkflowTemplate, obj.template_id)
+    if isinstance(obj, WorkflowTemplate):
+        obj = s.get(WorkflowGuideline, obj.guideline_id)
+    assert isinstance(obj, WorkflowGuideline)
+    return obj
+
+
+def _version_outside_grants(s: Session, user: User, v: WorkflowTemplateVersion, g: WorkflowGuideline) -> bool:
+    if v.status == "draft" and user.id in contributors(s, v):
+        return True                                               # own draft (R-76)
+    if not is_qualified_approver(s, user, g):
+        return False
+    if v.status == "proposed":
+        return True                                               # to approve or reject it (R-76)
+    return v.status == "baselined" and s.scalar(                  # the version a proposed one would supersede
+        select(WorkflowTemplateVersion.id).where(WorkflowTemplateVersion.template_id == v.template_id,
+                                                 WorkflowTemplateVersion.status == "proposed",
+                                                 WorkflowTemplateVersion.version_no > v.version_no).limit(1)
+    ) is not None
+
+
+def can_read_workflow(s: Session, user: User, access: AccessSet, obj: WorkflowRecord) -> bool:
+    """The only read rule for workflow records: the grants through ``decide``, then the R-76 exceptions."""
+    if not access.active:
+        return False
+    if isinstance(obj, WorkflowProposal) and obj.created_by_id == user.id:
+        return True                                               # own proposal (R-76)
+    g = _guideline_of(s, obj)
+    if g is None:
+        return False                                              # before drafting: author-only (R-76)
+    if decide(access, workflow_resource(g)):
+        return True
+    return isinstance(obj, WorkflowTemplateVersion) and _version_outside_grants(s, user, obj, g)
+
+
+def require_workflow_read(s: Session, user: User, model: type[R], obj_id: int) -> R:
+    """The record, or 404 whether it is missing or not readable, with the same message (R-44, R-75)."""
+    obj = s.get(model, obj_id)
+    if obj is None or not can_read_workflow(s, user, effective_access(s, user), obj):
+        raise NotFound(f"{model.__name__} {obj_id} not found")
+    return obj
+
+
+def readable_workflow(s: Session, user: User, rows: list[R]) -> list[R]:
+    access = effective_access(s, user)
+    return [r for r in rows if can_read_workflow(s, user, access, r)]
+
+
 # ---------- preview ----------
 
 def _matrix(s: Session, access: AccessSet) -> dict:
@@ -159,6 +247,10 @@ def _matrix(s: Session, access: AccessSet) -> dict:
     objects = list(s.scalars(select(EvidenceObject).order_by(EvidenceObject.sha256)))
     readable_ids["evidence"] = [o.sha256 for o in objects if decide(access, evidence_resource(o))]
     denied_ids["evidence"] = [o.sha256 for o in objects if not decide(access, evidence_resource(o))]
+    # workflow: the guidelines readable through the grants; the personal R-76 exceptions are per record, not shown
+    guidelines = list(s.scalars(select(WorkflowGuideline).order_by(WorkflowGuideline.id)))
+    readable_ids["workflow"] = [g.id for g in guidelines if decide(access, workflow_resource(g))]
+    denied_ids["workflow"] = [g.id for g in guidelines if not decide(access, workflow_resource(g))]
     return {"active": access.active,
             "grants": {k: {"max_classification": c, "scope": sc} for k, (c, sc) in sorted(access.ceilings.items())},
             "member_projects": sorted(access.member_projects),

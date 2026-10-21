@@ -526,8 +526,8 @@ were added to their existing rows. C-129 and C-130 are among the 9 flagged claim
 | C-124 | `BENCHMARK-PLAN.md:173`; `BENCHMARK-PLAN.md:177` | Smoke test: pull, one-word reply, `ollama ps`, `nvidia-smi` (one sample) | verified | Admin-supplied output, 2026-10-12 (not a benchmark result) | slice 4 runs |
 | C-125 | `HANDOFF.md:209` | The R-3 compiled dependencies install on Linux (CI) | verified | CI step results, read 2026-10-06 (log not read) | MVP-1 (authentication) |
 | C-126 | `HANDOFF.md:401` | Whether the PostgreSQL digest is a multi-arch index | not verified — flagged | not checked; only amd64 hosts are used; Admin: kept as labelled (R-28) | none |
-| C-127 | `BENCHMARK-PLAN.md:108`; `HANDOFF.md:745` | Memory inside a container is capped by the Docker Desktop allocation | not verified | no source recorded | slice 4 runs |
-| C-128 | `HANDOFF.md:682` | Compose ignores the unused `POSTGRES_TAG` in `.env` | not verified | no source recorded | MVP-0 (local runtime) |
+| C-127 | `BENCHMARK-PLAN.md:108`; `HANDOFF.md:755` | Memory inside a container is capped by the Docker Desktop allocation | not verified | no source recorded | slice 4 runs |
+| C-128 | `HANDOFF.md:692` | Compose ignores the unused `POSTGRES_TAG` in `.env` | not verified | no source recorded | MVP-0 (local runtime) |
 | C-129 | `UPSTREAMS.md:81` | LGPL-3.0 obligations for psycopg (internal use conveys nothing; notices and replaceability on delivery) | not verified — flagged | licence interpretation; the note itself says it is not legal advice; no stage delivers QMS OS to another organisation; Admin: kept as labelled (R-28) | none |
 | C-130 | `UPSTREAMS.md:88` | pg8000 is BSD-licensed | not verified — flagged | no source recorded; pg8000 is not adopted; Admin: kept as labelled (R-28) | none |
 | C-131 | `UPSTREAMS.md:209` | react 19.3.0 is licensed MIT | not verified | package metadata only (secondary), read 2026-10-15; primary source not read | MVP-1 (admin web UI, slice 10) |

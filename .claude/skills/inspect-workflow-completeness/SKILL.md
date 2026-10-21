@@ -17,6 +17,10 @@ step-up), never by this skill.
 The Admin sets, in the terminal Claude Code was started from: `QMS_MODE=demo` (or `test`) and `QMS_DATABASE_URL`
 naming the synthetic demo or test database. In MVP-1 the script refuses operational mode (exit code 2; R-46).
 
+The script reads that database directly, not through the API, so the workflow read grants (R-74 to R-77,
+`docs/adr/0008-grant-governed-workflow-reads.md`) do not limit what it inspects; this stays so by decision (R-78). If
+it is ever moved onto the API, it would see only what the Admin's own grants allow, and this document must say so.
+
 ## Run
 
 Run exactly this one command from the repository root, and nothing else:

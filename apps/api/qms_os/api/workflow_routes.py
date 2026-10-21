@@ -1,9 +1,12 @@
-"""Workflow engine routes (MVP-1 slices 6 to 9; R-56 to R-64). Reads: any signed-in human (R-64; not grant-governed
-in MVP-1). Changes: authors (checked in ``qms_os.workflow.service``). Approve and reject: a qualified approver with a
-fresh step-up. There is no delete route."""
+"""Workflow engine routes (MVP-1 slices 6 to 9; R-56 to R-63). Reads: signed-in humans, grant-governed (R-74 to R-77;
+ADR 0008): every read route, the validator's dry run included, goes through ``services/access.py``; a record the
+caller may not read is 404 like a missing one, and the list routes leave it out. Agents and Telegram principals are
+refused (``current_user``). Changes: authors (checked in ``qms_os.workflow.service``). Approve and reject: a
+qualified approver with a fresh step-up. There is no delete route."""
 from __future__ import annotations
 
 from datetime import date
+from typing import Literal
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict, Field
@@ -18,7 +21,7 @@ from ..models import (
     WorkflowTemplate,
     WorkflowTemplateVersion,
 )
-from ..services.common import get_or_404
+from ..services import access as ACC
 from ..workflow import cases as C
 from ..workflow import proposals as P
 from ..workflow import service as W
@@ -68,7 +71,8 @@ class RejectIn(BaseModel):
 
 @router.get("/guidelines")
 def guidelines(u: User = Depends(current_user), s: Session = Depends(get_session)):
-    return [W.guideline_row(g) for g in s.scalars(select(WorkflowGuideline).order_by(WorkflowGuideline.id))]
+    rows = list(s.scalars(select(WorkflowGuideline).order_by(WorkflowGuideline.id)))
+    return [W.guideline_row(g) for g in ACC.readable_workflow(s, u, rows)]
 
 
 @router.post("/guidelines")
@@ -78,7 +82,7 @@ def create_guideline(body: GuidelineIn, u: User = Depends(current_user), s: Sess
 
 @router.get("/guidelines/{guideline_id}")
 def guideline(guideline_id: int, u: User = Depends(current_user), s: Session = Depends(get_session)):
-    g = get_or_404(s, WorkflowGuideline, guideline_id)
+    g = ACC.require_workflow_read(s, u, WorkflowGuideline, guideline_id)
     templates = s.scalars(select(WorkflowTemplate).where(WorkflowTemplate.guideline_id == g.id)
                           .order_by(WorkflowTemplate.id))
     return W.guideline_row(g) | {"templates": [W.template_row(s, t) for t in templates]}
@@ -92,10 +96,24 @@ def create_template(guideline_id: int, body: TemplateIn, u: User = Depends(curre
 
 @router.get("/templates/{template_id}")
 def template(template_id: int, u: User = Depends(current_user), s: Session = Depends(get_session)):
-    return W.template_row(s, get_or_404(s, WorkflowTemplate, template_id))
+    return W.template_row(s, ACC.require_workflow_read(s, u, WorkflowTemplate, template_id))
 
 
 # ---------- versions ----------
+
+@router.get("/versions")
+def versions(status: Literal["draft", "proposed", "baselined", "superseded"] | None = None,
+             u: User = Depends(current_user), s: Session = Depends(get_session)):
+    """The versions the caller may read, optionally of one status (the approval inbox asks for ``proposed``)."""
+    q = select(WorkflowTemplateVersion).order_by(WorkflowTemplateVersion.id)
+    if status is not None:
+        q = q.where(WorkflowTemplateVersion.status == status)
+    out = []
+    for v in ACC.readable_workflow(s, u, list(s.scalars(q))):
+        t = s.get(WorkflowTemplate, v.template_id)
+        assert t is not None
+        out.append(W.version_row(v) | {"guideline_id": t.guideline_id})
+    return out
 
 @router.post("/templates/{template_id}/versions")
 def create_version(template_id: int, body: VersionIn, u: User = Depends(current_user),
@@ -106,7 +124,7 @@ def create_version(template_id: int, body: VersionIn, u: User = Depends(current_
 
 @router.get("/versions/{version_id}")
 def version(version_id: int, u: User = Depends(current_user), s: Session = Depends(get_session)):
-    v = get_or_404(s, WorkflowTemplateVersion, version_id)
+    v = ACC.require_workflow_read(s, u, WorkflowTemplateVersion, version_id)
     return W.version_row(v) | {"approvals": W.approvals(s, v.id)}
 
 
@@ -118,12 +136,15 @@ def update_version(version_id: int, body: VersionChange, u: User = Depends(curre
 
 @router.get("/versions/{version_id}/diff")
 def version_diff(version_id: int, against: int, u: User = Depends(current_user), s: Session = Depends(get_session)):
+    ACC.require_workflow_read(s, u, WorkflowTemplateVersion, against)
+    ACC.require_workflow_read(s, u, WorkflowTemplateVersion, version_id)
     return W.diff(s, version_id, against)
 
 
 @router.post("/versions/{version_id}/validate")
 def validate_version(version_id: int, u: User = Depends(current_user), s: Session = Depends(get_session)):
-    """The completeness validator's findings (slice 7, R-60); changes nothing."""
+    """The completeness validator's findings (slice 7, R-60); changes nothing, and is governed like a read."""
+    ACC.require_workflow_read(s, u, WorkflowTemplateVersion, version_id)
     return W.validation(s, version_id)
 
 
@@ -173,7 +194,7 @@ def start_case(template_id: int, body: CaseIn, u: User = Depends(current_user), 
 
 @router.get("/cases/{case_id}")
 def case(case_id: int, u: User = Depends(current_user), s: Session = Depends(get_session)):
-    return C.case_row(s, get_or_404(s, WorkflowCase, case_id))
+    return C.case_row(s, ACC.require_workflow_read(s, u, WorkflowCase, case_id))
 
 
 @router.post("/cases/{case_id}/migrations")
@@ -217,9 +238,16 @@ def create_proposal(body: ProposalIn, u: User = Depends(current_user), s: Sessio
     return P.proposal_row(s, P.create_proposal(s, u, body.request))
 
 
+@router.get("/proposals")
+def proposals(u: User = Depends(current_user), s: Session = Depends(get_session)):
+    """The proposals the caller may read: their own, and those drafted into a guideline they may read (R-76)."""
+    rows = list(s.scalars(select(WorkflowProposal).order_by(WorkflowProposal.id)))
+    return [P.proposal_row(s, p) for p in ACC.readable_workflow(s, u, rows)]
+
+
 @router.get("/proposals/{proposal_id}")
 def proposal(proposal_id: int, u: User = Depends(current_user), s: Session = Depends(get_session)):
-    return P.proposal_row(s, get_or_404(s, WorkflowProposal, proposal_id))
+    return P.proposal_row(s, ACC.require_workflow_read(s, u, WorkflowProposal, proposal_id))
 
 
 @router.post("/proposals/{proposal_id}/answers")

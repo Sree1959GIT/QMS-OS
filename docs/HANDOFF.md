@@ -509,8 +509,18 @@ Open for slice 10 (2026-10-21):
   principals 403); mutation M-10d-1 (the project list guarded by `current_user` instead of `org_admin`) is caught by
   1 test. No new dependency.
 - Grant-governed workflow reads: `docs/adr/0008-grant-governed-workflow-reads.md` **Accepted** (Admin, 2026-10-21;
-  R-74 to R-78; R-64 superseded for reads). Implementation in progress on `feat/mvp1-workflow-reads-ui` (commit B
-  onward). Open for the Admin: change routes (edit, submit, withdraw, answer, draft, approve, reject, cases) are not
+  R-74 to R-78; R-64 superseded for reads). Backend on `feat/mvp1-workflow-reads-ui` (commit B): migration
+  `f06d2c9357ad` (table `workflow_grants` with CHECK constraints on role and ceiling; `workflow_guidelines.
+  classification`, server default `internal`, CHECK; no `op.execute`); `services/access.py` `can_read_workflow`
+  (the grants through `decide`, then the R-76 exceptions), `require_workflow_read` (404 with the missing-record
+  detail) and `readable_workflow`; enforced on the seven read routes and on the validator's dry run
+  (`POST .../validate`); new list routes `GET /api/v1/workflow/proposals` and `GET /api/v1/workflow/versions?status=`;
+  fixture grants `internal` for every fixture role; the preview's `workflow` kind; the skill document's R-78 note.
+  Tests: `apps/api/tests/test_workflow_reads.py` (23) and the PostgreSQL migration test in `tests/test_postgres.py`
+  (upgrade from `03c084021bfa`, an existing guideline becomes `internal`, the three CHECK constraints refuse bad
+  values, the downgrade raises and changes nothing). Mutations, each restored with its SHA-256 checked: the case
+  read unchecked (4 tests fail), the proposals list unfiltered (3), the versions list unfiltered (3), the approver
+  exception widened to every guideline (2). Open for the Admin: change routes (edit, submit, withdraw, answer, draft, approve, reject, cases) are not
   read-checked, so an author without a grant could receive another person's draft in a change response (ADR 0008,
   *Choices made in implementation*).
 - Remaining claims: the 16 admin web UI package licences (C-131 to C-146) are package metadata only, not verified
