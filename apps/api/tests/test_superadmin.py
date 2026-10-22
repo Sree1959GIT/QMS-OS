@@ -113,6 +113,20 @@ def test_no_script_names_a_private_or_env_path():
     assert names and all(n.endswith(".md") and not n.startswith(".") and ".." not in n for n in names), names
 
 
+def test_the_claims_register_scans_the_mvp1_exit_and_demo_documents():
+    """Admin decision 2026-10-22 (slice 11 review): MVP1-EXIT.md and DEMO.md are claim sources like the other docs."""
+    from qms_superadmin import claims_register
+    tree = ast.parse((PKG / "claims_register.py").read_text(encoding="utf-8"))
+    files = next(n.value for n in ast.walk(tree)
+                 if isinstance(n, ast.Assign) and any(getattr(t, "id", "") == "FILES" for t in n.targets))
+    assert {"MVP1-EXIT.md", "DEMO.md"} <= {v.value for v in files.values}
+    lines, _ = claims_register.build(REPO / "docs")
+    header = " ".join(lines[:8])
+    assert "`MVP1-EXIT.md`" in header and "`DEMO.md`" in header
+    rows = [line for line in lines if line.startswith("| C-")]
+    assert any("`MVP1-EXIT.md:" in r for r in rows) and any("`DEMO.md:" in r for r in rows)
+
+
 def test_scripts_make_no_network_calls_and_write_no_files():
     forbidden = ("socket", "urllib", "http.client", "requests", "httpx", ".write_text(", ".write_bytes(",
                  "open(", "mkdir(")
