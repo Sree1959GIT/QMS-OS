@@ -98,6 +98,49 @@ def test_schema_is_at_head_and_downgrade_refuses(pg):
     require_schema_at_head(pg)            # the failed downgrade changed nothing
 
 
+def test_workflow_grants_migration_upgrades_additively_and_refuses_downgrade(pg):
+    """Migration f06d2c9357ad (R-74): from its parent, an existing guideline gets classification 'internal'; both
+    tables' CHECK constraints refuse bad values; the downgrade raises and changes nothing. The module's schema is
+    rebuilt at head afterwards."""
+    from sqlalchemy.exc import IntegrityError
+
+    def constraints(conn) -> set[str]:
+        return set(conn.scalars(text(
+            "select conname from pg_constraint where conname like 'ck_workflow_g%' and contype = 'c'")))
+
+    try:
+        with pg.begin() as conn:
+            conn.execute(text("DROP SCHEMA public CASCADE"))
+            conn.execute(text("CREATE SCHEMA public"))
+            command.upgrade(PG.alembic_config(conn), "03c084021bfa")
+            assert constraints(conn) == set()
+            dept = conn.scalar(text("insert into departments (code, name) values ('syn', 'Synthetic (fixture)') "
+                                    "returning id"))
+            user = conn.scalar(text("insert into users (name, email, role, trained_auditor) values ('Fixture A', "
+                                    "'a@fixture-org.example', 'MA', false) returning id"))
+            conn.execute(text("insert into workflow_guidelines (title, department_id, \"references\", active, "
+                              "created_by_id, created_at) values ('Existing (fixture)', :d, '[]', true, :u, now())"),
+                         {"d": dept, "u": user})
+            command.upgrade(PG.alembic_config(conn), "f06d2c9357ad")
+            assert conn.scalar(text("select classification from workflow_guidelines")) == "internal"
+            assert constraints(conn) == {"ck_workflow_grants_role", "ck_workflow_grants_max_classification",
+                                         "ck_workflow_guidelines_classification"}
+        for sql in ("update workflow_guidelines set classification = 'secret'",
+                    "insert into workflow_grants (role, max_classification, granted_at) values ('MA', 'secret', now())",
+                    "insert into workflow_grants (role, max_classification, granted_at) values ('X', 'public', now())"):
+            with pytest.raises(IntegrityError), pg.begin() as conn:
+                conn.execute(text(sql))
+        with pytest.raises(NotImplementedError, match="downgrade is not supported"), pg.begin() as conn:
+            command.downgrade(PG.alembic_config(conn), "03c084021bfa")
+        with pg.connect() as conn:
+            assert constraints(conn) == {"ck_workflow_grants_role", "ck_workflow_grants_max_classification",
+                                         "ck_workflow_guidelines_classification"}
+            assert conn.scalar(text("select version_num from alembic_version")) == "f06d2c9357ad"
+    finally:
+        PG.rebuild_schema(pg)
+    require_schema_at_head(pg)
+
+
 def test_app_refuses_to_start_unless_schema_is_at_head(pg, clock):
     with pg.begin() as conn:
         command.stamp(PG.alembic_config(conn), "base")

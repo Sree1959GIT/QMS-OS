@@ -6,14 +6,14 @@
 
 - Repository: this repository (`QMS-OS`); confirm the remote with `git remote -v`.
 - Specification: `docs/SPECIFICATION.md`, v3.0 dated 29 September 2026. Verify title and version locally.
-- Baseline recorded here: `main` at `8b0c0ef03909180593308ada7128defc78c94390` (2026-10-21; squash merge of pull
-  request #42, MVP-1 pull request 6, slice 10b; `git pull --ff-only`, 2026-10-21). Its tree is identical to
-  `ac712a0`, the last commit of the deleted branch `feat/mvp1-admin-ui-signin` (`git diff` empty); that branch's
-  commits (`f6d606f`, `f251734`, `6186328`, `138f23a`, `ac712a0`) exist only in pull request #42's history. The
-  previous baseline, `efaeec1` (pull request #41, slice 10a), likewise replaced the commits of `feat/mvp1-admin-ui`
-  (`2b05481`, `d79a00e`, `77fc4fe`, `bc9c83a`, `ec414e1`); its squash title kept "(draft)".
-  Work in progress: branch `feat/mvp1-admin-ui-org` from `8b0c0ef`, slices 10c and 10d and the draft ADR 0008 (no
-  pull request yet).
+- Baseline recorded here: `main` at `42859bed6223e8e02ba03a16f92819c3da94dea1` (2026-10-21; squash merge of pull
+  request #43, MVP-1 pull request 7: slices 10c and 10d and the draft ADR 0008; fast-forward of local `main`,
+  2026-10-21). Pull request #43's head was `46a35a3` on the deleted branch `feat/mvp1-admin-ui-org` (commits
+  `2621b1c`, `d02574a`, `d45d1f8`, `46a35a3`, kept only in the pull request's history). Earlier squash baselines:
+  `8b0c0ef` (pull request #42, slice 10b), `efaeec1` (pull request #41, slice 10a).
+  Work in progress: branch `feat/mvp1-workflow-reads-ui` from `42859be`: ADR 0008 accepted (R-74 to R-78),
+  grant-governed workflow reads, the workflow grants screen, slice steps 10e and 10f, and commit F with the Admin's
+  review decisions (R-76 widened, R-79, R-80, the Guidelines screen) (no pull request yet).
   Re-verify branch, HEAD and working tree with Git at session start; this file may be stale.
 - Stage: MVP-0 declared met (R-29), by the Admin on 2026-10-13, on the narrow reading of the exit (R-28). Of the
   eight items in the ROADMAP's MVP-0 table, five are done (Git scaffold, CI and protected `main`; synthetic fixtures;
@@ -25,7 +25,8 @@
   `/api/v1` move, slices 2 and 3, the first three skills) merged as `6aa5246`; pull request 3 (slices 4 and 5)
   merged as `caabb11`; pull request 4 (slices 6 to 9, R-55) merged as `6c74d60` (pull request #40); pull request 5
   (slice 10a) merged as `efaeec1` (pull request #41); pull request 6 (slice 10b) merged as `8b0c0ef` (pull request
-  #42); slices 10c and 10d in progress on `feat/mvp1-admin-ui-org`.
+  #42); pull request 7 (slices 10c, 10d, draft ADR 0008) merged as `42859be` (pull request #43); grant-governed
+  workflow reads and slice steps 10e and 10f in progress on `feat/mvp1-workflow-reads-ui`.
 - Mode: synthetic only. No live connectors, staff accounts or model credentials are configured in this repository,
   and none has been verified; do not claim they are configured.
 
@@ -33,6 +34,11 @@
 
 Each item says how it was verified.
 
+- **Merge of pull request #43 (2026-10-21):** merged at 12:07 UTC as `42859be` (GitHub public API: state closed,
+  merge commit `42859be`, head `46a35a3`). Pull request run 39572955912 (#90) on `46a35a3` succeeded; `main` run
+  39597065905 (#91) on `42859be`: all eight jobs succeeded (`test`, `test-py311`, `lint`, `types`, `postgres`,
+  `secret-scan`, `frontend`, `e2e`), from the GitHub public API, 2026-10-21. The job logs were not read; C-155
+  (musl build in CI) stays as it is, since no log lines were supplied.
 - **Merge of pull request #42 (2026-10-21):** merged at 07:34 UTC as `8b0c0ef` (GitHub public API). Pull request run
   39562347176 (#88) on `ac712a0` and `main` run 39562889995 (#89) on `8b0c0ef`: all eight jobs succeeded in both
   (`test`, `test-py311`, `lint`, `types`, `postgres`, `secret-scan`, `frontend`, `e2e`; every step of `e2e`
@@ -503,11 +509,58 @@ Open for slice 10 (2026-10-21):
   63 component tests; 7 browser tests; the twelve 10d actions get the same direct-API refusals as 10c (plus agent
   principals 403); mutation M-10d-1 (the project list guarded by `current_user` instead of `org_admin`) is caught by
   1 test. No new dependency.
-- Grant-governed workflow reads (R-64; ADR 0007, *Consequences*: open with the list routes
-  `GET /api/v1/workflow/proposals` and `GET /api/v1/workflow/versions?status=`): drafted as
-  `docs/adr/0008-grant-governed-workflow-reads.md` (status Draft, 2026-10-21; not implemented). It lists ten
-  decisions for the Admin (grant table, what is classified, default deny and 404, fixture grants, author and
-  approver reads, case participants, unfiled proposals, preview and skill, timing against 10e and 10f).
+- Grant-governed workflow reads: `docs/adr/0008-grant-governed-workflow-reads.md` **Accepted** (Admin, 2026-10-21;
+  R-74 to R-78; R-64 superseded for reads). Backend on `feat/mvp1-workflow-reads-ui` (commit B): migration
+  `f06d2c9357ad` (table `workflow_grants` with CHECK constraints on role and ceiling; `workflow_guidelines.
+  classification`, server default `internal`, CHECK; no `op.execute`); `services/access.py` `can_read_workflow`
+  (the grants through `decide`, then the R-76 exceptions), `require_workflow_read` (404 with the missing-record
+  detail) and `readable_workflow`; enforced on the seven read routes and on the validator's dry run
+  (`POST .../validate`); new list routes `GET /api/v1/workflow/proposals` and `GET /api/v1/workflow/versions?status=`;
+  fixture grants `internal` for every fixture role; the preview's `workflow` kind; the skill document's R-78 note.
+  Tests: `apps/api/tests/test_workflow_reads.py` (23) and the PostgreSQL migration test in `tests/test_postgres.py`
+  (upgrade from `03c084021bfa`, an existing guideline becomes `internal`, the three CHECK constraints refuse bad
+  values, the downgrade raises and changes nothing). Mutations, each restored with its SHA-256 checked: the case
+  read unchecked (4 tests fail), the proposals list unfiltered (3), the versions list unfiltered (3), the approver
+  exception widened to every guideline (2). Workflow grants screen (commit C): org routes
+  `GET/POST /api/v1/org/workflow-grants` and `POST /api/v1/org/workflow-grants/{id}/revoke` (org admin with a fresh
+  step-up, R-41; no change to the grants of one's own QMS role; audited `org.workflow_grant.*`), in the org route set;
+  the admin web *Workflow grants* screen under Organisation (list, add, revoke; the guidelines the person can read
+  with their classification) and the `workflow` kind in the access preview. Direct-API refusals for each of the three
+  actions (no permission 403, stale step-up 401, no session 401, agent and Telegram principals 403, missing or wrong
+  CSRF 403, own role 403, unknown 404, already revoked 422); mutation M-C-1 (adding a grant needs only a step-up, not
+  the org admin permission) caught by 1 test. Tests: `apps/admin-web/src/workflowGrants.test.tsx`,
+  `apps/admin-web/e2e/workflowGrants.spec.ts`, `apps/api/tests/test_org_ui_refusals.py`. Slice step 10e (commit D):
+  a *Workflow* menu (its *Proposals* button hidden from non-authors, a hint only) with the proposal form on the existing
+  routes and the governed list: request, questions with answers sent as whole numbers or text, the validator's
+  findings with their codes, a draft into a template the person can read (labelled with its guideline's
+  classification), the draft's graph edited as JSON, checked again, and submitted; a submission with errors is
+  refused by the server (422) and its detail shown. Tests: `apps/admin-web/src/proposals.test.tsx`,
+  `apps/admin-web/e2e/proposals.spec.ts` (the whole flow on the production build, same origin). Slice step 10f
+  (commit E): the *Approval inbox* (proposed versions from `GET /api/v1/workflow/versions?status=proposed`), a review
+  with the full digest, the diff against the same template's baseline and the validator's result; approve sends the
+  shown digest and an effective date (step-up dialog once, one retry); reject with a reason. The test-only bootstrap
+  takes an optional `{"role": ...}` (one of the five QMS roles; default `VIEWER`) inside the same test-mode guards;
+  tests show a request with a role creates nothing outside test mode and an unknown role or extra field is 422;
+  mutation M-10f-1 (both guards removed) caught by 7 tests. Browser test of the exit flow with two synthetic MA accounts in
+  separate contexts: self-approval refused (403, generic); the other approver baselines the digest shown; an edit
+  after baselining 409; a version changed after it was shown 409 (R-59). Tests: `apps/admin-web/src/approvals.test.tsx`,
+  `apps/admin-web/e2e/approvals.spec.ts`, `apps/api/tests/test_test_bootstrap.py`.
+- Review changes (commit F, 2026-10-21; ADR 0008 *Review decisions*): every workflow change route (create a template
+  or a version, edit, submit, withdraw, approve, reject, answer, draft, start a case, request, approve or reject a
+  migration) reads its target through `require_workflow_read` first: 404 with the missing-record detail when denied,
+  nothing changed, no event written (R-79). Responses go through `access.change_result`: an approver without a grant
+  who baselines or rejects gets the id and status only. Creating a guideline its creator could not read is 403. The
+  author and contributor exception covers own versions while draft or proposed (rejected and withdrawn ones are
+  drafts again; R-76 widened). New org routes `GET /api/v1/org/workflow-guidelines` and
+  `POST /api/v1/org/workflow-guidelines/{id}/classification` (org admin, step-up, audited
+  `org.workflow_guideline.classified`; R-80) with a control on the Workflow grants screen; the classification is not
+  in the digest. A *Guidelines* screen (authors; no step-up under the existing rules) creates guidelines and
+  templates, and the browser tests now set up through it. Mutations M-F-1 (no read check on the edit route) caught
+  by 3 tests and M-F-2 (none on the approve route) by 2, each restored with its SHA-256 checked. New browser test
+  `apps/admin-web/e2e/approvalsStepUp.spec.ts` waits out the 35-second step-up window, then shows one dialog, one
+  retry and the shown digest sent both times. Local results: Python suite 688 passed, 2 skipped; PostgreSQL full suite 720 passed; 95 component tests; 11 browser
+  tests. **Migration rollback:** the R-74 migration's downgrade raises (accepted, review decision 2); rolling back
+  means restoring a database backup taken before the upgrade (`scriptsackup-db.bat`).
 - Remaining claims: the 16 admin web UI package licences (C-131 to C-146) are package metadata only, not verified
   against the licence text; C-147 flagged (lightningcss, R-73); C-148 (audit) is dated registry data.
 - Stale text found on 2026-10-21 and corrected on `feat/mvp1-admin-ui-signin`: the claims register's header now

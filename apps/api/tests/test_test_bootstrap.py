@@ -6,6 +6,11 @@ demonstration (2026-10-21, scratch run, not committed): M-10b-1, the ``if policy
 variable). M-10b-2, the route's own mode check removed as well: 5 fail (the two 404 tests too). The first run of
 M-10b-1 passed, because the route walk did not descend into included routers; ``_walk`` fixes that and asserts it
 finds the sign-in route.
+
+The optional ``role`` (slice step 10f) is checked here in the same way: outside test mode a request with a role
+creates nothing. Mutation demonstration (2026-10-21, scratch run, not committed): M-10f-1, both guards removed again
+(the registration ``if True`` and the route's own check deleted): the absent-outside-test tests fail, the role tests
+among them.
 """
 from __future__ import annotations
 
@@ -114,3 +119,35 @@ def test_the_audit_event_records_no_password_or_secret(h):
     assert len(events) == 1 and events[0].channel == "test"
     text = repr(events[0].detail)
     assert body["password"] not in text and body["totp_secret"] not in text
+
+
+# ---------- the optional QMS role (slice step 10f) ----------
+
+def test_the_role_option_creates_nothing_outside_test_mode(other_mode_app):
+    c = TestClient(other_mode_app, base_url="https://testserver")
+    r = c.post(BOOTSTRAP, json={"role": "MA"})
+    assert r.status_code in (404, 405) and "totp_secret" not in r.text
+    with other_mode_app.state.sessionmaker() as s:
+        assert s.scalar(select(User).where(User.email.like("e2e-%"))) is None
+        assert s.scalar(select(AuditEvent).where(AuditEvent.action == "test.bootstrap_account")) is None
+
+
+def test_in_test_mode_the_account_can_hold_another_qms_role(h):
+    c = h.client()
+    ma = c.post(BOOTSTRAP, json={"role": "MA"}).json()
+    default = c.post(BOOTSTRAP).json()
+    with h.db() as s:
+        roles = {u.email: u.role for u in s.scalars(select(User).where(User.email.like("e2e-%")))}
+        assert roles == {ma["email"]: "MA", default["email"]: "VIEWER"}
+        events = s.scalars(select(AuditEvent).where(AuditEvent.action == "test.bootstrap_account")
+                           .order_by(AuditEvent.id)).all()
+        assert [e.detail["role"] for e in events] == ["MA", "VIEWER"]
+        assert all(holds_org_admin(s, s.scalar(select(User.id).where(User.email == e))) for e in roles)
+
+
+@pytest.mark.parametrize("body", [{"role": "ROOT"}, {"role": "ma"}, {"role": "MA", "permission": "account_admin"}])
+def test_an_unknown_role_or_any_other_field_is_refused(h, body):
+    c = h.client()
+    assert c.post(BOOTSTRAP, json=body).status_code == 422
+    with h.db() as s:
+        assert s.scalar(select(User).where(User.email.like("e2e-%"))) is None

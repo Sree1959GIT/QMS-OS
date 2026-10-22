@@ -16,7 +16,7 @@ export type PersonPreview = Matrix & { user_id: number; role: string; agents: nu
 export type AgentPreview = Matrix & { agent_id: number; person_id: number; max_classification: string };
 
 const PREVIEW = "/api/v1/org/access-preview";
-const PREVIEW_KINDS = ["department", "person", "project", "evidence"];
+const PREVIEW_KINDS = ["department", "person", "project", "evidence", "workflow"];   // workflow: guidelines (R-78)
 
 type Data = { people: Person[]; agents: Agent[] };
 

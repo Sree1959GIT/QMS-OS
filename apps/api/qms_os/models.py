@@ -556,6 +556,23 @@ class EvidenceGrant(Base):
     revoked_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
 
 
+class WorkflowGrant(Base):
+    """What every person with QMS ``role`` may read of the workflow records: guidelines classified at or below
+    ``max_classification``, with their templates, versions, cases and drafted proposals (R-74, R-75; ADR 0008). A
+    table of its own, like ``evidence_grants``: ``role_grants`` is unchanged."""
+    __tablename__ = "workflow_grants"
+    __table_args__ = (
+        CheckConstraint("role IN ('MA', 'AUDITOR', 'AUDITEE', 'MD', 'VIEWER')", name="ck_workflow_grants_role"),
+        CheckConstraint("max_classification IN ('public', 'internal', 'confidential')",
+                        name="ck_workflow_grants_max_classification"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    role: Mapped[str] = mapped_column(String(16))
+    max_classification: Mapped[str] = mapped_column(String(16))
+    granted_at: Mapped[datetime] = mapped_column(UTCDateTime, default=now)
+    revoked_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+
+
 # The same statements as migration 1145709a6ca6 (PostgreSQL); SQLite test and demo databases get theirs here.
 EVIDENCE_IMMUTABLE_PG = (
     "CREATE FUNCTION evidence_objects_immutable() RETURNS trigger LANGUAGE plpgsql AS "
@@ -640,8 +657,12 @@ VERSION_STATUSES = ("draft", "proposed", "baselined", "superseded")
 
 class WorkflowGuideline(Base):
     """An approved process area owned by one department, with its reference citations (free text or IDs only; never
-    licensed standard text)."""
+    licensed standard text). ``classification`` governs the reads of the guideline and everything under it (R-74)."""
     __tablename__ = "workflow_guidelines"
+    __table_args__ = (
+        CheckConstraint("classification IN ('public', 'internal', 'confidential')",
+                        name="ck_workflow_guidelines_classification"),
+    )
     id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str] = mapped_column(String(200))
     department_id: Mapped[int] = mapped_column(ForeignKey("departments.id"))
@@ -649,6 +670,7 @@ class WorkflowGuideline(Base):
     active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=sa_true())
     created_by_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=now)
+    classification: Mapped[str] = mapped_column(String(16), default="internal", server_default="internal")
 
 
 class WorkflowTemplate(Base):

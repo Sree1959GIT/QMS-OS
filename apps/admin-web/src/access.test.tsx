@@ -29,11 +29,11 @@ const AGENT = { id: 9, label: "Fixture assistant", person_id: 5, max_classificat
 const MATRIX = { active: true, grants: { project: { max_classification: "internal", scope: "all" } },
   member_projects: [7], mailbox_scopes: [], delegations: [] };
 const PERSON_PREVIEW: PersonPreview = { ...MATRIX, user_id: 5, role: "AUDITEE", agents: [9],
-  readable: { department: [1, 2], person: [3, 5], project: [7, 8], evidence: ["a1"] },
-  denied: { department: [4], person: [6], project: [], evidence: ["b2"] } };
+  readable: { department: [1, 2], person: [3, 5], project: [7, 8], evidence: ["a1"], workflow: [11] },
+  denied: { department: [4], person: [6], project: [], evidence: ["b2"], workflow: [12] } };
 const AGENT_PREVIEW: AgentPreview = { ...MATRIX, agent_id: 9, person_id: 5, max_classification: "public",
-  readable: { department: [1], person: [5], project: [7], evidence: [] },
-  denied: { department: [2, 4], person: [3, 6], project: [8], evidence: ["a1", "b2"] } };
+  readable: { department: [1], person: [5], project: [7], evidence: [], workflow: [] },
+  denied: { department: [2, 4], person: [3, 6], project: [8], evidence: ["a1", "b2"], workflow: [11, 12] } };
 const SESSION = {
   user: { id: 1, name: "Fixture Org Admin", email: "oa@fixture-org.example", role: "VIEWER" },
   step_up_fresh: true,
@@ -223,7 +223,8 @@ describe("Access preview", () => {
   });
 
   it("raises an alert if an agent preview were ever wider than its person", async () => {
-    const wider = { ...AGENT_PREVIEW, readable: { ...AGENT_PREVIEW.readable, person: [5, 6], evidence: ["b2"] } };
+    const wider = { ...AGENT_PREVIEW, readable: { ...AGENT_PREVIEW.readable, person: [5, 6], evidence: ["b2"],
+      workflow: [12] } };
     route({ [`GET ${ORG}/people`]: ok(PEOPLE), [`GET ${ORG}/agents`]: ok([AGENT]),
       [`GET ${ORG}/access-preview/agents/9`]: ok(wider), [`GET ${ORG}/access-preview/5`]: ok(PERSON_PREVIEW) });
     render(<Access />);
@@ -231,8 +232,9 @@ describe("Access preview", () => {
     await waitFor(() => expect(within(form).getAllByRole("option").length).toBe(2));
     fireEvent.change(within(form).getByLabelText("Agent"), { target: { value: "9" } });
     fireEvent.submit(form);
-    expect((await screen.findByRole("alert")).textContent).toMatch(/can read 2 item\(s\) that person 5 cannot/);
-    expect(widerThanPerson(wider, PERSON_PREVIEW)).toEqual({ department: [], person: [6], project: [], evidence: ["b2"] });
+    expect((await screen.findByRole("alert")).textContent).toMatch(/can read 3 item\(s\) that person 5 cannot/);
+    expect(widerThanPerson(wider, PERSON_PREVIEW))
+      .toEqual({ department: [], person: [6], project: [], evidence: ["b2"], workflow: [12] });
   });
 
   it("shows an unknown agent generically (R-72)", async () => {
@@ -263,11 +265,12 @@ describe("the 10d screens in the shell", () => {
     expect(f.count("POST", "/api/v1/auth/step-up")).toBe(1);
   });
 
-  it("offer all six screens in the menu", async () => {
+  it("offer all seven org screens in the menu", async () => {
     route({ "GET /api/v1/auth/session": ok(SESSION) });
     render(<App />);
     const nav = await screen.findByRole("navigation", { name: "Organisation" });
     expect(within(nav).getAllByRole("button").map((b) => b.textContent))
-      .toEqual(["Departments", "People", "Role grants", "Projects", "Access preview", "Agents"]);
+      .toEqual(["Departments", "People", "Role grants", "Workflow grants", "Projects", "Access preview",
+        "Agents"]);
   });
 });

@@ -10,7 +10,7 @@ from datetime import date
 
 from sqlalchemy.orm import Session
 
-from .models import Department, EvidenceGrant, Holiday, Project, RoleGrant, User
+from .models import Department, EvidenceGrant, Holiday, Project, RoleGrant, User, WorkflowGrant
 
 ORG_NAME = "Fixture Organisation (fictional test data)"
 MAIL_DOMAIN = "fixture-org.example"     # RFC 2606 reserved domain — never deliverable
@@ -79,5 +79,6 @@ def load(s: Session, years: tuple[int, ...] = (2026, 2027)) -> dict[str, User]:
         for kind in ("department", "person", "project"):
             s.add(RoleGrant(role=role, resource_kind=kind, max_classification="internal", scope="all"))
         s.add(EvidenceGrant(role=role, max_classification="internal"))      # R-51: evidence store reads
+        s.add(WorkflowGrant(role=role, max_classification="internal"))      # R-75: workflow reads, as under R-64
     s.flush()
     return users

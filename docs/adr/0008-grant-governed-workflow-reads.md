@@ -1,7 +1,8 @@
 # ADR 0008 — Grant-governed workflow reads (R-64)
 
-- Status: **Draft** (2026-10-21). Not implemented; nothing in the code depends on it. The Admin decides the points in
-  *Decisions for the Admin* before any implementation.
+- Status: **Accepted** (Admin, 2026-10-21; drafted the same day). Decisions R-74 to R-78 in `docs/DECISIONS.md`;
+  R-64 is superseded for reads by this ADR. Implemented on `feat/mvp1-workflow-reads-ui` before slice steps 10e and
+  10f. Amended the same day after the Admin's review (R-76 widened; R-79 and R-80 added; see *Review decisions*).
 - Related: `docs/DECISIONS.md` R-31, R-43, R-44, R-51, R-56 to R-64; `docs/adr/0006-workflow-engine.md`;
   `docs/adr/0007-admin-web-frontend.md`, *Consequences* (the open list routes `GET /api/v1/workflow/proposals` and
   `GET /api/v1/workflow/versions?status=`, slice steps 10e and 10f); `docs/ROADMAP.md`, *Slice 10 steps*.
@@ -87,19 +88,71 @@ rule (option 4a).
   fixture grants, and tests for every read route (allowed, denied as 404, author and approver exceptions, agents
   refused). Under 1b, add a CHECK-constraint change on `role_grants` (drop and recreate on PostgreSQL).
 
-## Decisions for the Admin
+## Decision (Admin, 2026-10-21)
 
-1. Grant table: 1a (`workflow_grants`), 1b (`role_grants` kind) or 1c (derived from department)?
-2. Classification: 2a (on guidelines, inherited) or 2b (per template or version)? Default value `internal`?
-3. Default deny (3a) and 404 when denied (3b): confirm.
-4. Fixture grants keeping today's behaviour for the synthetic data (3c): confirm; and which roles get which ceiling.
-5. Authors reading their own proposals and drafts (4a): confirm; does it include contributors, or only the creator?
-6. Approvers reading versions proposed within their qualification (4b): confirm; does it include the superseded
-   baselined version for the diff?
-7. Case participants (4c): in scope now, later, or never?
-8. Proposals before they are drafted into a guideline: author-only (4a), or readable by every author (MA, department
-   heads, org admins)?
-9. Whether the access preview shows the `workflow` kind in the same release (recommended), and whether the
-   `inspect-workflow-completeness` skill stays on direct database reads.
-10. Timing: before slice steps 10e and 10f (so the list routes are built governed), or after them with the list
-    routes behind the current R-64 rule.
+1. **Grant table: 1a.** A new `workflow_grants` table (role, `max_classification`, granted and revoked times), like
+   `evidence_grants`; `role_grants` is unchanged (R-74).
+2. **Classification: 2a.** A `classification` column on `workflow_guidelines`, server default `internal`, with a CHECK
+   constraint; templates, versions, cases and proposals drafted into a guideline inherit it (R-74).
+3. **Default deny and 404.** Without an active grant at or above the record's classification, a person reads
+   nothing; a denied single read is 404, as a missing record (R-44); list routes leave the record out (R-75).
+4. **Fixture grants.** The synthetic fixture grants every fixture human role `internal`, which keeps today's
+   behaviour; agents get none. A separate test revokes them and shows the PR 4 exit test's case read becomes 404
+   (R-75).
+5. **Authors and contributors** read their own proposals and their own draft versions (`contributors()`) whatever
+   their grant, never other people's (R-76).
+6. **Approvers** read the `proposed` versions of guidelines they are qualified for (`is_qualified_approver`, R-56)
+   and the baselined version of the same template that the proposed one would supersede, for the diff; never other
+   guidelines and never drafts (R-76).
+7. **Case participants: later, not now.** A case owner can assign anyone, so reads through assignments would widen
+   access outside the grants (R-77).
+8. **Proposals before drafting are author-only:** an open proposal is read only by its creator; once drafted it
+   follows the guideline it was drafted into (and its creator still reads it) (R-76).
+9. **Preview and skill.** The access preview gains a `workflow` kind in the same release. The
+   `inspect-workflow-completeness` skill stays on direct database reads (synthetic demo or test database only,
+   R-46), and its document says so (R-78).
+10. **Timing:** built before slice steps 10e and 10f, so the list routes `GET /api/v1/workflow/proposals` and
+    `GET /api/v1/workflow/versions?status=` are governed from the start (R-78).
+
+Agents and Telegram principals stay refused on every workflow route whatever the grants (R-64, unchanged).
+
+### Choices made in implementation, confirmed or replaced by the review decisions below
+
+- Downgrade: the migration's `downgrade()` raises, as every migration must (D-14, `tests/test_migrations_static.py`);
+  the PostgreSQL test shows the upgrade to head and that the downgrade is refused and leaves the schema unchanged.
+  **Accepted** (review decision 2): rolling back means restoring a database backup taken before the upgrade.
+- `POST /api/v1/workflow/versions/{id}/validate` changes nothing but returns a version's findings; it is governed
+  like the seven read routes (404 when denied). **Accepted** (review decision 3).
+- Change routes were not read-checked at first. **Replaced** by review decision 1 (R-79).
+- "Own drafts" (decision 5) was applied literally (status `draft` only). **Replaced** by review decision 4.
+
+## Review decisions (Admin, 2026-10-21)
+
+1. **Change routes are governed too (R-79).** Every workflow change route (create a template or a version, edit,
+   submit, withdraw, approve, reject, answer, draft, start a case, request, approve or reject a migration) first
+   reads its target record through the same decision (`require_workflow_read`) and returns the same 404 when denied,
+   before any service check or audited refusal; drafting from a proposal reads both the proposal and the template.
+   The author and approver exceptions are unchanged. No change response contains a record the caller cannot read:
+   the response goes through `change_result`, which returns the row only if the caller can read the record as it now
+   is, and otherwise its id and status (what the caller has just set). This happens when an approver without a grant
+   baselines or rejects a version. Creating a guideline is refused (403, rolled back) when its creator's grants would
+   not read it.
+2. **Migration downgrade:** raising is accepted; rollback means restoring a backup (`scripts/backup-db.bat`), noted in
+   `docs/HANDOFF.md`.
+3. **Validate route:** governed as a read, accepted.
+4. **Own versions (R-76 widened):** the author and contributor exception covers their own versions in the states
+   draft, proposed, rejected and withdrawn. A rejected or withdrawn version returns to status `draft` (R-58), so in
+   the data this is status `draft` or `proposed`; baselined and superseded versions need a grant. It never extends to
+   other people's versions, to the guideline, its templates or cases, or to other guidelines.
+5. **Setting a guideline's classification (R-80):** `GET /api/v1/org/workflow-guidelines` lists every guideline's
+   id, department, classification and active flag, with the title only where the org admin's own workflow grants read
+   it (the org admin permission widens no read, R-41); `POST /api/v1/org/workflow-guidelines/{id}/classification`
+   sets it (org admin with a fresh step-up, CSRF, audited `org.workflow_guideline.classified` with the values before
+   and after; an unknown guideline is 404, an unknown or unchanged value 422). The classification is not part of a
+   version's digest (`workflow/digest.py`), so a change alters no digest and no approval; a test shows a raised
+   classification denies reads (404) to every role whose ceiling is lower and shows them denied on the access
+   preview. The Workflow grants screen offers it.
+
+The same review asked for screens to create a guideline and a template, which no screen offered: the Guidelines
+screen (authors, R-57; no step-up under the existing rules) does both, and the browser tests now set up their
+guideline and template through it.

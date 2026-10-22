@@ -57,6 +57,17 @@ class RoleGrantIn(BaseModel):
     scope: str = Field(default="all", max_length=8)
 
 
+class WorkflowGrantIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    role: str = Field(max_length=16)
+    max_classification: str = Field(max_length=16)
+
+
+class ClassificationIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    classification: str = Field(max_length=16)
+
+
 class MemberIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     user_id: int
@@ -141,6 +152,34 @@ def add_role_grant(body: RoleGrantIn, u: User = Depends(org_admin), s: Session =
 @router.post("/role-grants/{grant_id}/revoke")
 def revoke_role_grant(grant_id: int, u: User = Depends(org_admin), s: Session = Depends(get_session)):
     return O.role_grant_row(O.revoke_role_grant(s, u, grant_id))
+
+
+@router.get("/workflow-grants")
+def workflow_grants(u: User = Depends(org_admin), s: Session = Depends(get_session)):
+    return O.list_workflow_grants(s)
+
+
+@router.post("/workflow-grants")
+def add_workflow_grant(body: WorkflowGrantIn, u: User = Depends(org_admin), s: Session = Depends(get_session)):
+    return O.workflow_grant_row(O.add_workflow_grant(s, u, body.role, body.max_classification))
+
+
+@router.post("/workflow-grants/{grant_id}/revoke")
+def revoke_workflow_grant(grant_id: int, u: User = Depends(org_admin), s: Session = Depends(get_session)):
+    return O.workflow_grant_row(O.revoke_workflow_grant(s, u, grant_id))
+
+
+@router.get("/workflow-guidelines")
+def workflow_guidelines(u: User = Depends(org_admin), s: Session = Depends(get_session)):
+    """Every guideline's classification (R-80); the title only where the org admin's own grants read it."""
+    return O.list_workflow_guidelines(s, u)
+
+
+@router.post("/workflow-guidelines/{guideline_id}/classification")
+def classify_workflow_guideline(guideline_id: int, body: ClassificationIn, u: User = Depends(org_admin),
+                                s: Session = Depends(get_session)):
+    g = O.classify_workflow_guideline(s, u, guideline_id, body.classification)
+    return next(row for row in O.list_workflow_guidelines(s, u) if row["id"] == g.id)
 
 
 @router.get("/projects")

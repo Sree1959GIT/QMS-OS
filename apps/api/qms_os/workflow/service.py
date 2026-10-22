@@ -117,7 +117,8 @@ def has_delegation(s: Session, user_id: int) -> bool:
 
 def guideline_row(g: WorkflowGuideline) -> dict:
     return {"id": g.id, "title": g.title, "department_id": g.department_id, "references": g.references,
-            "active": g.active, "created_by_id": g.created_by_id, "created_at": g.created_at}
+            "classification": g.classification, "active": g.active, "created_by_id": g.created_by_id,
+            "created_at": g.created_at}
 
 
 def template_row(s: Session, t: WorkflowTemplate) -> dict:
