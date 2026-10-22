@@ -6,14 +6,14 @@
 
 - Repository: this repository (`QMS-OS`); confirm the remote with `git remote -v`.
 - Specification: `docs/SPECIFICATION.md`, v3.0 dated 29 September 2026. Verify title and version locally.
-- Baseline recorded here: `main` at `42859bed6223e8e02ba03a16f92819c3da94dea1` (2026-10-21; squash merge of pull
-  request #43, MVP-1 pull request 7: slices 10c and 10d and the draft ADR 0008; fast-forward of local `main`,
-  2026-10-21). Pull request #43's head was `46a35a3` on the deleted branch `feat/mvp1-admin-ui-org` (commits
-  `2621b1c`, `d02574a`, `d45d1f8`, `46a35a3`, kept only in the pull request's history). Earlier squash baselines:
+- Baseline recorded here: `main` at `f4a10a7482ac1af02ed4ac0725bf86c0aa0aa5e8` (2026-10-22; squash merge of pull
+  request #44, MVP-1 pull request 8: grant-governed workflow reads, ADR 0008 accepted, slice steps 10e and 10f and the
+  review changes; fast-forward of local `main`, 2026-10-22). Pull request #44's head was `f861d0f` on branch
+  `feat/mvp1-workflow-reads-ui`. Earlier squash baselines: `42859be` (pull request #43, slices 10c and 10d),
   `8b0c0ef` (pull request #42, slice 10b), `efaeec1` (pull request #41, slice 10a).
-  Work in progress: branch `feat/mvp1-workflow-reads-ui` from `42859be`: ADR 0008 accepted (R-74 to R-78),
-  grant-governed workflow reads, the workflow grants screen, slice steps 10e and 10f, and commit F with the Admin's
-  review decisions (R-76 widened, R-79, R-80, the Guidelines screen) (no pull request yet).
+  Work in progress: branch `docs/mvp1-exit-evidence` from `f4a10a7`: slice 11, documentation only
+  (`docs/MVP1-EXIT.md`, `docs/DEMO.md`, this file and `docs/ROADMAP.md`); pushed with the Admin's approval, no pull
+  request.
   Re-verify branch, HEAD and working tree with Git at session start; this file may be stale.
 - Stage: MVP-0 declared met (R-29), by the Admin on 2026-10-13, on the narrow reading of the exit (R-28). Of the
   eight items in the ROADMAP's MVP-0 table, five are done (Git scaffold, CI and protected `main`; synthetic fixtures;
@@ -25,14 +25,28 @@
   `/api/v1` move, slices 2 and 3, the first three skills) merged as `6aa5246`; pull request 3 (slices 4 and 5)
   merged as `caabb11`; pull request 4 (slices 6 to 9, R-55) merged as `6c74d60` (pull request #40); pull request 5
   (slice 10a) merged as `efaeec1` (pull request #41); pull request 6 (slice 10b) merged as `8b0c0ef` (pull request
-  #42); pull request 7 (slices 10c, 10d, draft ADR 0008) merged as `42859be` (pull request #43); grant-governed
-  workflow reads and slice steps 10e and 10f in progress on `feat/mvp1-workflow-reads-ui`.
+  #42); pull request 7 (slices 10c, 10d, draft ADR 0008) merged as `42859be` (pull request #43); pull request 8
+  (grant-governed workflow reads, 10e, 10f, review changes) merged as `f4a10a7` (pull request #44). Slice 11 (exit
+  evidence) on `docs/mvp1-exit-evidence`: `docs/MVP1-EXIT.md`. **MVP-1 is not declared met; the Admin decides.**
 - Mode: synthetic only. No live connectors, staff accounts or model credentials are configured in this repository,
   and none has been verified; do not claim they are configured.
 
 ## Verified state
 
 Each item says how it was verified.
+
+- **Merge of pull request #44 and slice 11 (2026-10-22):** pull request #44 merged at 02:24 UTC as `f4a10a7` (GitHub
+  public API: state closed, merge commit `f4a10a7`, head `f861d0f`). Pull request run 39710601176 (#92) on `f861d0f`
+  and `main` run 39711228314 (#93) on `f4a10a7`: all eight jobs succeeded (`test`, `test-py311`, `lint`, `types`,
+  `postgres`, `secret-scan`, `frontend`, `e2e`), job conclusions from the GitHub public API, 2026-10-22; logs not read.
+  The `main` runs of MVP-1 pull requests 1 to 4 (#78, #80, #82, #84; #84 was not recorded before) were also read
+  from the public API: six jobs each, all succeeded. Local runs at `f4a10a7` on `docs/mvp1-exit-evidence` before any
+  change: `scripts\run-tests.bat` 688 passed, 2 skipped; `scripts\run-pg-tests.bat full` 720 passed, 1 warning; 95 component tests;
+  `pnpm run build` and 11 browser tests passed (2.2m). The housekeeping check reported the four stale "as of" and
+  branch lines that this branch corrects. A scratch script (outside the repository) set up synthetic demo accounts
+  without the test-only bootstrap, through the real seed, key, `grant-account-admin` and `grant-org-admin` commands,
+  `bootstrap-admin`'s function and existing `/api/v1` routes against a server in `demo` mode (`docs/DEMO.md`,
+  section 7).
 
 - **Merge of pull request #43 (2026-10-21):** merged at 12:07 UTC as `42859be` (GitHub public API: state closed,
   merge commit `42859be`, head `46a35a3`). Pull request run 39572955912 (#90) on `46a35a3` succeeded; `main` run
@@ -383,7 +397,9 @@ Each item says how it was verified.
   install and test steps passed); payload-bound approval (later slice); OIDC sign-in; a breached-password lookup; demo-mode accounts for the fixture
   people; the CLI commands (`bootstrap-admin`, `grant-account-admin`, `revoke-account-admin`) run in a real terminal
   (tested with stubbed input; the revoke race on PostgreSQL, the rest on SQLite).
-- Any UI; end-to-end or browser tests.
+- The admin web UI in `demo` mode in a browser (the browser tests run in `test` mode through the test-only
+  bootstrap); browsers other than Chromium; the UI against PostgreSQL. No account administration screen exists
+  (`docs/DEMO.md`).
 - Python 3.11 on PostgreSQL: CI job `test-py311` (Python 3.11.17) covers the SQLite suite only; no local 3.11
   interpreter is installed.
 - Upstream matrix (`docs/UPSTREAMS.md`, *Claims register*; slice 2 done for the exit, R-28): Ollama outbound calls
@@ -483,6 +499,15 @@ Each item says how it was verified.
 See *MVP-1 plan* in `docs/ROADMAP.md` (bundled pull requests, R-37). No dates or delivery commitments have been
 made.
 
+Open after slice 11 (2026-10-22):
+
+- The Admin reviews `docs/MVP1-EXIT.md` and decides whether MVP-1 is met (not declared by Claude Code), including
+  whether anything in its *Not verified* groups should block the exit, and whether a pull request is opened for
+  `docs/mvp1-exit-evidence`.
+- The Admin decides the demo account proposal (`docs/DEMO.md`, section 8; not built) and R-71 (`frontend` and `e2e`
+  as required checks).
+- Decisions needed before MVP-2: `docs/MVP1-EXIT.md`, last section (none decided).
+
 Open for slice 10 (2026-10-21):
 
 - The Admin decides when `frontend` becomes a required check (R-13, R-71); it is green on `main` at `efaeec1`.
@@ -560,7 +585,7 @@ Open for slice 10 (2026-10-21):
   `apps/admin-web/e2e/approvalsStepUp.spec.ts` waits out the 35-second step-up window, then shows one dialog, one
   retry and the shown digest sent both times. Local results: Python suite 688 passed, 2 skipped; PostgreSQL full suite 720 passed; 95 component tests; 11 browser
   tests. **Migration rollback:** the R-74 migration's downgrade raises (accepted, review decision 2); rolling back
-  means restoring a database backup taken before the upgrade (`scriptsackup-db.bat`).
+  means restoring a database backup taken before the upgrade (`scripts\backup-db.bat`).
 - Remaining claims: the 16 admin web UI package licences (C-131 to C-146) are package metadata only, not verified
   against the licence text; C-147 flagged (lightningcss, R-73); C-148 (audit) is dated registry data.
 - Stale text found on 2026-10-21 and corrected on `feat/mvp1-admin-ui-signin`: the claims register's header now
