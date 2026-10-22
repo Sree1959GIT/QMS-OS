@@ -143,8 +143,9 @@ request 6 (slice 10b: sign-in, step-up, sign-out, the test-only bootstrap and th
 (pull request #42); pull request 7 (slices 10c and 10d, the draft ADR 0008) merged as `42859be` (pull request #43);
 pull request 8 (grant-governed workflow reads, ADR 0008 accepted, slice steps 10e and 10f and the review changes:
 governed change routes, guideline classification, the Guidelines screen) merged as `f4a10a7` (pull request #44);
-slice 11 (exit evidence, documentation only) on branch `docs/mvp1-exit-evidence`: `docs/MVP1-EXIT.md` and
-`docs/DEMO.md`.
+slice 11 (exit evidence) on branch `docs/mvp1-exit-evidence`: `docs/MVP1-EXIT.md` and `docs/DEMO.md`, then the
+Admin's review decisions of 2026-10-22: the demo-only account command (R-81), the claims register scanning both
+documents, R-71 recorded, and a local demo-mode browser walk-through (`apps/admin-web/e2e-demo`, not in CI).
 
 | Pull request | Slice | Goal | Exit criterion (testable) |
 |---|---|---|---|

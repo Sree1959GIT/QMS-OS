@@ -22,7 +22,7 @@ export default tseslint.config(
   },
   {
     // Tests may read web storage (and, in the browser tests, document.cookie) to assert that the UI left it empty.
-    files: ["src/**/*.test.{ts,tsx}", "e2e/**/*.ts"],
+    files: ["src/**/*.test.{ts,tsx}", "e2e/**/*.ts", "e2e-demo/**/*.ts"],
     rules: { "no-restricted-properties": "off", "no-restricted-globals": "off" },
   },
   { files: ["scripts/**/*.mjs"], languageOptions: { globals: globals.node } },

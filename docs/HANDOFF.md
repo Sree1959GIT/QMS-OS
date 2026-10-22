@@ -11,9 +11,10 @@
   review changes; fast-forward of local `main`, 2026-10-22). Pull request #44's head was `f861d0f` on branch
   `feat/mvp1-workflow-reads-ui`. Earlier squash baselines: `42859be` (pull request #43, slices 10c and 10d),
   `8b0c0ef` (pull request #42, slice 10b), `efaeec1` (pull request #41, slice 10a).
-  Work in progress: branch `docs/mvp1-exit-evidence` from `f4a10a7`: slice 11, documentation only
-  (`docs/MVP1-EXIT.md`, `docs/DEMO.md`, this file and `docs/ROADMAP.md`); pushed with the Admin's approval, no pull
-  request.
+  Work in progress: branch `docs/mvp1-exit-evidence` from `f4a10a7`: slice 11 (`c423f93`, documentation) and the
+  Admin's review decisions of 2026-10-22 (`1a2b0e2` the demo-account command, R-81; `c13bb0b` the claims register
+  scans `docs/MVP1-EXIT.md` and `docs/DEMO.md`; `4d3fb82` R-71 recorded; then the `docs/DEMO.md` rewrite and the
+  demo-mode walk-through); pushed with the Admin's approval, no pull request.
   Re-verify branch, HEAD and working tree with Git at session start; this file may be stale.
 - Stage: MVP-0 declared met (R-29), by the Admin on 2026-10-13, on the narrow reading of the exit (R-28). Of the
   eight items in the ROADMAP's MVP-0 table, five are done (Git scaffold, CI and protected `main`; synthetic fixtures;
@@ -35,6 +36,14 @@
 
 Each item says how it was verified.
 
+- **Slice 11 review follow-ups (2026-10-22, local, branch `docs/mvp1-exit-evidence`):** `scriptsun-tests.bat`
+  705 passed, 2 skipped; `scriptsun-pg-tests.bat full` 737 passed; `scriptsun-lint.bat` ruff, mypy (79 files) and
+  the image digest check clean; `apps/admin-web`: lint, type check, 95 component tests, build, bundle check, licence
+  check (221 packages, 0 refused), `pnpm audit --audit-level high` (no known vulnerabilities) and 11 browser tests
+  passed. `tests/test_demo_account_cli.py` 16 tests; mutation M-DA-1 (the mode guard in `cli.demo_refusal` removed)
+  caught by 4 tests, file restored with its SHA-256 checked. The demo-mode walk-through
+  (`apps/admin-web/e2e-demo/walkthrough.spec.ts`, local only) passed three of three runs after the orchestrator waited
+  for the next TOTP step (`docs/DEMO.md`, section 7).
 - **Required status checks (2026-10-22):** all eight jobs (`test`, `test-py311`, `lint`, `types`, `postgres`, `secret-scan`, `frontend`, `e2e`) are required status checks on `main` with the up-to-date rule, since the Admin made `frontend` and `e2e` required on 2026-10-22 (R-71; ruleset 24295033, read from the GitHub public API `rules/branches/main`, 2026-10-22).
 
 - **Merge of pull request #44 and slice 11 (2026-10-22):** pull request #44 merged at 02:24 UTC as `f4a10a7` (GitHub
@@ -396,12 +405,12 @@ Each item says how it was verified.
   `docker compose down -v` and may delete the benchmark models volume (not tested); models would have to be pulled
   again. The start command needs `POSTGRES_PASSWORD` set (normally from the Admin's `.env`; no value is recorded).
 - Authentication (R-3): the CI install log for the compiled dependencies (not readable without a token; the
-  install and test steps passed); payload-bound approval (later slice); OIDC sign-in; a breached-password lookup; demo-mode accounts for the fixture
-  people; the CLI commands (`bootstrap-admin`, `grant-account-admin`, `revoke-account-admin`) run in a real terminal
+  install and test steps passed); payload-bound approval (later slice); OIDC sign-in; a breached-password lookup; the CLI commands (`bootstrap-admin`,
+  `grant-account-admin`, `revoke-account-admin`, `demo-account`) run in a real terminal
   (tested with stubbed input; the revoke race on PostgreSQL, the rest on SQLite).
-- The admin web UI in `demo` mode in a browser (the browser tests run in `test` mode through the test-only
-  bootstrap); browsers other than Chromium; the UI against PostgreSQL. No account administration screen exists
-  (`docs/DEMO.md`).
+- The admin web UI in `demo` mode beyond the local walk-through of 2026-10-22 (`docs/DEMO.md`, section 7; not in
+  CI; of the organisation screens only Departments); browsers other than Chromium; the UI against PostgreSQL. No
+  account administration screen exists (`docs/DEMO.md`, Appendix A).
 - Python 3.11 on PostgreSQL: CI job `test-py311` (Python 3.11.17) covers the SQLite suite only; no local 3.11
   interpreter is installed.
 - Upstream matrix (`docs/UPSTREAMS.md`, *Claims register*; slice 2 done for the exit, R-28): Ollama outbound calls
@@ -506,8 +515,9 @@ Open after slice 11 (2026-10-22):
 - The Admin reviews `docs/MVP1-EXIT.md` and decides whether MVP-1 is met (not declared by Claude Code), including
   whether anything in its *Not verified* groups should block the exit, and whether a pull request is opened for
   `docs/mvp1-exit-evidence`.
-- The Admin decides the demo account proposal (`docs/DEMO.md`, section 8; not built). R-71 decided 2026-10-22:
-  `frontend` and `e2e` are required checks.
+- Done 2026-10-22 (the Admin's review of slice 11): the demo account command (R-81) built; `docs/MVP1-EXIT.md`
+  and `docs/DEMO.md` scanned by the claims register; R-71 recorded (`frontend` and `e2e` required); `docs/DEMO.md`
+  rewritten around the command, with a demo-mode browser walk-through run locally (section 7).
 - Decisions needed before MVP-2: `docs/MVP1-EXIT.md`, last section (none decided).
 
 Open for slice 10 (2026-10-21):

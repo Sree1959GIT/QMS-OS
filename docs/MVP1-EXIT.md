@@ -56,7 +56,7 @@ Every test named below exists on `main` at `f4a10a7` and so ran, at job level, i
 
 | Scope item (line 160) | Backend tests | Browser tests | Introduced in | CI | Not verified |
 |---|---|---|---|---|---|
-| Auth | `tests/test_auth.py`, `tests/test_auth_routes.py` (every route's access level), `tests/test_link_code.py` (e.g. `test_initiator_gets_only_the_code_and_approver_only_the_link`, `test_single_admin_bootstrap_invitation_gives_both_parts_and_is_flagged`), `tests/test_account_admin_cli.py`, `tests/test_ui_session.py` (CSRF token, R-67), `tests/test_test_bootstrap.py` (the test-only bootstrap is absent outside `test` mode) | `e2e/signin.spec.ts` ("sign in, restore the session, step up once, sign out"), `e2e/smoke.spec.ts`, `e2e/approvalsStepUp.spec.ts` | R-3: #10 (`23329f3`); link code #18 (`eb3c583`); UI #41, #42 | #87, #89 to #93 (earlier runs in `docs/HANDOFF.md`) | No account administration screen: invitations, one-time-link set-up and resets are API and CLI only (`docs/DEMO.md`). OIDC, payload-bound approval and a breached-password lookup do not exist. `bootstrap-admin` and the other CLI commands have not been run in a real terminal (tested with stubbed input; `bootstrap-admin`'s function was run by a scratch script on 2026-10-22, `docs/DEMO.md`). Operator identity in CLI audit events (before any shared deployment) not started. At least two account admins before any real person |
+| Auth | `tests/test_auth.py`, `tests/test_auth_routes.py` (every route's access level), `tests/test_link_code.py` (e.g. `test_initiator_gets_only_the_code_and_approver_only_the_link`, `test_single_admin_bootstrap_invitation_gives_both_parts_and_is_flagged`), `tests/test_account_admin_cli.py`, `tests/test_ui_session.py` (CSRF token, R-67), `tests/test_test_bootstrap.py` (the test-only bootstrap is absent outside `test` mode) | `e2e/signin.spec.ts` ("sign in, restore the session, step up once, sign out"), `e2e/smoke.spec.ts`, `e2e/approvalsStepUp.spec.ts` | R-3: #10 (`23329f3`); link code #18 (`eb3c583`); UI #41, #42 | #87, #89 to #93 (earlier runs in `docs/HANDOFF.md`) | No account administration screen: invitations, one-time-link set-up and resets are API and CLI only (`docs/DEMO.md`, Appendix A). Demo accounts come from the demo-only `demo-account` command (R-81, demo mode and SQLite only; `tests/test_demo_account_cli.py`, added after this table's runs). OIDC, payload-bound approval and a breached-password lookup do not exist. `bootstrap-admin`, `demo-account` and the other CLI commands have not been run in a real terminal (tested with stubbed input; on 2026-10-22 a scratch script ran `bootstrap-admin`'s function and `demo-account`'s entry point through pipes, `docs/DEMO.md`). Operator identity in CLI audit events (before any shared deployment) not started. At least two account admins before any real person |
 | Org Admin UI: departments | `tests/test_org_admin.py` (e.g. `test_department_create_update_deactivate_reactivate_each_audited`, `test_department_deactivation_refused_with_active_people_or_projects`), `tests/test_org_ui_refusals.py` | `e2e/org.spec.ts` ("departments: create, rename, deactivate, reactivate; a department with active people stays active") | API #38 (`6aa5246`); screen #43 (`42859be`) | #80; #91 to #93 | Per-test CI results not read |
 | Org Admin UI: humans | `tests/test_org_admin.py`, `tests/test_org_ui_refusals.py` (own record 403, forbidden deactivation 422) | `e2e/org.spec.ts` ("people: create, change role, deactivate, reactivate; one's own record is refused generically") | #38; #43 | #80; #91 to #93 | A person record is not an account: creating a person does not create a sign-in (see Auth) |
 | Org Admin UI: role and grant preview | `tests/test_access.py` (e.g. `test_preview_and_enforcement_agree_for_every_fixture_person_and_resource`, `test_a_denied_single_read_is_404_and_leaks_nothing`), `tests/test_workflow_reads.py` (the `workflow` kind), `tests/test_org_ui_refusals.py` (grants, workflow grants, classification) | `e2e/access.spec.ts` (role grants and projects), `e2e/workflowGrants.spec.ts` | #38; #43; workflow grants #44 | #80; #91 to #93 | Mailbox scope and delegation are declared and empty (R-31). Project classification has no route. The `classification` columns on departments, people and projects have no database CHECK constraint |
@@ -90,8 +90,11 @@ Printed result: `11 passed (2.2m)`:
 
 Both exit criteria have a browser test (rows 3 and 7), so no new test was added. Limits: the browser tests sign in
 through the **test-only bootstrap** (test mode), not through accounts made the way a demo or real user gets one;
-Chromium only; loopback only; PostgreSQL is not used. A browser walk-through in `demo` mode has not been run by
-Claude Code: `docs/DEMO.md` records what was checked there (accounts and route statuses, by a scratch script).
+Chromium only; loopback only; PostgreSQL is not used. **Demo mode** (added after the review, 2026-10-22): a local
+walk-through, `apps/admin-web/e2e-demo/walkthrough.spec.ts`, against a demo-mode server whose accounts were made by
+the `demo-account` command (R-81), passed: department, guideline and template, proposal and draft, submission refused
+by the validator (422), fix, submission, self-approval refused (403), baseline of the shown digest by a second
+approver. It is not run in CI; details and limits in `docs/DEMO.md`, section 7.
 
 ### PostgreSQL run
 
@@ -118,7 +121,8 @@ in CI. Items the Admin may still want to treat as blocking (Claude Code does not
 - **Object store:** interim local content-addressed store for synthetic fixtures only (R-34, R-54); product not chosen
   (R-15). Accepted for MVP-1 by R-34 ("MVP-1 builds an adapter interface and an interim local ... store").
 - **One human with two accounts** (R-57; ADR 0006 *Consequences*): not detected as the same approver. The demo set-up
-  in `docs/DEMO.md` makes one operator hold four synthetic accounts, which shows the limit plainly.
+  in `docs/DEMO.md` makes one operator hold two (or, on the invitation route, four) synthetic accounts, which shows
+  the limit plainly.
 - **Step-up is not payload-bound approval** (ADR 0003); the approval route checks the shown digest (R-59).
 - **35-second step-up window:** only in the browser tests' server (`tests/e2e_server.py`; limits may only be
   tightened, R-3). The standard window is 5 minutes, which a demo uses.
@@ -139,9 +143,9 @@ in CI. Items the Admin may still want to treat as blocking (Claude Code does not
   build-only exception (R-73); C-148 (audit) is dated registry data.
 - **Test-only bootstrap in demo mode answers 405** to a POST when the UI is built (the static mount serves GET only)
   and 404 otherwise; nothing is created (`tests/test_test_bootstrap.py::test_the_bootstrap_answers_404_outside_test_mode`
-  accepts both). Seen again in the 2026-10-22 demo probe.
-- **No account administration screen** (invitations, link set-up, resets): not in slice 10's scope; a demo needs the
-  CLI and HTTP calls (`docs/DEMO.md`).
+  accepts both). Seen again in the 2026-10-22 demo probe and walk-through.
+- **No account administration screen** (invitations, link set-up, resets): not in slice 10's scope. Demo accounts
+  come from `demo-account` (R-81); the invitation route needs the CLI and HTTP calls (`docs/DEMO.md`, Appendix A).
 - Windows publish path of the evidence store tested locally only; Python 3.11 covers the SQLite suite only.
 
 ### Needed for later stages
@@ -183,4 +187,5 @@ approved revision filter, cross-role denial."
    "mixed document fixtures" is not decided.
 10. **R-71:** decided by the Admin on 2026-10-22: `frontend` and `e2e` are required checks (no longer open).
 11. **R-4** named owners for candidate values (the approver roles used by MVP-1 and any MVP-2 approval).
-12. **The demo account option** proposed in `docs/DEMO.md` (whether to build it, and in which slice).
+12. **The demo account option:** decided by the Admin on 2026-10-22 and built (`demo-account`, R-81; no longer
+    open).
