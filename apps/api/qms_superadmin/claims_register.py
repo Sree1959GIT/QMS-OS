@@ -22,7 +22,7 @@ def build(docs_dir: Path) -> tuple[list[str], dict[str, int]]:
     FILES = {
         "U": "UPSTREAMS.md", "D": "DECISIONS.md", "H": "HANDOFF.md", "B": "BENCHMARK-PLAN.md",
         "A3": "adr/0003-auth-dev-identity.md", "A5": "adr/0005-provider-contract-and-egress.md", "L": "LOCAL-RUNTIME.md",
-        "R": "ROADMAP.md",
+        "R": "ROADMAP.md", "X": "MVP1-EXIT.md", "DM": "DEMO.md",
     }
     TEXT = {k: (docs_dir / v).read_text(encoding="utf-8").splitlines() for k, v in FILES.items()}
     # the register itself is not a claim source: search UPSTREAMS only above it
@@ -361,10 +361,11 @@ def build(docs_dir: Path) -> tuple[list[str], dict[str, int]]:
         "Playwright 1.63.0 installs Chrome for Testing 153.0.8010.12 (revision 1243)", V,
         "`browsers.json` in the installed `playwright-core` 1.63.0, read 2026-10-21; the local download created "
         "`chromium-1243`", "MVP-1 (admin web UI, slice 10b)")
-    add(refs(("U", "verify this download: the lockfile holds hashes")),
+    add(refs(("U", "verify this download: the lockfile holds hashes"), ("X", "(C-151 not verified), its licence is not read")),
         "Playwright checks the browser archive against a pinned hash", N,
         "not read in Playwright's source (R-70: the lockfile cannot verify the download)", "MVP-1 (admin web UI, slice 10b)")
-    add(refs(("U", "of the UI or the API. Its licence is not read.")), "The licence of the Chromium build Playwright downloads",
+    add(refs(("U", "of the UI or the API. Its licence is not read."), ("X", "its licence is not read (C-152)")),
+        "The licence of the Chromium build Playwright downloads",
         N, "not read", "MVP-1 (admin web UI, slice 10b)")
     add(refs(("U", "(`apps/api/tests/e2e_server.py`). The built UI renders under the API's Content-Security-Policy")),
         "The built React UI renders under the API's Content-Security-Policy in Chromium with no violation", V,
@@ -372,15 +373,17 @@ def build(docs_dir: Path) -> tuple[list[str], dict[str, int]]:
         "; the violation watcher reported an injected inline script in a local scratch run only; Chromium only, not "
         "other browsers",
         "MVP-1 (admin web UI, slice 10b)")
-    add(refs(("U", "cookie and the `X-QMS-CSRF` header is not tested")),
+    add(refs(("U", "cookie and the `X-QMS-CSRF` header is not tested"), ("X", "- **C-154** (the Vite development server")),
         "The Vite development server's proxy passes the session cookie and the `X-QMS-CSRF` header to the API", N,
         "not tested: the browser tests use the production build on one origin, not the development server (Admin "
         "decision, 2026-10-21)", "development only (no stage needs it)")
-    add(refs(("U", "- Whether the Linux runner still installs the musl platform builds")),
+    add(refs(("U", "- Whether the Linux runner still installs the musl platform builds"),
+             ("X", "- **C-155** (the Linux runner skips the musl builds")),
         "The Linux runner no longer installs the musl platform builds since the lockfile records `libc`", N,
         "expected from pnpm's `libc` handling; shown by the `e2e` job's log, which needs a GitHub sign-in (not read)",
         "MVP-1 (admin web UI, slice 10)")
-    add(refs(("U", "- Chromium 153 keeps the session cookie the API sets over plain `http://127.0.0.1`")),
+    add(refs(("U", "- Chromium 153 keeps the session cookie the API sets over plain `http://127.0.0.1`"),
+             ("DM", "Chromium does send it to `127.0.0.1` (C-156)")),
         "Chromium keeps and sends the Secure session cookie set over plain http://127.0.0.1", V,
         "browser test `apps/admin-web/e2e/signin.spec.ts`: local run 2026-10-21 (Windows 11, Chromium 153) and " + CI +
         "; Chromium only, loopback only", "MVP-1 (admin web UI, slice 10b)")
@@ -390,7 +393,8 @@ def build(docs_dir: Path) -> tuple[list[str], dict[str, int]]:
         "## Claims register (slice 2 labelling pass; added 2026-10-13)",
         "",
         "Every statement in `docs/` (this file, `ROADMAP.md`, `DECISIONS.md`, `HANDOFF.md`, `BENCHMARK-PLAN.md`, `adr/`,",
-        "`LOCAL-RUNTIME.md`; there is no README) that asserts a feature, capability, licence, version or behaviour of an",
+        "`LOCAL-RUNTIME.md`, `MVP1-EXIT.md` and `DEMO.md` (both since 2026-10-22); there is no README) that asserts a",
+        "feature, capability, licence, version or behaviour of an",
         "upstream or service, at the line where it stands (regenerated with `qms_superadmin claims-register`; R-28).",
         "about QMS OS's own code are covered by its tests and are not listed. **Verified** names the source already in the",
         "repository and its date; nothing was researched for this register. **Not verified** claims are labelled in place",

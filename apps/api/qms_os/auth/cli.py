@@ -6,6 +6,7 @@
     python -m qms_os.auth revoke-account-admin EMAIL
     python -m qms_os.auth grant-org-admin EMAIL          # asks you to type the e-mail address again
     python -m qms_os.auth revoke-org-admin EMAIL
+    python -m qms_os.auth demo-account EMAIL             # demo mode and SQLite only; a fixture person
 
 ``bootstrap-admin`` creates the first account admin. It runs only while no active account admin exists, asks for
 the password interactively (never from arguments or the environment), requires a confirming authenticator code, and
@@ -17,6 +18,13 @@ an audit event (actor kind "operator", channel "cli"). They need only the databa
 
 ``grant-org-admin`` and ``revoke-org-admin`` do the same for the org admin permission (R-30, R-39); one person cannot
 hold both account admin and org admin (R-40).
+
+``demo-account`` (demo mode only, SQLite only) gives an existing fixture person (an address under
+``fixture-org.example``) who has no account a sign-in, asking for the password and a confirming authenticator code as
+``bootstrap-admin`` does and printing the recovery codes once. It grants no platform role or permission and writes
+``auth.demo_account.created`` (actor kind "operator", channel "cli"). It bypasses the two-admin invitation, so it is
+refused in operational and test mode (``docs/DEMO.md``). It needs QMS_MODE=demo, QMS_AUTH_KEY_FILE and the SQLite
+database named by QMS_DATABASE_URL.
 """
 from __future__ import annotations
 
@@ -24,14 +32,22 @@ import argparse
 import getpass
 import os
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 
-from ..db import make_engine, make_sessionmaker, prepare_schema
+from ..db import is_sqlite, make_engine, make_sessionmaker, prepare_schema
+from ..policy import Mode, PolicyConfigError, resolve_mode
 from ..services.common import AuthFailure, RuleViolation
 from .keys import KEY_ENV, SecretBox, generate_key_file, load_key_file
 from .limits import AuthConfigError
 from .permissions import grant_org_admin, revoke_org_admin
-from .service import AuthContext, bootstrap_admin, find_user, grant_account_admin, revoke_account_admin
+from .service import (
+    AuthContext,
+    bootstrap_admin,
+    create_demo_account,
+    find_user,
+    grant_account_admin,
+    revoke_account_admin,
+)
 
 
 def run_bootstrap(maker, ctx: AuthContext, email: str, name: str, *, read_secret: Callable[[str], str],
@@ -57,6 +73,53 @@ def run_bootstrap(maker, ctx: AuthContext, email: str, name: str, *, read_secret
             return 1
         s.commit()
     write(f"Account admin created for {user.email}. Recovery codes (shown once; store them offline):")
+    for c in codes:
+        write(f"  {c}")
+    return 0
+
+
+def demo_refusal(env: Mapping[str, str]) -> str | None:
+    """Why ``demo-account`` must not run here, or None: only demo mode, only a SQLite database (as the seed)."""
+    try:
+        mode = resolve_mode(env.get("QMS_MODE"))
+    except PolicyConfigError as e:
+        return str(e)
+    if mode is not Mode.DEMO:
+        return f"demo accounts exist only in demo mode (QMS_MODE is {mode.value})"
+    url = env.get("QMS_DATABASE_URL")             # unset: the default local SQLite file (qms_os.db.default_url)
+    if url and not is_sqlite(url):
+        return "demo accounts need the SQLite demo database made by `python -m qms_os.seed`"
+    return None
+
+
+def run_demo_account(maker, ctx: AuthContext, email: str, *, env: Mapping[str, str],
+                     read_secret: Callable[[str], str], read_line: Callable[[str], str],
+                     write: Callable[[str], None]) -> int:
+    refusal = demo_refusal(env)
+    if refusal is not None:
+        write(f"Refused: {refusal}")
+        return 1
+    password = read_secret("New password: ")
+    if read_secret("Repeat password: ") != password:
+        write("The passwords do not match; nothing was changed.")
+        return 1
+
+    def confirm(setup: dict) -> str:
+        write("Add this account to an authenticator app, then enter the current code.")
+        write(f"  set-up link: {setup['otpauth_uri']}")
+        write(f"  or key:      {setup['secret']}")
+        return read_line("Authenticator code: ")
+
+    with maker() as s:
+        s.info["actor_kind"], s.info["channel"] = "operator", "cli"
+        try:
+            user, codes = create_demo_account(s, ctx, email=email, password=password, confirm_code=confirm)
+        except (RuleViolation, AuthFailure) as e:
+            s.rollback()
+            write(f"Refused: {e}")
+            return 1
+        s.commit()
+    write(f"Demo account created for {user.email} (no role or permission granted). Recovery codes (shown once):")
     for c in codes:
         write(f"  {c}")
     return 0
@@ -122,6 +185,8 @@ def main(argv: list[str] | None = None) -> int:
     go.add_argument("email")
     ro = sub.add_parser("revoke-org-admin", help="remove the org admin permission")
     ro.add_argument("email")
+    da = sub.add_parser("demo-account", help="demo mode only: an account for an existing fixture person")
+    da.add_argument("email")
     args = ap.parse_args(argv)
     try:
         if args.cmd == "generate-key":
@@ -140,6 +205,13 @@ def main(argv: list[str] | None = None) -> int:
         if not key_file:
             raise AuthConfigError(f"set {KEY_ENV} to the authentication key file")
         ctx = AuthContext(box=SecretBox(load_key_file(key_file)))
+        if args.cmd == "demo-account":
+            refusal = demo_refusal(os.environ)       # before the database is opened or its schema prepared
+            if refusal is not None:
+                print(f"Refused: {refusal}")
+                return 1
+            return run_demo_account(_database(), ctx, args.email, env=os.environ, read_secret=getpass.getpass,
+                                    read_line=input, write=print)
         return run_bootstrap(_database(), ctx, args.email, args.name, read_secret=getpass.getpass,
                              read_line=input, write=print)
     except AuthConfigError as e:

@@ -660,3 +660,40 @@ def bootstrap_admin(s: Session, ctx: AuthContext, *, email: str, name: str, pass
     codes = new_recovery_codes(s, ctx, user.id)
     event(s, "auth.bootstrap_admin", user.id, actor_id=user.id, channel="cli")
     return user, codes
+
+
+# ---------- demo accounts (CLI, demo mode only) ----------
+
+DEMO_DOMAIN = "fixture-org.example"       # the synthetic fixture's reserved domain (qms_os.fixtures.MAIL_DOMAIN)
+
+
+def create_demo_account(s: Session, ctx: AuthContext, *, email: str, password: str,
+                        confirm_code: Callable[[dict], str]) -> tuple[User, list[str]]:
+    """CLI only; the caller refuses every mode but demo and every database but SQLite (``cli.run_demo_account``).
+    An account for an existing, active fixture person who has none, set up as ``bootstrap_admin`` does (password typed
+    by the operator, a confirming authenticator code), but with no platform role or permission: account_admin and the
+    org admin permission stay with their own commands. Bypasses the two-admin invitation, so synthetic people only."""
+    found = find_user(s, email)
+    if found is None or not found.email.lower().endswith("@" + DEMO_DOMAIN):
+        raise RuleViolation(f"only an existing fixture person (an address under {DEMO_DOMAIN}) can get a demo account")
+    user = locked_person(s, found.id)
+    if not user.active:
+        raise RuleViolation(f"{user.email} is not an active person")
+    if locked_credential(s, user.id) is not None:
+        raise RuleViolation(f"{user.email} already has an account")
+    check_password(user, password, ctx)
+    secret = T.new_secret()
+    step = T.accept(secret, confirm_code({"otpauth_uri": T.provisioning_uri(secret, user.email), "secret": secret}),
+                    ctx.now(), None)
+    if step is None:
+        raise AuthFailure("invalid_credentials")
+    now = ctx.now()
+    s.add(UserCredential(user_id=user.id, status="active", password_hash=PW.hash_password(password, ctx.hasher),
+                         password_changed_at=now, totp_secret_enc=ctx.box.seal(user.id, secret),
+                         totp_enrolled_at=now, totp_last_step=step, created_at=now))
+    s.add(AuthIdentity(user_id=user.id, kind="local", created_at=now))
+    s.flush()
+    codes = new_recovery_codes(s, ctx, user.id)
+    event(s, "auth.demo_account.created", user.id, actor_id=None, actor_kind="operator", channel="cli",
+          target_user_id=user.id)
+    return user, codes

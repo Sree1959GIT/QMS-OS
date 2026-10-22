@@ -12,16 +12,19 @@
 
 ## Current baseline
 
-A synthetic-data backend prototype on `main` at `42859be`, with the admin web UI org screens (pull request #43,
-MVP-1 pull request 7, slices 10c and 10d and the draft ADR 0008, on top of `8b0c0ef`): `607 passed, 2 skipped` on
-SQLite (`scripts\run-tests.bat`), `638 passed` on PostgreSQL (`scripts\run-pg-tests.bat full`), 63 component tests
-and 7 browser tests, local runs on 2026-10-21 at `46a35a3`, whose tree is identical to `42859be` (Windows, Python
-3.12.7, Node 24.13.1, Chromium 153); CI on GitHub Actions with eight jobs (`test`, `test-py311`, `lint`, `types`,
-`postgres`, `secret-scan`, `frontend`, `e2e`), the first six required on a protected `main` branch (R-13; `frontend`
-and `e2e` become required when the Admin decides, R-71), all passed on `main` at `42859be` (run 39597065905, shown as
-#91, read from the
-GitHub public API on 2026-10-21). MVP-0: declared met (R-29). MVP-1: in progress (*MVP-1 plan*
-below). See *Verified state* and *Not verified* in `docs/HANDOFF.md`.
+A synthetic-data backend prototype on `main` at `f4a10a7`, with the admin web UI (pull request #44, MVP-1 pull
+request 8: grant-governed workflow reads, ADR 0008 accepted, slice steps 10e and 10f and the review changes, on top of
+`42859be`): `688 passed, 2 skipped` on SQLite (`scripts
+un-tests.bat`), `720 passed` on PostgreSQL
+(`scripts
+un-pg-tests.bat full`), 95 component tests and 11 browser tests, local runs on 2026-10-22 at `f4a10a7`
+(Windows, Python 3.12.7, Node 24.13.1, Chromium 153); CI on GitHub Actions with eight jobs (`test`, `test-py311`,
+`lint`, `types`, `postgres`, `secret-scan`, `frontend`, `e2e`), all eight required on a protected `main` branch
+(R-13; `frontend` and `e2e` since 2026-10-22, R-71), all passed on `main` at `f4a10a7` (run
+39711228314, shown as #93, read from the GitHub public API on 2026-10-22; job conclusions only). MVP-0: declared met
+(R-29). MVP-1: all planned slices are on `main`; the exit evidence (slice 11) is in `docs/MVP1-EXIT.md`, **not
+declared met** (the Admin decides). A local demo guide is in `docs/DEMO.md`. See *Verified state* and *Not verified*
+in `docs/HANDOFF.md`.
 
 ## MVP-0
 
@@ -66,7 +69,7 @@ no unverified feature claim.
    required status checks, with the up-to-date rule on (R-13, Admin, 2026-10-07). No formatter is enforced (Admin
    decision, 2026-10-07).
 
-### Remaining before the MVP-0 exit (as of `42859be`)
+### Remaining before the MVP-0 exit (as of `f4a10a7`)
 
 The exit is read as written in the specification (R-28): one safe fixture startup and no unverified feature claim.
 No slices remain for the exit: MVP-0 is declared met (R-29). Slice 6 (the review) is done (pull request #35,
@@ -112,11 +115,11 @@ GitHub by Claude Code; job logs not read): CI run 38434451817 on `main` at `e1b5
 conclusion Success, total 1m 37s; jobs `test` (50s), `test-py311` (55s), `lint` (13s), `types` (35s), `postgres`
 (1m 33s), `secret-scan` (5s), all passed.
 
-## Later stages (specification scope; all not started)
+## Later stages (specification scope; MVP-2 and later not started)
 
 | Stage | Specification scope (summary) | Specification exit criteria | Known dependencies |
 |---|---|---|---|
-| MVP-1 | Authentication (API only, merged in pull request #10, one-time link code in pull request #18; no UI) and organisation Admin UI (departments, people, role and grant preview, selective agent enablement); PostgreSQL and object store; auditable, versioned workflow and template engine with human approvals; admin workflow proposal form using local model or rules | No self-approval; a proposed audit workflow fails completeness until the missing control is fixed | R-2, R-3; R-15 (with R-34); R-30 to R-64 (*MVP-1 plan* below) |
+| MVP-1 (all slices on `main`; exit evidence in `docs/MVP1-EXIT.md`, not declared met) | Authentication (API, pull requests #10 and #18; sign-in UI in #42) and organisation Admin UI (departments, people, role and grant preview, selective agent enablement); PostgreSQL and object store; auditable, versioned workflow and template engine with human approvals; admin workflow proposal form using local model or rules | No self-approval; a proposed audit workflow fails completeness until the missing control is fixed | R-2, R-3; R-15 (with R-34); R-30 to R-64 (*MVP-1 plan* below) |
 | MVP-2 | Evidence ingestion with citations for mixed document fixtures; QMS evidence; initial skills and agent profiles; messaging text simulator | Exact cited answer; approved-revision filter; cross-role denial | approved data classes |
 | MVP-3 | Voice messaging; local speech recognition and synthesis; full written answer plus a separately composed brief spoken explanation; human correction and provenance | Spoken and typed numerical consistency; read-it mode; reboot recovery | provider approvals |
 | MVP-4 | Read-only fixture mail, then one authorised live provider; isolated agent-memory banks and knowledge sync; corrective-action and customer-complaint flow end to end; limited role pack | Duplicate mail or update replay is safe; cross-bank memory access denied; external messages stay drafts until human review | provider approvals; scope statement below |
@@ -138,9 +141,11 @@ slice in a bundle; each slice's tests pass at its own commit. No dates. Status: 
 `apps/admin-web` scaffold and the `frontend` CI job; R-65 to R-73) merged as `efaeec1` (pull request #41); pull
 request 6 (slice 10b: sign-in, step-up, sign-out, the test-only bootstrap and the `e2e` CI job) merged as `8b0c0ef`
 (pull request #42); pull request 7 (slices 10c and 10d, the draft ADR 0008) merged as `42859be` (pull request #43);
-grant-governed workflow reads (ADR 0008 accepted), slice steps 10e and 10f and the review changes (governed change
-routes, guideline classification, the Guidelines screen) in progress on branch `feat/mvp1-workflow-reads-ui`
-(*Slice 10 steps* below); the others not started.
+pull request 8 (grant-governed workflow reads, ADR 0008 accepted, slice steps 10e and 10f and the review changes:
+governed change routes, guideline classification, the Guidelines screen) merged as `f4a10a7` (pull request #44);
+slice 11 (exit evidence) on branch `docs/mvp1-exit-evidence`: `docs/MVP1-EXIT.md` and `docs/DEMO.md`, then the
+Admin's review decisions of 2026-10-22: the demo-only account command (R-81), the claims register scanning both
+documents, R-71 recorded, and a local demo-mode browser walk-through (`apps/admin-web/e2e-demo`, not in CI).
 
 | Pull request | Slice | Goal | Exit criterion (testable) |
 |---|---|---|---|
@@ -154,7 +159,7 @@ routes, guideline classification, the Guidelines screen) in progress on branch `
 | 4 | 8 | Case instances pinned to a template version; migration explicit and owner-approved | A running case keeps its version when the template changes; migration needs owner approval and keeps the trace |
 | 4 | 9 | Admin workflow proposal form, rules only (R-33) | Fixture requests produce structured proposals and questions for missing criteria; nothing is baselined without slice 6's approval |
 | 5 and 6 | 10 | Admin web UI (after the frontend ADR, R-36): departments, people, role and grant preview, agent enablement, proposal form, validator results, baseline approval | Each screen performs its flow against the synthetic fixture; end-to-end tests pass |
-| last | 11 | MVP-1 exit evidence and review (documentation) | An evidence row for each exit criterion; the Admin decides |
+| last | 11 | MVP-1 exit evidence and review (documentation) | An evidence row for each exit criterion; the Admin decides. Evidence: `docs/MVP1-EXIT.md` (on `docs/mvp1-exit-evidence`); not declared met |
 
 Slice notes (decisions recorded with their slice, not as R-rows):
 
@@ -209,10 +214,10 @@ only calls existing `/api/v1` routes unless a step says otherwise.
 | 10b (done) | Sign-in: email, password and TOTP code (`POST /api/v1/auth/login`; R-3, R-67). Session restore on page load with `GET /api/v1/auth/session` (the CSRF token kept in memory only, never in web storage). Step-up dialog: a 401 `step_up_required` opens a TOTP dialog (`POST /api/v1/auth/step-up`) and the original request is retried once; nothing is cached (no code, no "remember"). Sign-out (`POST /api/v1/auth/logout`), which forgets the in-memory token. Generic error display (R-72): status and the server's `detail` only; 403 and 404 shown alike. A browser end-to-end test of sign-in, session restore, step-up and sign-out, signing in through a **test-only bootstrap** route that creates a synthetic account with a known authenticator secret; the route is registered only in `test` mode; tests show it is absent (404) in `demo` and `operational` mode, and a mutation demonstration removes the mode guard and shows those tests fail. The browser end-to-end CI job (R-71) | The browser test signs in, reloads and stays signed in, passes a step-up and retries once, signs out; no web storage is written; the bootstrap is absent outside `test` mode and the mutation is caught; component tests cover the retry-once and no-cache rules; all existing suites pass. Merged as `8b0c0ef` (pull request #42); CI run #89 green on `main` |
 | 10c (done) | Departments and people screens: list, create, update, deactivate and reactivate (`/api/v1/org/departments`, `/api/v1/org/people`; slice 2 rules D4, D14), with the step-up on every `/api/v1/org/` route (R-41). Direct-API refusal tests for every action the screens offer, without the UI (R-68): a signed-in non-org-admin gets 403; no fresh step-up gets 401 `step_up_required`; a missing or wrong `X-QMS-CSRF` is refused; an org admin changing their own person record is refused; deactivation that slice 2 forbids is refused; a hidden record gives 404 (R-44) | Each screen performs its flow against the synthetic fixture in the browser test; each refusal is proven by a direct API test; all existing suites pass. Tests: `apps/admin-web/src/org.test.tsx`, `apps/admin-web/e2e/org.spec.ts`, `apps/api/tests/test_org_ui_refusals.py`. Merged as `42859be` (pull request #43); CI run #91 green on `main` |
 | 10d (done) | Role grants (list, add, revoke), project membership (add, remove) on a new org-level project list `GET /api/v1/org/projects` (org admin with a fresh step-up, R-41), the effective-access preview for a person and for an agent, agent profiles (list, enrol, view, revoke); slice 3 and 4 rules (R-31, R-48, R-49, D11). The agent preview loads the agent's and its person's previews together and shows, per kind, that the agent reads nothing its person cannot | Each screen group performs its main path and one refusal in the browser test; every action's refusals (no permission, stale step-up, no session, CSRF, own role or self) are proven by direct API tests; the new route is in the org route set and its guard mutation is caught; all existing suites pass. Tests: `apps/admin-web/src/access.test.tsx`, `apps/admin-web/e2e/access.spec.ts`, `apps/api/tests/test_org_ui_refusals.py`. Merged as `42859be` (pull request #43); CI run #91 green on `main` |
-| Workflow reads (on `feat/mvp1-workflow-reads-ui`) | ADR 0008 accepted (R-74 to R-78): `workflow_grants` and a guideline `classification`, default deny with 404 on every workflow read route, author, contributor and approver exceptions, the two governed list routes, fixture grants, the `workflow` kind in the access preview; the workflow grants screen | Every read route refuses a caller without a grant (404) and the list routes leave records out; the exceptions do not extend; agents refused; the exit test passes with the fixture grants and its case read is 404 without them; mutations caught. Tests: `apps/api/tests/test_workflow_reads.py`, the migration test in `apps/api/tests/test_postgres.py`, `apps/api/tests/test_org_ui_refusals.py` (workflow grants), `apps/admin-web/src/workflowGrants.test.tsx`, `apps/admin-web/e2e/workflowGrants.spec.ts` |
-| 10e (on `feat/mvp1-workflow-reads-ui`) | Proposal form and validator results: request, questions, answers, draft, validator errors with their codes; submit refused while errors remain | Browser test of the whole flow on the production build, same origin. Tests: `apps/admin-web/src/proposals.test.tsx`, `apps/admin-web/e2e/proposals.spec.ts` |
-| 10f (on `feat/mvp1-workflow-reads-ui`) | Approval inbox (proposed versions through the governed list), version view with the full digest, the diff against the current baseline and the validator result; approve with the shown digest and an effective date, with step-up; reject | Browser test: self-approval refused; a different qualified approver baselines the shown digest; an edit after baselining refused; a version changed meanwhile gives 409 (R-59). Tests: `apps/admin-web/src/approvals.test.tsx`, `apps/admin-web/e2e/approvals.spec.ts`, `apps/api/tests/test_test_bootstrap.py` |
-| Review changes (on `feat/mvp1-workflow-reads-ui`, commit F) | The Admin's review of ADR 0008 (2026-10-21): every workflow change route reads its target first (R-79); own versions readable while draft or proposed (R-76 widened); an org route and control to set a guideline's classification (R-80); a Guidelines screen to create guidelines and templates; a browser test that waits out the step-up window before approving | Every change route is 404 for a caller who cannot read its target, exactly as for a missing record, with nothing changed; no change response holds an unreadable record; mutations on the edit and approve routes caught; classification refusals for each case, a raised classification denies reads (404) and shows on the preview, no digest changes; one step-up dialog and one retry with the digest shown. Tests: `apps/api/tests/test_workflow_changes.py`, `apps/api/tests/test_org_ui_refusals.py` (classification), `apps/admin-web/src/guidelines.test.tsx`, `apps/admin-web/src/workflowGrants.test.tsx`, `apps/admin-web/e2e/approvalsStepUp.spec.ts`, `apps/admin-web/e2e/workflowGrants.spec.ts` |
+| Workflow reads (done) | ADR 0008 accepted (R-74 to R-78): `workflow_grants` and a guideline `classification`, default deny with 404 on every workflow read route, author, contributor and approver exceptions, the two governed list routes, fixture grants, the `workflow` kind in the access preview; the workflow grants screen | Every read route refuses a caller without a grant (404) and the list routes leave records out; the exceptions do not extend; agents refused; the exit test passes with the fixture grants and its case read is 404 without them; mutations caught. Tests: `apps/api/tests/test_workflow_reads.py`, the migration test in `apps/api/tests/test_postgres.py`, `apps/api/tests/test_org_ui_refusals.py` (workflow grants), `apps/admin-web/src/workflowGrants.test.tsx`, `apps/admin-web/e2e/workflowGrants.spec.ts`. Merged as `f4a10a7` (pull request #44); CI run #93 green on `main` |
+| 10e (done) | Proposal form and validator results: request, questions, answers, draft, validator errors with their codes; submit refused while errors remain | Browser test of the whole flow on the production build, same origin. Tests: `apps/admin-web/src/proposals.test.tsx`, `apps/admin-web/e2e/proposals.spec.ts`. Merged as `f4a10a7` (pull request #44); CI run #93 green on `main` |
+| 10f (done) | Approval inbox (proposed versions through the governed list), version view with the full digest, the diff against the current baseline and the validator result; approve with the shown digest and an effective date, with step-up; reject | Browser test: self-approval refused; a different qualified approver baselines the shown digest; an edit after baselining refused; a version changed meanwhile gives 409 (R-59). Tests: `apps/admin-web/src/approvals.test.tsx`, `apps/admin-web/e2e/approvals.spec.ts`, `apps/api/tests/test_test_bootstrap.py`. Merged as `f4a10a7` (pull request #44); CI run #93 green on `main` |
+| Review changes (done, commit F) | The Admin's review of ADR 0008 (2026-10-21): every workflow change route reads its target first (R-79); own versions readable while draft or proposed (R-76 widened); an org route and control to set a guideline's classification (R-80); a Guidelines screen to create guidelines and templates; a browser test that waits out the step-up window before approving | Every change route is 404 for a caller who cannot read its target, exactly as for a missing record, with nothing changed; no change response holds an unreadable record; mutations on the edit and approve routes caught; classification refusals for each case, a raised classification denies reads (404) and shows on the preview, no digest changes; one step-up dialog and one retry with the digest shown. Tests: `apps/api/tests/test_workflow_changes.py`, `apps/api/tests/test_org_ui_refusals.py` (classification), `apps/admin-web/src/guidelines.test.tsx`, `apps/admin-web/src/workflowGrants.test.tsx`, `apps/admin-web/e2e/approvalsStepUp.spec.ts`, `apps/admin-web/e2e/workflowGrants.spec.ts`. Merged as `f4a10a7` (pull request #44); CI run #93 green on `main` |
 
 ### Super admin skills and documentation (approved (Admin, 2026-10-14))
 

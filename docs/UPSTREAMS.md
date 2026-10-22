@@ -381,7 +381,8 @@ any use.
 ## Claims register (slice 2 labelling pass; added 2026-10-13)
 
 Every statement in `docs/` (this file, `ROADMAP.md`, `DECISIONS.md`, `HANDOFF.md`, `BENCHMARK-PLAN.md`, `adr/`,
-`LOCAL-RUNTIME.md`; there is no README) that asserts a feature, capability, licence, version or behaviour of an
+`LOCAL-RUNTIME.md`, `MVP1-EXIT.md` and `DEMO.md` (both since 2026-10-22); there is no README) that asserts a
+feature, capability, licence, version or behaviour of an
 upstream or service, at the line where it stands (regenerated with `qms_superadmin claims-register`; R-28).
 about QMS OS's own code are covered by its tests and are not listed. **Verified** names the source already in the
 repository and its date; nothing was researched for this register. **Not verified** claims are labelled in place
@@ -455,14 +456,14 @@ were added to their existing rows. C-129 and C-130 are among the 9 flagged claim
 | C-53 | `UPSTREAMS.md:128` | The vendored list is SecLists 10k at commit `913b3273`, MIT | verified | commit and file SHA-256 recorded, 2026-10-06 | MVP-1 (authentication) |
 | C-54 | `UPSTREAMS.md:135` | The authentication packages make no network calls | not verified | packages' source not reviewed (labelled in place) | MVP-1 (authentication) |
 | C-55 | `UPSTREAMS.md:141`; `UPSTREAMS.md:192`; `adr/0003-auth-dev-identity.md:114` | These packages ship compiled code on Windows | verified | local installs from PyPI wheels, 2026-10-06 and 2026-10-07; whether the code is signed: not verified (labelled in place) | MVP-0 (local development) |
-| C-56 | `HANDOFF.md:215` | Smart App Control blocked SQLAlchemy's unsigned `_row_cy` | verified | Code Integrity events 3033/3077, observed 2026-10-06 | MVP-0 (local development) |
+| C-56 | `HANDOFF.md:243` | Smart App Control blocked SQLAlchemy's unsigned `_row_cy` | verified | Code Integrity events 3033/3077, observed 2026-10-06 | MVP-0 (local development) |
 | C-57 | `UPSTREAMS.md:144` | cryptography's OpenSSL fixes arrive only through new releases | not verified | no source recorded (labelled in place) | Production-2 (durable upgrades) |
 | C-58 | `UPSTREAMS.md:160` | gitleaks 8.30.1 archive SHA-256 and tag commit | verified | release checksums file and tag, read 2026-10-06 | MVP-0 (CI job `secret-scan`) |
 | C-59 | `UPSTREAMS.md:160` | gitleaks is licensed MIT | not verified | no source recorded (labelled in place) | MVP-0 (CI job `secret-scan`) |
 | C-60 | `UPSTREAMS.md:165` | gitleaks downloads nothing at scan time; `--redact` keeps values out of the log | not verified | no source recorded (labelled in place) | MVP-0 (CI job `secret-scan`) |
 | C-61 | `UPSTREAMS.md:168` | gitleaks finds no leaks in the history and detects a fake key outside the allow-list | verified | local runs, 2026-10-06 | MVP-0 (CI job `secret-scan`) |
 | C-62 | `UPSTREAMS.md:170` | actionlint is licensed MIT | not verified — flagged | no source recorded; local check only, no stage uses it; Admin: kept as labelled (R-28) | none |
-| C-63 | `UPSTREAMS.md:161`; `DECISIONS.md:61`; `HANDOFF.md:269` | The pinned image is PostgreSQL 17.11 (Debian 17.11-1.pgdg13+2) | verified | `select version()` on the local container, 2026-10-05 and 2026-10-10; CI job `postgres` | MVP-1 (PostgreSQL) |
+| C-63 | `UPSTREAMS.md:161`; `DECISIONS.md:61`; `HANDOFF.md:297` | The pinned image is PostgreSQL 17.11 (Debian 17.11-1.pgdg13+2) | verified | `select version()` on the local container, 2026-10-05 and 2026-10-10; CI job `postgres` | MVP-1 (PostgreSQL) |
 | C-64 | `UPSTREAMS.md:161` | The postgres image is under the PostgreSQL Licence | not verified | no source recorded (labelled in place) | MVP-1 (PostgreSQL) |
 | C-65 | `UPSTREAMS.md:162` | actions/checkout and setup-python are licensed MIT | not verified | no source recorded (labelled in place) | MVP-0 (CI) |
 | C-66 | `UPSTREAMS.md:188` | ruff and mypy make no network calls | not verified — flagged | no source recorded; development tools only; Admin: kept as labelled (R-28) | none |
@@ -474,10 +475,10 @@ were added to their existing rows. C-129 and C-130 are among the 9 flagged claim
 | C-72 | `UPSTREAMS.md:295`; `BENCHMARK-PLAN.md:142` | Image `ollama/ollama:0.40.0` index digest `1bef6397…` | verified | Docker Hub API, 2026-10-07; `docker buildx imagetools inspect`, 2026-10-12 | slice 4 runs |
 | C-73 | `UPSTREAMS.md:301` | Below 24 GiB VRAM the default context is 4K | verified | docs.ollama.com/context-length, read 2026-10-07; smoke test showed CONTEXT 4096 (Admin, 2026-10-12) | slice 4 runs |
 | C-74 | `UPSTREAMS.md:302` | `OLLAMA_CONTEXT_LENGTH` sets the default; `ollama ps` shows it | verified | docs.ollama.com/context-length, read 2026-10-07 | slice 4 runs |
-| C-75 | `UPSTREAMS.md:303`; `BENCHMARK-PLAN.md:27`; `BENCHMARK-PLAN.md:63`; `ROADMAP.md:40` | Native API accepts per-request `num_ctx`; a new value reloads the model; OpenAI-compatible routes cannot set it | verified | source and docs at `0d0720e5`, read 2026-10-10 | slice 4 runs |
+| C-75 | `UPSTREAMS.md:303`; `BENCHMARK-PLAN.md:27`; `BENCHMARK-PLAN.md:63`; `ROADMAP.md:43` | Native API accepts per-request `num_ctx`; a new value reloads the model; OpenAI-compatible routes cannot set it | verified | source and docs at `0d0720e5`, read 2026-10-10 | slice 4 runs |
 | C-76 | `UPSTREAMS.md:304` | Ollama binds 127.0.0.1:11434 by default | verified | docs.ollama.com/faq, read 2026-10-07 | slice 4 runs; MVP-2 and later |
 | C-77 | `UPSTREAMS.md:305` | Ollama does not see prompts when run locally | not verified | documentation statement only (`docs/faq.mdx:161` at `0d0720e5`, 2026-10-10); not checked at runtime | before the first live Ollama adapter |
-| C-78 | `UPSTREAMS.md:306`; `DECISIONS.md:84`; `HANDOFF.md:401`; `adr/0005-provider-contract-and-egress.md:54` | The daemon contacts ollama.com by default (recommendations, cloud-model cache), signed with the installation key | verified | source at `0d0720e5`, read 2026-10-10 | before the first live Ollama adapter (R-27) |
+| C-78 | `UPSTREAMS.md:306`; `DECISIONS.md:84`; `HANDOFF.md:431`; `adr/0005-provider-contract-and-egress.md:54` | The daemon contacts ollama.com by default (recommendations, cloud-model cache), signed with the installation key | verified | source at `0d0720e5`, read 2026-10-10 | before the first live Ollama adapter (R-27) |
 | C-79 | `UPSTREAMS.md:307` | `OLLAMA_NO_CLOUD=1` or `disable_ollama_cloud` turns that off | verified | source and docs at `0d0720e5`, read 2026-10-10; set in `ollama-bench` (Admin check, 2026-10-12) | before the first live Ollama adapter (R-27) |
 | C-80 | `UPSTREAMS.md:308` | No other outbound calls or analytics in Ollama | not verified | grep of the tag's own code only, 2026-10-10; dependencies and runtime not verified (as stated) | before the first live Ollama adapter |
 | C-81 | `UPSTREAMS.md:309`; `DECISIONS.md:73` | The desktop app checks ollama.com for updates hourly; no setting disables the check; Docker image runs `ollama serve` | verified | FAQ and source at `0d0720e5`, read 2026-10-10 | before any shared deployment (R-16 note) |
@@ -485,13 +486,13 @@ were added to their existing rows. C-129 and C-130 are among the 9 flagged claim
 | C-83 | `UPSTREAMS.md:311`; `DECISIONS.md:74` | Cloud tags exist (`gemma4:cloud`, `gemma4:31b-cloud`) | verified | ollama.com tags page, read 2026-10-07 | only if an admin enables cloud (R-17) |
 | C-84 | `UPSTREAMS.md:311`; `adr/0005-provider-contract-and-egress.md:50` | A general cloud-tag naming rule; Ollama's cloud terms | not verified | `docs/cloud.mdx` at `28a9f8c9` gives one example and no rule (read 2026-10-09); terms not read | before the first live Ollama adapter |
 | C-85 | `UPSTREAMS.md:317` | Tag `gemma4:12b` exists | verified | ollama.com library pages, read 2026-10-07; pulled in the smoke test (Admin, 2026-10-12) | slice 4 runs |
-| C-86 | `UPSTREAMS.md:318`; `ROADMAP.md:87` | `gemma4:12b` publishes a 256K context | verified | Ollama pages and Hugging Face model data, read 2026-10-07 (published value only; use on 12 GB is B1) | slice 4 runs |
+| C-86 | `UPSTREAMS.md:318`; `ROADMAP.md:90` | `gemma4:12b` publishes a 256K context | verified | Ollama pages and Hugging Face model data, read 2026-10-07 (published value only; use on 12 GB is B1) | slice 4 runs |
 | C-87 | `UPSTREAMS.md:319` | Manifest layer digests of `gemma4:12b` | verified | registry manifest, read 2026-10-07; layer prefixes matched in the smoke test (Admin, 2026-10-12) | slice 4 runs |
 | C-88 | `UPSTREAMS.md:320`; `BENCHMARK-PLAN.md:189` | Which value Ollama's short model ID is derived from | not verified | two pages disagree (2026-10-07); smoke-test ID `6114515d63c1` matches neither (2026-10-12) | slice 4 runs |
-| C-89 | `UPSTREAMS.md:321`; `ROADMAP.md:87` | Ollama's `gemma4:12b` weights licence is Apache-2.0 | verified | licence blob downloaded and hashed, 2026-10-07 | slice 4 runs; any live use |
+| C-89 | `UPSTREAMS.md:321`; `ROADMAP.md:90` | Ollama's `gemma4:12b` weights licence is Apache-2.0 | verified | licence blob downloaded and hashed, 2026-10-07 | slice 4 runs; any live use |
 | C-90 | `UPSTREAMS.md:322` | Publisher's Gemma 4 12B weights are Apache-2.0 | verified | Hugging Face API, revision `707f0a3b`, read 2026-10-07 | slice 4 runs; any live use |
 | C-91 | `UPSTREAMS.md:323`; `UPSTREAMS.md:325`; `BENCHMARK-PLAN.md:80` | `gemma4:12b` accepts audio input | not verified | sources conflict (2026-10-07, 2026-10-10); projector metadata read partially, hash not verified; not run | slice 4 (B7 probe); MVP-3 |
-| C-92 | `UPSTREAMS.md:324`; `ROADMAP.md:40` | Ollama `v0.40.0` has audio input paths | verified | source at `0d0720e5`, read 2026-10-10 | slice 4 (B7); MVP-3 |
+| C-92 | `UPSTREAMS.md:324`; `ROADMAP.md:43` | Ollama `v0.40.0` has audio input paths | verified | source at `0d0720e5`, read 2026-10-10 | slice 4 (B7); MVP-3 |
 | C-93 | `UPSTREAMS.md:326` | `gemma4:12b` has native function calling | not verified | documentation statement only (Ollama family page, 2026-10-07); reliability is B4 | slice 4 (B4) |
 | C-94 | `UPSTREAMS.md:327` | Fit and throughput on the 12 GB VRAM host | not verified | a measurement (B1, B3, B5) | slice 4 runs (not an exit item, R-28) |
 | C-95 | `BENCHMARK-PLAN.md:193` | A per-request control for `gemma4:12b` thinking output | not verified | none recorded; request field `think` exists in the source (2026-10-13), effect not verified | slice 4 runs (open item 12) |
@@ -524,10 +525,10 @@ were added to their existing rows. C-129 and C-130 are among the 9 flagged claim
 | C-122 | `BENCHMARK-PLAN.md:166` | Compose resolves variables for the whole file | not verified | no source recorded (labelled in place) | slice 4 runs |
 | C-123 | `BENCHMARK-PLAN.md:167` | `docker compose down -v` in `reset-db.bat` may delete the benchmark models volume | not verified | not tested (as stated) | slice 4 runs |
 | C-124 | `BENCHMARK-PLAN.md:173`; `BENCHMARK-PLAN.md:177` | Smoke test: pull, one-word reply, `ollama ps`, `nvidia-smi` (one sample) | verified | Admin-supplied output, 2026-10-12 (not a benchmark result) | slice 4 runs |
-| C-125 | `HANDOFF.md:210` | The R-3 compiled dependencies install on Linux (CI) | verified | CI step results, read 2026-10-06 (log not read) | MVP-1 (authentication) |
-| C-126 | `HANDOFF.md:402` | Whether the PostgreSQL digest is a multi-arch index | not verified — flagged | not checked; only amd64 hosts are used; Admin: kept as labelled (R-28) | none |
-| C-127 | `BENCHMARK-PLAN.md:108`; `HANDOFF.md:793` | Memory inside a container is capped by the Docker Desktop allocation | not verified | no source recorded | slice 4 runs |
-| C-128 | `HANDOFF.md:730` | Compose ignores the unused `POSTGRES_TAG` in `.env` | not verified | no source recorded | MVP-0 (local runtime) |
+| C-125 | `HANDOFF.md:238` | The R-3 compiled dependencies install on Linux (CI) | verified | CI step results, read 2026-10-06 (log not read) | MVP-1 (authentication) |
+| C-126 | `HANDOFF.md:432` | Whether the PostgreSQL digest is a multi-arch index | not verified — flagged | not checked; only amd64 hosts are used; Admin: kept as labelled (R-28) | none |
+| C-127 | `BENCHMARK-PLAN.md:108`; `HANDOFF.md:833` | Memory inside a container is capped by the Docker Desktop allocation | not verified | no source recorded | slice 4 runs |
+| C-128 | `HANDOFF.md:770` | Compose ignores the unused `POSTGRES_TAG` in `.env` | not verified | no source recorded | MVP-0 (local runtime) |
 | C-129 | `UPSTREAMS.md:81` | LGPL-3.0 obligations for psycopg (internal use conveys nothing; notices and replaceability on delivery) | not verified — flagged | licence interpretation; the note itself says it is not legal advice; no stage delivers QMS OS to another organisation; Admin: kept as labelled (R-28) | none |
 | C-130 | `UPSTREAMS.md:88` | pg8000 is BSD-licensed | not verified — flagged | no source recorded; pg8000 is not adopted; Admin: kept as labelled (R-28) | none |
 | C-131 | `UPSTREAMS.md:209` | react 19.3.0 is licensed MIT | not verified | package metadata only (secondary), read 2026-10-15; primary source not read | MVP-1 (admin web UI, slice 10) |
@@ -550,12 +551,12 @@ were added to their existing rows. C-129 and C-130 are among the 9 flagged claim
 | C-148 | `UPSTREAMS.md:237` | pnpm audit reported no known vulnerabilities in the admin web UI packages | not verified | registry advisory data, 2026-10-21 (after vite 8.3.3; 8.3.2 had one high and two moderate advisories, development server only); advisories change over time | MVP-1 (admin web UI, slice 10) |
 | C-149 | `UPSTREAMS.md:225` | @playwright/test 1.63.0, playwright 1.63.0 and playwright-core 1.63.0 are licensed Apache-2.0 | not verified | package metadata only (secondary), read 2026-10-21; primary source not read | MVP-1 (admin web UI, slice 10b) |
 | C-150 | `UPSTREAMS.md:247` | Playwright 1.63.0 installs Chrome for Testing 153.0.8010.12 (revision 1243) | verified | `browsers.json` in the installed `playwright-core` 1.63.0, read 2026-10-21; the local download created `chromium-1243` | MVP-1 (admin web UI, slice 10b) |
-| C-151 | `UPSTREAMS.md:250` | Playwright checks the browser archive against a pinned hash | not verified | not read in Playwright's source (R-70: the lockfile cannot verify the download) | MVP-1 (admin web UI, slice 10b) |
-| C-152 | `UPSTREAMS.md:254` | The licence of the Chromium build Playwright downloads | not verified | not read | MVP-1 (admin web UI, slice 10b) |
+| C-151 | `UPSTREAMS.md:250`; `MVP1-EXIT.md:140` | Playwright checks the browser archive against a pinned hash | not verified | not read in Playwright's source (R-70: the lockfile cannot verify the download) | MVP-1 (admin web UI, slice 10b) |
+| C-152 | `UPSTREAMS.md:254`; `MVP1-EXIT.md:140` | The licence of the Chromium build Playwright downloads | not verified | not read | MVP-1 (admin web UI, slice 10b) |
 | C-153 | `UPSTREAMS.md:256` | The built React UI renders under the API's Content-Security-Policy in Chromium with no violation | verified | browser test `apps/admin-web/e2e/smoke.spec.ts`: local run 2026-10-21 (Windows 11, Chromium 153) and CI: pull request #42 run 39562347176 (#88, ubuntu-24.04) and `main` run 39562889995 (#89), job `e2e`, step "Browser tests" succeeded (job and step conclusions from the GitHub public API, 2026-10-21; the test log was not read); the violation watcher reported an injected inline script in a local scratch run only; Chromium only, not other browsers | MVP-1 (admin web UI, slice 10b) |
-| C-154 | `UPSTREAMS.md:260` | The Vite development server's proxy passes the session cookie and the `X-QMS-CSRF` header to the API | not verified | not tested: the browser tests use the production build on one origin, not the development server (Admin decision, 2026-10-21) | development only (no stage needs it) |
-| C-155 | `UPSTREAMS.md:266` | The Linux runner no longer installs the musl platform builds since the lockfile records `libc` | not verified | expected from pnpm's `libc` handling; shown by the `e2e` job's log, which needs a GitHub sign-in (not read) | MVP-1 (admin web UI, slice 10) |
-| C-156 | `UPSTREAMS.md:261` | Chromium keeps and sends the Secure session cookie set over plain http://127.0.0.1 | verified | browser test `apps/admin-web/e2e/signin.spec.ts`: local run 2026-10-21 (Windows 11, Chromium 153) and CI: pull request #42 run 39562347176 (#88, ubuntu-24.04) and `main` run 39562889995 (#89), job `e2e`, step "Browser tests" succeeded (job and step conclusions from the GitHub public API, 2026-10-21; the test log was not read); Chromium only, loopback only | MVP-1 (admin web UI, slice 10b) |
+| C-154 | `UPSTREAMS.md:260`; `MVP1-EXIT.md:134` | The Vite development server's proxy passes the session cookie and the `X-QMS-CSRF` header to the API | not verified | not tested: the browser tests use the production build on one origin, not the development server (Admin decision, 2026-10-21) | development only (no stage needs it) |
+| C-155 | `UPSTREAMS.md:266`; `MVP1-EXIT.md:136` | The Linux runner no longer installs the musl platform builds since the lockfile records `libc` | not verified | expected from pnpm's `libc` handling; shown by the `e2e` job's log, which needs a GitHub sign-in (not read) | MVP-1 (admin web UI, slice 10) |
+| C-156 | `UPSTREAMS.md:261`; `DEMO.md:261` | Chromium keeps and sends the Secure session cookie set over plain http://127.0.0.1 | verified | browser test `apps/admin-web/e2e/signin.spec.ts`: local run 2026-10-21 (Windows 11, Chromium 153) and CI: pull request #42 run 39562347176 (#88, ubuntu-24.04) and `main` run 39562889995 (#89), job `e2e`, step "Browser tests" succeeded (job and step conclusions from the GitHub public API, 2026-10-21; the test log was not read); Chromium only, loopback only | MVP-1 (admin web UI, slice 10b) |
 
 Counts: 70 verified, 76 not verified, 10 flagged (not verified, no stage needs them), kept as labelled
 by the Admin on 2026-10-13; 156 in all.
