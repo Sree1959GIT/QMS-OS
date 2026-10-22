@@ -109,8 +109,8 @@ decisions*), `docs/UPSTREAMS.md` (*Claims register*), `docs/DECISIONS.md`, `docs
 None found by this review: both exit criteria have backend and browser tests that pass locally and whose jobs pass
 in CI. Items the Admin may still want to treat as blocking (Claude Code does not decide this):
 
-- `frontend` and `e2e` are not required status checks; R-71 says the Admin makes them required after they are green
-  on `main` (`frontend` is, in runs #87 to #93; `e2e` in runs #89 to #93). Until then a pull request could merge with them failing.
+- **Resolved on 2026-10-22** (was: `frontend` and `e2e` not required): all eight jobs (`test`, `test-py311`, `lint`, `types`, `postgres`, `secret-scan`, `frontend`, `e2e`) are required status checks on `main` with the up-to-date rule, since the Admin made `frontend` and `e2e` required on 2026-10-22 (R-71; ruleset 24295033, read from the GitHub public API `rules/branches/main`, 2026-10-22). They were green on
+  `main` before (`frontend` in runs #87 to #93, `e2e` in runs #89 to #93).
 - CI evidence is job-level only for every run (logs not read); the per-test results are local-only.
 
 ### Accepted for MVP-1 (by an existing decision or a recorded design limit)
@@ -181,6 +181,6 @@ approved revision filter, cross-role denial."
 8. **Telegram text simulator:** whether it is `simulated` only in MVP-2; Telegram terms are not verified.
 9. **Approved revision filter:** no document revision model exists yet; the source of revision and validity data for
    "mixed document fixtures" is not decided.
-10. **R-71:** whether `frontend` and `e2e` become required checks (open since `efaeec1`).
+10. **R-71:** decided by the Admin on 2026-10-22: `frontend` and `e2e` are required checks (no longer open).
 11. **R-4** named owners for candidate values (the approver roles used by MVP-1 and any MVP-2 approval).
 12. **The demo account option** proposed in `docs/DEMO.md` (whether to build it, and in which slice).

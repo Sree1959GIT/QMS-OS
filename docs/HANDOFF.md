@@ -35,6 +35,8 @@
 
 Each item says how it was verified.
 
+- **Required status checks (2026-10-22):** all eight jobs (`test`, `test-py311`, `lint`, `types`, `postgres`, `secret-scan`, `frontend`, `e2e`) are required status checks on `main` with the up-to-date rule, since the Admin made `frontend` and `e2e` required on 2026-10-22 (R-71; ruleset 24295033, read from the GitHub public API `rules/branches/main`, 2026-10-22).
+
 - **Merge of pull request #44 and slice 11 (2026-10-22):** pull request #44 merged at 02:24 UTC as `f4a10a7` (GitHub
   public API: state closed, merge commit `f4a10a7`, head `f861d0f`). Pull request run 39710601176 (#92) on `f861d0f`
   and `main` run 39711228314 (#93) on `f4a10a7`: all eight jobs succeeded (`test`, `test-py311`, `lint`, `types`,
@@ -504,13 +506,13 @@ Open after slice 11 (2026-10-22):
 - The Admin reviews `docs/MVP1-EXIT.md` and decides whether MVP-1 is met (not declared by Claude Code), including
   whether anything in its *Not verified* groups should block the exit, and whether a pull request is opened for
   `docs/mvp1-exit-evidence`.
-- The Admin decides the demo account proposal (`docs/DEMO.md`, section 8; not built) and R-71 (`frontend` and `e2e`
-  as required checks).
+- The Admin decides the demo account proposal (`docs/DEMO.md`, section 8; not built). R-71 decided 2026-10-22:
+  `frontend` and `e2e` are required checks.
 - Decisions needed before MVP-2: `docs/MVP1-EXIT.md`, last section (none decided).
 
 Open for slice 10 (2026-10-21):
 
-- The Admin decides when `frontend` becomes a required check (R-13, R-71); it is green on `main` at `efaeec1`.
+- Done 2026-10-22: `frontend` and `e2e` are required checks (R-13, R-71; *Verified state*).
 - Slice 10b (2026-10-21, local results): Python suite 568 passed, 2 skipped; PostgreSQL full suite 599 passed (at
   `6186328`); 34 component tests; 3 browser tests in Chromium 153 (smoke under the CSP; sign-in, reload, step-up
   with one retry, sign-out); lint, type check, build, bundle check, licence check (221 packages, 0 refused) and

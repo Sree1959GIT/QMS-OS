@@ -19,8 +19,8 @@ un-tests.bat`), `720 passed` on PostgreSQL
 (`scripts
 un-pg-tests.bat full`), 95 component tests and 11 browser tests, local runs on 2026-10-22 at `f4a10a7`
 (Windows, Python 3.12.7, Node 24.13.1, Chromium 153); CI on GitHub Actions with eight jobs (`test`, `test-py311`,
-`lint`, `types`, `postgres`, `secret-scan`, `frontend`, `e2e`), the first six required on a protected `main` branch
-(R-13; `frontend` and `e2e` become required when the Admin decides, R-71), all passed on `main` at `f4a10a7` (run
+`lint`, `types`, `postgres`, `secret-scan`, `frontend`, `e2e`), all eight required on a protected `main` branch
+(R-13; `frontend` and `e2e` since 2026-10-22, R-71), all passed on `main` at `f4a10a7` (run
 39711228314, shown as #93, read from the GitHub public API on 2026-10-22; job conclusions only). MVP-0: declared met
 (R-29). MVP-1: all planned slices are on `main`; the exit evidence (slice 11) is in `docs/MVP1-EXIT.md`, **not
 declared met** (the Admin decides). A local demo guide is in `docs/DEMO.md`. See *Verified state* and *Not verified*
